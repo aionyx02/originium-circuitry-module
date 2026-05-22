@@ -9,7 +9,7 @@
 
 ## 銀行存款
 
-**程式實作：32.5% / 65%**  
+**程式實作：36.5% / 65%**  
 口頭報告：尚未開始評估 / 60%
 
 > 每完成一個 Phase 更新一次。「銀行存款」= 已穩穩拿到的分（demo 不會被扣回去的）。
@@ -20,7 +20,7 @@
 
 **Phase 2 — 視覺打磨進行中**
 
-Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）已 commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）已實作待手動驗收；Day 2b（滑鼠）/ Day 2c（音效）未開工。
+Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）已 commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）使用者手動驗收 8 項全綠，待 commit；Day 2b（滑鼠）/ Day 2c（音效）未開工。
 
 ---
 
@@ -72,9 +72,9 @@ Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）已 co
 
 ### 圖形介面（共 15%）
 
-- [x] 實作 GUI — 2.5%（基礎 GUI 已具備；Day 2a 加圓角 + 漸層 + drop shadow，**待手動驗收**）
+- [x] 實作 GUI — 2.5%（Phase 2 Day 2a：圓角板面/tray/win banner + 背景漸層 + drop shadow 兩 pass）
 - [ ] 音效 — 1%（Day 2c 接 4 個 jsfxr 生的 wav）
-- [ ] 圖片或材質顯示零件 — 1.5%（Day 2a 加每 cell 上方高光帶 + 下方暗邊 bevel 程序材質，**待手動驗收**）
+- [x] 圖片或材質顯示零件 — 1.5%（Phase 2 Day 2a：每 cell 上方高光帶 +70/ch + 下方 bevel ÷2 程序材質，跟 cell 一起旋轉）
 - [x] 旋轉動畫 — 5%（Phase 2 Day 1：currentAngle lerp 到 `rotateCount * 90°`，frame-rate 獨立的 `1 - exp(-dt*k)` factor）
 - [x] 零件跟游標連續移動 — 5%（Phase 2 Day 1：每 frame 對 currentCenterX/Y lerp 到 cursor pivot 目標）
 
@@ -85,11 +85,11 @@ Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）已 co
 - **Phase 0**（2026-05-22）：CMake + raylib FetchContent + src/{core,ui}/ skeleton + .gitignore；build 0 warning，視窗 OK。詳見 [LOG.md Phase 0](LOG.md#2026-05-22--phase-0-完成基礎設施)
 - **Phase 1**（2026-05-22）：MVP 單色可玩。Part / Board / Parser / WinChecker / Game / Input / Renderer / main.cpp 共 9 檔；Example1.txt 手動互動驗證 8 項全綠（wasd / r 4循環 / Enter / Esc 雙語意 / 重疊紅框錯誤 / You Win）。詳見 [LOG.md Phase 1](LOG.md#2026-05-22--phase-1-完成mvp-單色關卡可玩)
 - **Phase 2 Day 1**（2026-05-22，commit `0fcfcd4`）：動畫骨架（per-part `currentCenterX/Y/Angle/Scale` lerp，`1 - exp(-dt*k)` frame-rate 獨立）+ 旋轉/移動 pivot（`Part::computeCenterCell` 取離形心最近占據格、cursor 改成 pivot target、中心格亮色 +120/ch）。+11%。
+- **Phase 2 Day 2a**（2026-05-22）：視覺 polish + 程序材質。圓角板面 / tray / win banner、背景垂直漸層、每 cell 上方高光帶（+70/ch）+ 下方 bevel（÷2），drop shadow 兩 pass（offset 4/5px）。使用者手動驗收 A–H 全綠。+4%。
 - **文件結構**：CLAUDE / plan / STATUS / LOG / learning-notes / DEV_GUIDE / my-note 7 檔到位
 
 ## 進行中
 
-- Phase 2 Day 2a 視覺 polish + 程序材質：圓角板面 / tray / win banner、背景漸層、cell 上高光帶 + 下暗邊 bevel、drop shadow 兩 pass — **代碼已寫、smoke OK，等使用者目視驗收**
 - 後續：Day 2b 滑鼠（不加分但補 rubric 完整性）→ Day 2c 音效（+1%，使用者已生 sound1.wav 一個）
 - 材質策略：純程序材質（不引入 png 資產）
 - 音效策略：使用者用 jsfxr 生 4 個 wav（pickup / place / rotate / win）

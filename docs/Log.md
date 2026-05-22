@@ -18,6 +18,8 @@
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
 - 05-23? docs: add README.md / update learning log
+- **2026-05-22** — [Phase 2 Day 2a：視覺 polish + 程序材質 + drop shadow](#2026-05-22--phase-2-day-2a視覺-polish--程序材質--drop-shadow) · `Phase 2` · `Implementation` · GUI 2.5% + 材質 1.5% = +4%，圓角 + 漸層 + 高光帶 + bevel + drop shadow 兩 pass
+- **2026-05-22** — [learning-notes.md 加 commit-grouped 索引 + 結構重組](#2026-05-22--learning-notesmd-加-commit-grouped-索引--結構重組small) · `Phase 2` · `small` · feature 名稱升 h3、加 `*Phase X · commit <short>*` meta、可對應到原始 commit 學習
 - **2026-05-22** — [Phase 2 Day 1：動畫骨架 + 旋轉/移動 pivot 中心](#2026-05-22--phase-2-day-1動畫骨架--旋轉移動-pivot-中心) · `Phase 2` · `Implementation + Refactor` · 動畫 5%+5% + 進階中心 1% = +11%，cursor 語意改成 pivot target 的設計演進
 - **2026-05-22** — [Phase 1 手動驗證通過](#2026-05-22--phase-1-手動驗證通過small) · `Phase 1` · `small` · 8 項全綠、+15% 入帳
 - **2026-05-22** — [文件 rename 與 reference 統一](#2026-05-22--文件-rename-與-reference-統一small) · `Phase 0` · `small` · Log/LEARNING_NOTES/mynote → LOG/learning-notes/my-note + 7 檔 reference 同步
@@ -627,3 +629,90 @@ Phase 2 開頭三大配分項要拿：旋轉動畫 5%（[scoring.md:93](scoring.
 - **「為什麼 lerp 用 `1 - exp(-dt*k)` 而不是固定 0.4」**：frame-rate 獨立。可以講「如果哪天 demo 機是 144Hz 而開發機是 60Hz，固定 factor 的動畫就會跑兩倍快、感覺很假；指數衰減公式有 dt 在裡面、自動補償」。
 - **「pivot 中心格選法」**：離形心最近的占據格、用 squared distance 比較。可以講「為什麼不直接用 bbox 中心 — bbox 中心對 L 型零件會落在空格上，違反 rubric『中心不能是空的』；用形心 + 最近占據格保證落在實際存在的 cell」。
 - **「process gap 改善實驗」**：這 entry 是 Phase 2 開始實施「plan 提案 / 實作中 / 實作後」三段 review 的第一個案例。使用者三輪驗證都有實質介入修正（D 失敗、pivot 漂移、視覺要亮色），HD/R 段是真實的、不是 AI 包裝。可以講「我從 Phase 1 學到 AI 容易 self-direct，Phase 2 開始強制 checkpoint review」。
+
+
+## 2026-05-22 — learning-notes.md 加 commit-grouped 索引 + 結構重組（small）
+Phase: 2  
+Commit: 本 commit
+
+- 加「## 索引（按 commit 切分，最新在上）」段在檔頭附近，讓使用者可以對應到哪段 commit 的 code 改動產生哪些學習 entry
+- 每個 entry 升結構：feature 名稱從 `### Feature\n{name}` 升到 `### {name}` h3 標題（可被 markdown 連結 + IDE outline 抓到），sub-sections 從 ### 降到 ####
+- 每個 entry 開頭加一行 `*Phase X · commit <short>*` meta，方便對照原始 commit 學習
+- Entry 模板同步更新成新格式
+- 內容不變
+
+
+## 2026-05-22 — Phase 2 Day 2a：視覺 polish + 程序材質 + drop shadow
+Type: Implementation  
+Phase: 2  
+Feature: 圓角、背景漸層、cell 程序材質（高光帶 + bevel）、drop shadow 兩 pass  
+Commit: (本 commit)
+
+### Context
+Phase 2 Day 1 動畫骨架 land 後（commit `0fcfcd4`），盤面的基本動畫 + pivot 結構就位，但視覺水準仍跟 Phase 1 同級 — 純色格、直角、無陰影、無質感。Day 2a 把 [demo/main.cpp](../demo/main.cpp) POC 的視覺水準搬進實作，對到圖形介面 15% 中的「實作 GUI 2.5%」（[scoring.md:90](scoring.md#L90)）與「使用圖片或特別材質 1.5%」（[scoring.md:92](scoring.md#L92)），共 +4%。
+
+策略選擇（Phase 2 提案階段已拍板）：純程序材質、不引入 png 資產。理由：避免 Windows 中文路徑 + 打包 + assets/ 跨平台路徑風險，且 POC 已證明程序材質視覺可達。
+
+### AI Contribution
+1. **Plan 提案**（implementation 前 ask）：列出 6 個 polish 子項（背景漸層、板面圓角、tray 圓角、cell 高光帶 + bevel、drop shadow、Win banner 圓角），對應到哪幾個 scoring 子項。
+2. **設計選擇**：
+   - 圓角實作用 raylib `DrawRectangleRounded` + `DrawRectangleRoundedLinesEx`（內建 API、無需自己畫圓角）
+   - 漸層用 `DrawRectangleGradientV` 一行（垂直漸層）
+   - 程序材質用每 cell 上方 30% 高光帶 + 下方 10% bevel，色彩用「+70/channel」（高光）與「÷2」（bevel）— 自動適配 part 顏色
+   - Drop shadow 用兩 pass：先掃所有 placed/held-on-board 部件畫 shadow、再掃畫所有部件本體 — 確保 shadow 永遠在底下，不會疊到其他 part 上方
+   - 高光帶 / bevel / shadow **都用 `DrawRectanglePro`** 跟 cell 共用 pivot 與 rotation，所以旋轉時跟著 cell 一起轉
+3. **實作**（單檔 [src/ui/Renderer.cpp](../src/ui/Renderer.cpp) +98 行 / 改部分函式）：
+   - 新 helper `drawRoundedCell(int x, int y, int size, Color fill, Color border)` 與 `drawRoundedRect(Rectangle, roundness, fill, border, borderThick)`
+   - `drawBoardBg` 三個分支（CANNOT_PLACE / CANNOT_MOVE / EMPTY-or-OCCUPIED）全部換成 `drawRoundedCell`
+   - `drawTrayBg` 用 `drawRoundedRect` 取代之前的 `DrawRectangle` + `DrawRectangleLines`
+   - `drawWinBanner` 同上換成 `drawRoundedRect`
+   - `Renderer::draw` 加 `DrawRectangleGradientV(0, 0, screenW, screenH, ...)` 在 `ClearBackground` 後立刻畫
+   - 新 `drawPartShadow(p, cellSize, alpha)`：offset (4, 5) 純黑 alpha 110，每個 cell 一個 `DrawRectanglePro` 旋轉繞 pivot
+   - `drawPartAnimated` 加兩個額外的 `DrawRectanglePro` per cell：
+     - 高光帶：rec width = scs - 2*inset (inset = 6% scs)、height = 32% scs、origin.y = (cr - r + 0.5) * scs（放 cell 頂部）、color +70/channel alpha 170
+     - bevel：rec width = scs、height = 10% scs、origin.y = (cr - r + 0.5) * scs - (scs - edgeH)（放 cell 底部）、color ÷2 alpha 220
+   - `drawParts` 改成兩 pass：先 for-loop 只畫 shadow（onBoard 的 part）、再 for-loop 畫所有 part 本體
+
+### Human Decision / Review
+**Plan 提案階段**：使用者選「視覺 polish → 材質 → 滑鼠 → 音效」順序（不是「滑鼠先」），原因是先把加分項鎖住、再做不加分但補 rubric 完整性的滑鼠。
+
+**Implementation 中**：AI 在 plan.md §6 詳細列了 6 子項；使用者沒中途介入。
+
+**Implementation 後 review**：使用者跑 `./build/game docs/io/Example1.txt`，手動驗收 8 項 ABCDEFGH 全綠：
+- A 背景漸層、B 板面圓角、C tray 圓角、D cell 程序材質、E drop shadow、F 中心格仍亮、G Win banner 圓角、H Phase 1 流程零退化
+
+**沒被指出的問題**：無。一次寫一次過。
+
+### Details
+**為什麼程序材質算「特別材質」**：scoring 第 92 行寫「圖片或特別材質」— 「或」字明示 procedural 也算。視覺上每 cell 的「上方高光 + 下方暗邊」構成一個鏡面/金屬感的 cell tile，跟純色塊有明顯區別、且**跟著旋轉一起轉**（不是 overlay 在螢幕上），所以是真的 cell 的材質而非裝飾。
+
+**為什麼 drop shadow 要兩 pass**：如果在每個 part 自己的繪製順序裡先畫 shadow 再畫 body、那後畫的 part 的 shadow 會疊到前面 part 的 body 上面。兩 pass：先掃所有 part 畫 shadow、再掃所有 part 畫 body — 保證 shadow 永遠在底層。
+
+**為什麼背景漸層 + `ClearBackground` 都要**：`ClearBackground` 用底色把 colour buffer 清掉、然後 `DrawRectangleGradientV` 蓋上漸層。其實 `DrawRectangleGradientV` 一個 call 就夠（會 cover 整個 framebuffer），保留 `ClearBackground` 是雙保險，順便保證 depth/stencil clear。
+
+**色彩公式選擇**：
+- 高光 `+70/channel`：對深色 part 是顯著提亮、對亮色（黃綠等）已接近飽和、靠 alpha 170 來軟化。**自動適配**所有 part color、不需要 hardcode highlight 表
+- bevel `÷2`：對所有色都會明顯變暗，視覺上一致
+
+**`DrawRectanglePro` 用法重點**：rec.x/y = pivot 螢幕位置、origin = rect 左上角到 pivot 的 offset。高光帶 width 比 cell 窄、origin.x 要扣掉 inset；高光帶在 cell 頂部、所以 origin.y 跟 cell 一樣（因為 rect 從 cell top 開始畫）；bevel 在 cell 底部、origin.y 要再扣掉 `(scs - edgeH)`。詳細數學見 [learning-notes.md](learning-notes.md) 「程序材質的旋轉座標數學」entry。
+
+### Verification / Tests Performed
+- Build：0 warning 0 error
+- Smoke：`./build/game docs/io/Example1.txt` 開窗、raylib log 正常
+- **手動互動測試**（使用者親自）：8 項 ABCDEFGH 全綠（背景漸層、板面圓角、tray 圓角、cell 程序材質、drop shadow、中心格仍亮、Win banner 圓角、Phase 1 流程零退化）
+
+### Result
+- 視覺 polish + 程序材質完成。
+- 拿到分數：實作 GUI 2.5% + 圖片/材質 1.5% = **+4%**。
+- 銀行存款：32.5 → **36.5%** / 65%。
+
+### Risks / Follow-ups
+- 高光帶 / bevel 顏色與透明度都是 hardcoded `+70 / ÷2 / alpha 170 / alpha 220`，未來想調可能要實驗
+- Day 2b 滑鼠：使用者已要求；Day 2c 音效：使用者已生 sound1.wav 一個、待生齊 4 個
+
+### Other Notes
+**口頭報告素材**：
+- **「為什麼程序材質算特別材質」**：scoring「圖片或特別材質」，AI 跟使用者一起拍板用程序材質。報告講「procedural texture 是 cell 結構的一部分、跟著旋轉一起轉、不是 overlay 在螢幕上 — 視覺上有金屬鏡面感，符合 rubric『特別材質』的精神」。順便講 trade-off：減 png 資產 → 減 Windows 中文路徑/打包風險；代價是「圖片」字面意思可能被嚴格詮釋。
+- **「為什麼 drop shadow 要兩 pass」**：兩 pass = 全部 shadow 先畫完、再畫全部 body → 確保 shadow 不疊到別的 part body。展示「考慮過繪製順序對視覺正確性的影響」。
+- **「為什麼用 `DrawRectanglePro` 而非 `DrawRectangleRounded` 畫旋轉 cell」**：`DrawRectangleRounded` 不支援旋轉（沒有 angle param）。raylib 圓角 API 只支援 axis-aligned 矩形。所以 part cells 還是用 `DrawRectanglePro`（無圓角但可旋轉），只有 axis-aligned 的 UI 元素（板面格、tray slot、Win banner）才用圓角 API。
+- **「一次寫一次過的意義」**：跟 Day 1 三輪 review 對照，Day 2a 沒有需要 iterate。原因：Day 1 的設計有 cursor 語意這種牽動 game logic 的決策、容易出錯；Day 2a 是純視覺、改的全在 Renderer 一個檔、沒有跨核心/UI 邊界、AI 自由度比較大也容易 review。可以講「我學到改動範圍越窄、AI 一次成功率越高」。

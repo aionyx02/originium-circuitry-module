@@ -78,6 +78,17 @@ void drawFilledBordered(int x, int y, int size, Color fill, Color border) {
     DrawRectangleLines(x, y, size, size, border);
 }
 
+void drawRoundedCell(int x, int y, int size, Color fill, Color border) {
+    Rectangle r = { (float)x, (float)y, (float)size, (float)size };
+    DrawRectangleRounded(r, 0.18f, 6, fill);
+    DrawRectangleRoundedLinesEx(r, 0.18f, 6, 1.0f, border);
+}
+
+void drawRoundedRect(Rectangle r, float roundness, Color fill, Color border, float borderThick) {
+    DrawRectangleRounded(r, roundness, 8, fill);
+    DrawRectangleRoundedLinesEx(r, roundness, 8, borderThick, border);
+}
+
 void drawCenteredText(const char* msg, int boxX, int boxY, int boxW, int boxH, int fontSize, Color tint) {
     const int tw = MeasureText(msg, fontSize);
     DrawText(msg, boxX + (boxW - tw) / 2, boxY + (boxH - fontSize) / 2, fontSize, tint);
@@ -97,7 +108,7 @@ void drawBoardBg(const Game& g, const Layout& L) {
             const int cell = b._boardInfo[r][c];
 
             if (cell == Board::CANNOT_PLACE) {
-                drawFilledBordered(x, y, L.cellSize, blockedFill, blockedRed);
+                drawRoundedCell(x, y, L.cellSize, blockedFill, blockedRed);
                 drawCenteredText("X", x, y, L.cellSize, L.cellSize, 24, blockedRed);
             } else if (Board::isCannotMove(cell)) {
                 const int colorIdx = Board::cannotMoveColor(cell);
@@ -105,11 +116,11 @@ void drawBoardBg(const Game& g, const Layout& L) {
                 const Color dim = { static_cast<unsigned char>(cc.r / 3),
                                     static_cast<unsigned char>(cc.g / 3),
                                     static_cast<unsigned char>(cc.b / 3), 255};
-                drawFilledBordered(x, y, L.cellSize, dim, cc);
+                drawRoundedCell(x, y, L.cellSize, dim, cc);
                 drawCenteredText("=", x, y, L.cellSize, L.cellSize, 24, cc);
             } else {
                 // EMPTY or OCCUPIED — empty bg under (placed parts render on top)
-                drawFilledBordered(x, y, L.cellSize, emptyFill, emptyBorder);
+                drawRoundedCell(x, y, L.cellSize, emptyFill, emptyBorder);
             }
         }
     }
@@ -183,8 +194,9 @@ void drawTrayBg(const Game& g, const Layout& L) {
         const bool inTray = !placed && !held;
 
         const Color slotBg = inTray ? Color{45, 50, 62, 255} : Color{35, 38, 46, 255};
-        DrawRectangle(L.trayX - 6, slotY - 6, kTraySlotWidth, kTraySlotHeight, slotBg);
-        DrawRectangleLines(L.trayX - 6, slotY - 6, kTraySlotWidth, kTraySlotHeight, Color{90, 100, 120, 255});
+        Rectangle slotRec = { (float)(L.trayX - 6), (float)(slotY - 6),
+                              (float)kTraySlotWidth, (float)kTraySlotHeight };
+        drawRoundedRect(slotRec, 0.18f, slotBg, Color{90, 100, 120, 255}, 1.0f);
 
         char label[32];
         std::snprintf(label, sizeof(label), "P%zu  c%u", i, g.parts[i].colorIndex);
@@ -210,8 +222,8 @@ void drawWinBanner(int screenW, int screenH) {
     const int bw = 380, bh = 90;
     const int bx = (screenW - bw) / 2;
     const int by = (screenH - bh) / 2;
-    DrawRectangle(bx, by, bw, bh, Color{0, 0, 0, 210});
-    DrawRectangleLinesEx(Rectangle{(float)bx, (float)by, (float)bw, (float)bh}, 3, GOLD);
+    Rectangle r = { (float)bx, (float)by, (float)bw, (float)bh };
+    drawRoundedRect(r, 0.24f, Color{0, 0, 0, 220}, GOLD, 3.0f);
     drawCenteredText("You Win!", bx, by, bw, bh, 40, GOLD);
 }
 
@@ -275,6 +287,26 @@ void animateParts(Game& g, const Layout& L, float dt) {
     }
 }
 
+void drawPartShadow(const Part& p, float cellSize, float alpha) {
+    const int M = static_cast<int>(p.shape.size());
+    const int N = M > 0 ? static_cast<int>(p.shape[0].size()) : 0;
+    if (M == 0 || N == 0) return;
+    const float scs = cellSize * p.currentScale;
+    const float cc = static_cast<float>(p.centerCellCol);
+    const float cr = static_cast<float>(p.centerCellRow);
+    const float dx = 4.0f, dy = 5.0f;
+    Color shadow = Color{0, 0, 0, static_cast<unsigned char>(110 * alpha)};
+    for (int r = 0; r < M; ++r) {
+        for (int col = 0; col < N; ++col) {
+            if (!p.shape[r][col]) continue;
+            Rectangle rec = { p.currentCenterX + dx, p.currentCenterY + dy, scs, scs };
+            Vector2 origin = { (cc - col + 0.5f) * scs,
+                               (cr - r   + 0.5f) * scs };
+            DrawRectanglePro(rec, origin, p.currentAngle, shadow);
+        }
+    }
+}
+
 void drawPartAnimated(const Part& p, float cellSize, Color fill, float alpha) {
     const int M = static_cast<int>(p.shape.size());
     const int N = M > 0 ? static_cast<int>(p.shape[0].size()) : 0;
@@ -283,34 +315,70 @@ void drawPartAnimated(const Part& p, float cellSize, Color fill, float alpha) {
 
     Color baseFill = fill;
     baseFill.a = static_cast<unsigned char>(255 * alpha);
-    // Center cell uses brighter shade so the pivot is obvious. Blend toward
-    // white by +120 per channel; stays distinct across any part color.
+    // Center cell uses brighter shade so the pivot is obvious.
     Color centerFill = Color{
         static_cast<unsigned char>(std::min(255, fill.r + 120)),
         static_cast<unsigned char>(std::min(255, fill.g + 120)),
         static_cast<unsigned char>(std::min(255, fill.b + 120)),
         static_cast<unsigned char>(255 * alpha)
     };
+    // Highlight band (top sheen) — procedural texture
+    Color highlight = Color{
+        static_cast<unsigned char>(std::min(255, fill.r + 70)),
+        static_cast<unsigned char>(std::min(255, fill.g + 70)),
+        static_cast<unsigned char>(std::min(255, fill.b + 70)),
+        static_cast<unsigned char>(170 * alpha)
+    };
+    // Dark bottom edge — gives each cell a 3D bevel feel
+    Color edge = Color{
+        static_cast<unsigned char>(fill.r / 2),
+        static_cast<unsigned char>(fill.g / 2),
+        static_cast<unsigned char>(fill.b / 2),
+        static_cast<unsigned char>(220 * alpha)
+    };
 
-    // Pivot = un-rotated center cell's center. Each cell drawn with origin offset
-    // = (centerCol - col + 0.5, centerRow - row + 0.5) * scs so DrawRectanglePro
-    // rotates all cells around the pivot.
     const float cc = static_cast<float>(p.centerCellCol);
     const float cr = static_cast<float>(p.centerCellRow);
+    const float inset = 0.06f * scs;
+    const float bandH = scs * 0.32f;
+    const float edgeH = scs * 0.10f;
+
     for (int r = 0; r < M; ++r) {
         for (int col = 0; col < N; ++col) {
             if (!p.shape[r][col]) continue;
             const bool isCenter = (r == p.centerCellRow && col == p.centerCellCol);
+
+            // Base cell fill
             Rectangle rec = { p.currentCenterX, p.currentCenterY, scs, scs };
             Vector2 origin = { (cc - col + 0.5f) * scs,
                                (cr - r   + 0.5f) * scs };
             DrawRectanglePro(rec, origin, p.currentAngle,
                              isCenter ? centerFill : baseFill);
+
+            // Highlight band at top of cell (slightly inset horizontally)
+            Rectangle bandRec = { p.currentCenterX, p.currentCenterY,
+                                  scs - 2 * inset, bandH };
+            Vector2 bandOrigin = { (cc - col + 0.5f) * scs - inset,
+                                   (cr - r   + 0.5f) * scs };
+            DrawRectanglePro(bandRec, bandOrigin, p.currentAngle, highlight);
+
+            // Dark bevel at bottom of cell
+            Rectangle edgeRec = { p.currentCenterX, p.currentCenterY, scs, edgeH };
+            Vector2 edgeOrigin = { (cc - col + 0.5f) * scs,
+                                   (cr - r   + 0.5f) * scs - (scs - edgeH) };
+            DrawRectanglePro(edgeRec, edgeOrigin, p.currentAngle, edge);
         }
     }
 }
 
 void drawParts(const Game& g, const Layout& L) {
+    // Two passes so shadows never overlap other parts' bodies.
+    for (size_t i = 0; i < g.parts.size(); ++i) {
+        const Part& p = g.parts[i];
+        const bool held = (static_cast<int>(i) == g.heldPartIdx);
+        const bool onBoard = p.location.placed || (held && g.cursorCol != Game::TRAY_COL);
+        if (onBoard) drawPartShadow(p, static_cast<float>(L.cellSize), 1.0f);
+    }
     for (size_t i = 0; i < g.parts.size(); ++i) {
         const Part& p = g.parts[i];
         const bool held = (static_cast<int>(i) == g.heldPartIdx);
@@ -324,7 +392,11 @@ void drawParts(const Game& g, const Layout& L) {
 } // namespace
 
 void Renderer::draw(Game& g, int screenW, int screenH, float dt) {
-    ClearBackground(Color{25, 28, 36, 255});
+    // Vertical gradient bg — darker top fades to deeper bottom.
+    ClearBackground(Color{18, 20, 28, 255});
+    DrawRectangleGradientV(0, 0, screenW, screenH,
+                           Color{38, 42, 58, 255},
+                           Color{18, 20, 28, 255});
     DrawText("Originium Circuit Repair", 40, 24, 24, RAYWHITE);
 
     const Layout L = computeLayout(g, screenW, screenH);

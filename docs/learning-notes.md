@@ -9,6 +9,36 @@
 
 ---
 
+## 索引（按 commit 切分，最新在上）
+
+> **新增 entry 時：(1) append 到下方 Notes 段，(2) 在這個索引對應的 commit 分組下加一行。**  
+> 連結若無法直接點開，用 Cmd+F 搜 Feature 名稱。  
+> 用「Phase X · commit `<short>`」標注每個 entry 在哪段 code 改動產生，方便對照原始 commit 學習。
+
+### Phase 2 Day 2a — `<待 commit>` (2026-05-22)
+視覺 polish + 程序材質 + drop shadow
+
+- [raylib 圓角與漸層 API（axis-aligned UI 元素用）](#raylib-圓角與漸層-apiaxis-aligned-ui-元素用)
+- [程序材質：高光帶 + bevel 在旋轉 cell 上的座標數學](#程序材質高光帶--bevel-在旋轉-cell-上的座標數學)
+- [Drop shadow 為什麼要兩 pass 渲染](#drop-shadow-為什麼要兩-pass-渲染)
+
+### Phase 2 Day 1 — `0fcfcd4` (2026-05-22)
+動畫骨架 + 旋轉/移動 pivot 中心
+
+- [動畫 lerp 框架（frame-rate independent）](#動畫-lerp-框架frame-rate-independent)
+- [單調累加 `rotateCount` vs `fmod` shortest-arc](#單調累加-rotatecount-vs-fmod-shortest-arc)
+- [旋轉/移動 pivot cell 選擇演算法](#旋轉移動-pivot-cell-選擇演算法)
+- [`DrawRectanglePro` 任意 pivot 旋轉的座標數學](#drawrectanglepro-任意-pivot-旋轉的座標數學)
+- [Cursor 設計演進：Phase 1「= bbox 左上角」→ Phase 2 Day 1.6「= pivot target」](#cursor-設計演進phase-1-bbox-左上角--phase-2-day-16-pivot-target)（跨 commit：Phase 1 模型 + Phase 2 改動同篇）
+
+### Phase 0–1 — `970644c` (2026-05-22)
+MVP 單色關卡可玩
+
+- [Parser：純文字關卡檔 → `Board + vector<Part>`](#parser純文字關卡檔--board--vectorpart)
+- [Board cell 編碼方式](#board-cell-編碼方式)
+
+---
+
 ## 寫什麼、不寫什麼
 
 **判準：有沒有非平凡概念可教**（跟事件大小、LOG.md 的大事/小事**無關**）。  
@@ -40,55 +70,55 @@
 
 ## Entry 模板
 
-```
-### Feature
-功能 / 模組名稱
+````markdown
+### {Feature name}
+*Phase X · commit `<short-sha>`*
 
-### What & Key Concepts
+#### What & Key Concepts
 - 這個模組在做什麼
 - 用到的 C++ / raylib / 演算法 / 資料結構概念
 - 若有非平凡演算法，簡述（不貼整段 code，貼關鍵幾行 + 解釋）
 
-### Why This Design
+#### Why This Design
 - 為什麼這樣設計？
 - 考慮過哪些替代方案？為何不選？
 - （**不寫「Claude 建議了什麼」** — 那是 LOG.md 的事）
 
-### What I Should Be Able To Explain
-demo / 口頭報告會被問到時，要能講出來什麼？
-列 3–5 個 bullet，每個都是「老師可能問的問題 + 我會怎麼答」
+#### What I Should Be Able To Explain
+demo / 口頭報告會被問到時，要能講出來什麼？  
+列 3–5 個 bullet，每個都是「老師可能問的問題 + 我會怎麼答」  
 範例：
-- Q：為什麼旋轉用 lerp 而不是直接設 90°？
+- Q：為什麼旋轉用 lerp 而不是直接設 90°？  
   A：直接設會跳變、無動畫；lerp(current, target, 0.18) 每 frame 逼近 target，視覺上是平滑旋轉。
-- Q：rotate 4 次回到原狀，這怎麼處理？
-  A：用 rotationSteps % 4 紀錄狀態，render 時用 renderAngle 平滑插值到 90 * steps。
 
-### Score Connection
-對應 [scoring.md](scoring.md) 哪幾項，含 % 與行號
-範例：旋轉動畫 — 5%（scoring.md L93）
-```
+#### Score Connection
+對應 [scoring.md](scoring.md) 哪幾項，含 % 與行號  
+範例：旋轉動畫 — 5%（[scoring.md:93](scoring.md#L93)）
+````
 
 ---
 
 ## Notes
 
+> 條目時間正序（Phase 1 在最上、新的往下加）。索引在最上面、按 commit 分組，最新 commit 在上。
+
 ---
 
-### Feature
-Parser：純文字關卡檔 → `Board + vector<Part>`
+### Parser：純文字關卡檔 → `Board + vector<Part>`
+*Phase 0–1 · commit `970644c`*
 
-### What & Key Concepts
+#### What & Key Concepts
 - 檔案格式（[io/input-file-format.md](io/input-file-format.md)）：第一行 `C M N`（顏色數 / 列 / 欄）→ 每色：M 個列需求、N 個欄需求、X1 固定零件位置 → 全色跑完接 X2 不可放置格 → 最後是零件清單 `colorIdx M2 N2` + 0/1 矩陣，直到 EOF。
 - 用 `std::istream::operator>>` 逐 token 讀，自動跳空白與換行 → **格式對空白／空行很寬容**，助教手寫的測資也讀得進。
 - 例外路徑：丟自訂 `Parser::Error`（C++ 標準例外型別不夠語意明確）。
 - 邊界檢查：fixed-part / blocked-cell 座標、顏色索引超界都直接丟例外。
 
-### Why This Design
+#### Why This Design
 - 為什麼純文字不用 JSON：助教 demo 當天會給測資，**測資是純文字格式**。用 JSON 等於放棄 4% 分（單色 +2% + 雙色 +2%）。詳見 [LOG.md「技術棧決策」entry](LOG.md#2026-05-22--技術棧決策c17--raylib-55--cmake--mingw-static) Risks/Follow-ups 段。
 - 為什麼用 `>>` 而不是逐行讀 + split：`>>` 自動處理空白，省下 80% 的解析錯誤處理代碼；老師格式不規範空行也讀得進。
 - 為什麼例外而非 `std::optional`：要把錯誤訊息傳出去（例如「parse error: expected row constraint」），optional 沒有 payload。
 
-### What I Should Be Able To Explain
+#### What I Should Be Able To Explain
 - Q：為什麼不用 JSON？  
   A：助教 demo 測資是純文字、教師指定格式；用 JSON 會讓我們讀不到測資，失去 4% 配分。早期版本確實選了 JSON、後來在 plan.md 寫作時 catch 到推翻。
 - Q：parser 怎麼處理檔尾？  
@@ -96,16 +126,16 @@ Parser：純文字關卡檔 → `Board + vector<Part>`
 - Q：固定零件 vs 不可放置格差別？  
   A：固定零件（CANNOT_MOVE）算入該色的列/欄需求數，不可放置格（CANNOT_PLACE）只是禁止任何零件覆蓋。前者帶顏色 idx 編碼進 cell value。
 
-### Score Connection
+#### Score Connection
 - 基本項目 5%：讀單色設定檔 + 正常顯示 — 2%（[scoring.md:40](scoring.md#L40)）
 - 助教 demo 測資 +2%（[scoring.md:41](scoring.md#L41)） — Phase 6 demo 當天才能拿
 
 ---
 
-### Feature
-Board cell 編碼方式
+### Board cell 編碼方式
+*Phase 0–1 · commit `970644c`*
 
-### What & Key Concepts
+#### What & Key Concepts
 - `_boardInfo[r][c]` 是 `int`，一個欄位塞四種狀態：
   - `EMPTY = 0`
   - `CANNOT_PLACE = -1`（不可放置格）
@@ -114,12 +144,12 @@ Board cell 編碼方式
 - 解碼用 static helpers：`Board::isOccupied(cell)`、`occupiedPartIndex(cell)`、`isCannotMove(cell)`、`cannotMoveColor(cell)`
 - skeleton（[Framework/Board.h](../Framework/Board.h)）給的 enum 沒寫 underlying type；C++17 預設 underlying 是某個能 hold 列出的 enumerator 的最小 int 型別 → 不允許存 `OCCUPIED + partIdx` 這種任意 int。所以 **enum 加 `: int` 明確指定**讓 cast 合法（[Phase 1 LOG entry「skeleton 修正」](LOG.md#2026-05-22--phase-1-完成mvp-單色關卡可玩) 段）。
 
-### Why This Design
+#### Why This Design
 - 為什麼一個 int 塞四種：教師 skeleton 就這樣設計、不想偏離；負數區用來標固定/禁止、正數區用來標被佔據，0 = 空，乾淨分離。
 - 為什麼不用 struct `{ State state; int extra; }`：更乾淨但要動 skeleton 的型別 → 違反 Hard Constraint #4「保留 Part/Board 命名與欄位」。
 - enum 加 `: int` 是**一字元變更**，不算改名也不算改欄位，符合 skeleton 精神。
 
-### What I Should Be Able To Explain
+#### What I Should Be Able To Explain
 - Q：為什麼 cell 是 int 不是 enum？  
   A：教師 skeleton 規定。狀態多到 5 種、且 occupied / cannot_move 還要帶 partIdx 或 colorIdx，所以塞 int 用算術 offset 編碼。
 - Q：`OCCUPIED + partIdx` 跟 `CANNOT_MOVE - color` 會撞嗎？  
@@ -127,26 +157,26 @@ Board cell 編碼方式
 - Q：為什麼 enum 要加 `: int`？  
   A：C++17 enum 預設 underlying 是 compiler 挑「能 hold 列出值」的最小 int 型別，可能是 signed char 之類。`static_cast<BoardInfo>(OCCUPIED + partIdx)` 結果若超出該型別範圍是 UB。加 `: int` 強制 underlying 是 `int`，cast 合法。
 
-### Score Connection
+#### Score Connection
 - 基本項目 5%：Board class 1% ＋ 讀單色設定檔 2% 都靠這個編碼撐起來
 
 ---
 
-### Feature
-Cursor 設計演進：Phase 1「= bbox 左上角」→ Phase 2 Day 1.6「= pivot target」
+### Cursor 設計演進：Phase 1「= bbox 左上角」→ Phase 2 Day 1.6「= pivot target」
+*Phase 1（初代模型） · commit `970644c`* / *Phase 2 Day 1.6（演進） · commit `0fcfcd4`*
 
-### What & Key Concepts
+#### What & Key Concepts
 - **Phase 1 模型**：cursor 是「下一個放置位置的 bbox 左上角」。游標跨 tray + board：`cursorCol == -1` 是 tray、`>= 0` 是 board。clampCursor 在 col=-1 時把 row 上限放寬到 `max(parts.size(), board.rows) - 1`。
 - **Phase 2 改動**：cursor 改成「pivot cell 要落的位置」。`syncHeldLocation` 內部用 `rotatedCenterCell` offset 把 bbox top-left 算出來：`location.row = cursorRow - rotatedCr; location.col = cursorCol - rotatedCc`。
 - **效果**：旋轉時 cursor 不動 → pivot 螢幕位置不動 → 其他 cells 繞 pivot 轉。`Board::canPlace` API 完全沒動，只是 `Game` layer 餵進不同的 (row, col)。
 - **Esc 雙語意**：持有狀態 = 把零件還回 tray；無持有 + cursor 在 OCCUPIED cell = 把那 cell 對應的 part 從盤面拔回 hand。對使用者來說都是「取消當前動作」的單一語意，但 implementation 是 cursor context 決定的。
 
-### Why This Design
+#### Why This Design
 - 為什麼不分兩個 cursor（一個 tray、一個 board）：要在 tray 跟 board 間切換時 cursor 狀態同步更麻煩。一個 cursor + col=-1 sentinel 簡單。
 - 為什麼 Phase 2 改 cursor 語意而不改 `Board::canPlace`：API 動越少越好。Board 是教師 skeleton 規定要保留的核心 class。Game layer 的語意自由，怎麼改都行。
 - 為什麼拔零件時 snap cursor：不 snap 的話、舊 bbox top-left 經 syncHeldLocation 重算後可能跟 cursor 對不上，零件視覺會跳。snap 後算出來的 location 等於拔之前的 location，零件留在原位。
 
-### What I Should Be Able To Explain
+#### What I Should Be Able To Explain
 - Q：cursor 怎麼跨 tray 跟 board？  
   A：用 `cursorCol == -1` 當 sentinel 表示「在 tray」、`>= 0` 表示「在 board」。clampCursor 在這兩個區域分別 clamp row 上限。
 - Q：Phase 2 為什麼改 cursor 語意？  
@@ -156,27 +186,27 @@ Cursor 設計演進：Phase 1「= bbox 左上角」→ Phase 2 Day 1.6「= pivot
 - Q：Esc 為什麼兩種行為？  
   A：對使用者是「取消當前動作」的單一語意；implementation 看 heldPartIdx 與 cursor 位置決定具體做什麼（hand→tray 或 board→hand）。
 
-### Score Connection
+#### Score Connection
 - 遊戲流程：wasd 移動 5%（[scoring.md:47](scoring.md#L47)）、Esc 拔掉 1%（[scoring.md:49](scoring.md#L49)）
 - 進階：旋轉/移動中心不為空 1%（[scoring.md:61](scoring.md#L61)） — Phase 2 改 cursor 語意是為了滿足這一項的視覺效果
 
 ---
 
-### Feature
-動畫 lerp 框架（frame-rate independent）
+### 動畫 lerp 框架（frame-rate independent）
+*Phase 2 Day 1 · commit `0fcfcd4`*
 
-### What & Key Concepts
+#### What & Key Concepts
 - 每 frame 把 current 往 target 拉一個比例。比例 = `1 - exp(-dt * k)`。
 - `dt` = `GetFrameTime()`，每 frame 不同。`k` = 衰減速率常數（位置 14、角度/scale 12）。
 - 公式對 dt 是線性可拆的：兩個 dt 半步 ≡ 一個 dt 全步（指數性質 `e^(-dt*k) * e^(-dt*k) = e^(-2*dt*k)`），所以 60FPS / 144FPS 的視覺速度一致。
 - 對比固定 factor `current = lerp(current, target, 0.4)`：60FPS 跑一秒衰減約 60 次、144FPS 跑同一秒衰減 144 次 → 高 frame rate 動畫變兩倍快。
 
-### Why This Design
+#### Why This Design
 - 為什麼不直接用固定 factor：demo 機跟開發機 frame rate 可能不同（教室電腦未知）。
 - 為什麼指數衰減而不是線性插值：指數衰減 = 「越接近目標越慢」，看起來像彈簧；線性 = 等速 → 終點突然停。
 - `k` 選 12–14：肉眼大約 0.3 秒內到位，不會慢到拖沓也不會快到看不見動畫。
 
-### What I Should Be Able To Explain
+#### What I Should Be Able To Explain
 - Q：為什麼 `1 - exp(-dt*k)`？  
   A：frame-rate 獨立。兩個半 dt 跟一個全 dt 的效果一樣，因為指數的可加性。固定 factor 做不到。
 - Q：`k=14` 是什麼意思？  
@@ -184,15 +214,15 @@ Cursor 設計演進：Phase 1「= bbox 左上角」→ Phase 2 Day 1.6「= pivot
 - Q：lerp 永遠不會真的到達 target，怎麼辦？  
   A：浮點下會無限趨近、實務上幾 frame 後 diff 小於 1px、肉眼看不出。如果要嚴格 snap 可以加 threshold「diff < 0.5 時直接賦值 target」，但目前沒做。
 
-### Score Connection
+#### Score Connection
 - 圖形介面：旋轉動畫 5%（[scoring.md:93](scoring.md#L93)）+ 零件跟游標連續移動 5%（[scoring.md:94](scoring.md#L94)）
 
 ---
 
-### Feature
-單調累加 `rotateCount` vs `fmod` shortest-arc
+### 單調累加 `rotateCount` vs `fmod` shortest-arc
+*Phase 2 Day 1.5 · commit `0fcfcd4`*
 
-### What & Key Concepts
+#### What & Key Concepts
 - 旋轉動畫第一版用 `fmod(target - current + 540, 360) - 180` 算最短弧。數學上正確，但浮點實務上脆弱：
   - `current` 隨 lerp 累積、可能比 target 稍微超過或低於整 90°
   - 多次 R 後 `current` 在 360 附近浮動，下次 mod 出來的 diff 不一定是預期方向
@@ -203,11 +233,11 @@ Cursor 設計演進：Phase 1「= bbox 左上角」→ Phase 2 Day 1.6「= pivot
   - 沒有 mod、沒有正負判斷
 - 代價：`currentAngle` 會無限長大；float 在數千度內精度都夠（每按 R 加 90，按 10000 次才到 900000，float32 精度仍有 16 位有效數字）。Render 出來看起來和 mod 後一樣。
 
-### Why This Design
+#### Why This Design
 - 為什麼換掉：第一版被使用者實測 fail，AI debug 出來的算法雖然 case analysis 都對、實際還是看到反向 → 改 robust 而非 clever。
 - 為什麼不用 double：raylib API 大多用 float，到處 cast 反而髒。float 精度夠 → 不必動。
 
-### What I Should Be Able To Explain
+#### What I Should Be Able To Explain
 - Q：為什麼 rotation 不存成 `int rotateCount` 就好、何必還有 `Rotate::CW_0/90/180/270` enum？  
   A：兩個目的不同：`rotateCount` 是視覺動畫累加器（單調 float→angle）；`location.rotate` 是邏輯狀態（0–3）給 `rotatedShape` 用，會 mod 4。兩個都需要、不能合併。
 - Q：fmod 那版到底哪裡錯？  
@@ -215,15 +245,15 @@ Cursor 設計演進：Phase 1「= bbox 左上角」→ Phase 2 Day 1.6「= pivot
 - Q：rotateCount 無限大不會壞嗎？  
   A：float32 在數千度內仍精準，每秒按一次 R 連按一年才會出問題。不擔心。
 
-### Score Connection
+#### Score Connection
 - 圖形介面：旋轉動畫 5%（[scoring.md:93](scoring.md#L93)） — robust 實作
 
 ---
 
-### Feature
-旋轉/移動 pivot cell 選擇演算法
+### 旋轉/移動 pivot cell 選擇演算法
+*Phase 2 Day 1.5 · commit `0fcfcd4`*
 
-### What & Key Concepts
+#### What & Key Concepts
 - 每個 Part 載入時 `computeCenterCell()`：
   1. 算所有占據格的形心 `(avgR, avgC)`
   2. 在占據格中挑 squared distance 最小的當 pivot
@@ -232,12 +262,12 @@ Cursor 設計演進：Phase 1「= bbox 左上角」→ Phase 2 Day 1.6「= pivot
   - P1 1×3 `[[1,1,1]]` → 形心 `(0, 1)` → 最近占據格 `(0, 1)`（中間那格）
 - `rotatedCenterCell(out)` 用同一條旋轉公式 case 0~3 把 (centerCellRow, centerCellCol) 套到旋轉後的 bbox 位置。
 
-### Why This Design
+#### Why This Design
 - 為什麼不用 bbox 中心：bbox 中心可能落在空格上（L-shape 的 bbox 中心是空的 (0.5, 0.5)）→ 違反 rubric「中心不為空」。
 - 為什麼形心 + 最近占據格：保證落在占據格上（直接從占據集挑），且離形心最近、最像「中心」。
 - 為什麼 squared distance 而非 abs：避免 sqrt（沒必要）、且偏好直線最近，符合視覺直覺。
 
-### What I Should Be Able To Explain
+#### What I Should Be Able To Explain
 - Q：怎麼保證 pivot 不會落在空格？  
   A：候選集只取占據格 `if (shape[r][c])`，自動排除空格。
 - Q：tie 怎麼辦（兩個占據格距離一樣）？  
@@ -247,15 +277,15 @@ Cursor 設計演進：Phase 1「= bbox 左上角」→ Phase 2 Day 1.6「= pivot
 - Q：對 L-shape 來說 pivot 在角上感覺怪？  
   A：是。但形心 = (0.33, 0.33) 確實最近的占據格就是角；要選別的會偏離形心，更不對。Trade-off。
 
-### Score Connection
+#### Score Connection
 - 進階：旋轉/移動中心不為空 1%（[scoring.md:61](scoring.md#L61)）
 
 ---
 
-### Feature
-`DrawRectanglePro` 任意 pivot 旋轉的座標數學
+### `DrawRectanglePro` 任意 pivot 旋轉的座標數學
+*Phase 2 Day 1 · commit `0fcfcd4`*
 
-### What & Key Concepts
+#### What & Key Concepts
 - raylib API：`DrawRectanglePro(Rectangle rec, Vector2 origin, float rotation, Color color)`
   - `rec.x, rec.y` = pivot 點的螢幕位置
   - `origin` = 從矩形左上角到 pivot 的 offset（**在 un-rotated 坐標系裡**）
@@ -267,11 +297,11 @@ Cursor 設計演進：Phase 1「= bbox 左上角」→ Phase 2 Day 1.6「= pivot
   ```
 - 驗算：rotation=0 時，cell (r, c) top-left = `(pivot.x - origin.x, pivot.y - origin.y) = (pivot.x - (cc - c + 0.5)*scs, pivot.y - (cr - r + 0.5)*scs)`。當 c=cc、r=cr 時 = `(pivot.x - 0.5*scs, pivot.y - 0.5*scs)` → cell 中心剛好在 pivot，正確。
 
-### Why This Design
+#### Why This Design
 - 為什麼不畫到 RenderTexture 再 DrawTexturePro：DrawTexturePro 也支援旋轉，但要先 baking 整個 part 進 texture、複雜度高、size 有上限。每 cell 直接 DrawRectanglePro 簡單且 GPU 一樣處理。
 - 為什麼 pivot 不用 bbox 中心：要視覺上「繞 pivot cell 轉」而不是「繞 bbox 中心轉」。bbox 中心對 L-shape 來說會繞空格中心，視覺奇怪。
 
-### What I Should Be Able To Explain
+#### What I Should Be Able To Explain
 - Q：DrawRectanglePro 的 `origin` 是什麼？  
   A：rect 左上角到 pivot 點的位移向量（un-rotated 坐標）。`(rec.w/2, rec.h/2)` = 繞中心轉；`(0, 0)` = 繞左上角轉。
 - Q：怎麼讓多個 cell 一起繞共同 pivot 轉？  
@@ -281,6 +311,122 @@ Cursor 設計演進：Phase 1「= bbox 左上角」→ Phase 2 Day 1.6「= pivot
 - Q：origin 的座標是「旋轉前」還是「旋轉後」？  
   A：旋轉前（un-rotated）。raylib 拿到後先算 rotated 4 角再 DrawTriangle。
 
-### Score Connection
+#### Score Connection
 - 圖形介面：旋轉動畫 5%（[scoring.md:93](scoring.md#L93)） — 數學機制
 - 進階：旋轉中心不為空 1%（[scoring.md:61](scoring.md#L61)） — 視覺實作支援
+
+---
+
+### raylib 圓角與漸層 API（axis-aligned UI 元素用）
+*Phase 2 Day 2a · commit `<待 commit>`*
+
+#### What & Key Concepts
+- raylib 5.5 提供的圓角 API：
+  - `DrawRectangleRounded(Rectangle rec, float roundness, int segments, Color color)` — 填色圓角矩形
+  - `DrawRectangleRoundedLinesEx(Rectangle rec, float roundness, int segments, float lineThick, Color color)` — 圓角邊框（可設粗細）
+  - `roundness` 0.0–1.0：0 = 直角、1 = 圓邊到底；本專案用 0.18 給 cell、0.24 給 Win banner
+  - `segments` = 每個圓角的多邊形分段數；6–8 足夠看起來平滑
+- 漸層 API：`DrawRectangleGradientV(int posX, int posY, int width, int height, Color top, Color bottom)` — 垂直漸層（也有 H 水平、Ex 自訂四角）
+- **限制**：圓角 API 只支援 axis-aligned 矩形、沒有 rotation 參數。旋轉中的 cell 不能用圓角 API、要繼續用 `DrawRectanglePro`。
+- 本專案分工：
+  - 板面空格、CANNOT_PLACE 格、CANNOT_MOVE 固定零件格、tray slot、Win banner → 圓角 API（不旋轉）
+  - Part cells、shadow、高光帶、bevel → `DrawRectanglePro`（會旋轉、無圓角）
+
+#### Why This Design
+- 為什麼背景漸層用 `GradientV` 一行而不是自己畫多條：raylib API 直接內建一行解決、GPU 也是一個三角形 batch、沒理由自己造輪。
+- 為什麼板面 cell roundness 0.18 而不是更大：3×3 cell 已經不大、太圓會看起來像獨立按鈕、失去「盤面格」感。0.18 是「明顯不是直角但仍像格」的甜蜜點。
+- 為什麼 segments 用 6：6 段對 cell 大小（cs 在 32–96 之間）肉眼已看不出多邊形邊；更多會浪費 GPU。
+
+#### What I Should Be Able To Explain
+- Q：raylib 圓角 API 能不能旋轉？  
+  A：不能。`DrawRectangleRounded` 沒有 rotation 參數。需要旋轉時用 `DrawRectanglePro`（無圓角）或先 baking 到 RenderTexture 再 `DrawTexturePro`（複雜）。本專案 part cells 接受無圓角、UI 框架元素用圓角 API。
+- Q：roundness 怎麼選？  
+  A：`0.0` 直角、`1.0` 圓邊到底（圓角佔短邊 50%）。Cell 用 0.18 看起來是「有圓角的格子」；banner 用 0.24 看起來像「有圓角的卡片」。常數來自視覺實驗。
+- Q：segments 越多越平滑？  
+  A：對，但對小元素邊際效益很快歸零。Cell 大小 ~80px 時 6 段就看不出多邊形邊；要 100+px 才需要 8+。我用 6（圓角 helper）跟 8（其他）。
+
+#### Score Connection
+- 圖形介面：實作 GUI 2.5%（[scoring.md:90](scoring.md#L90)）— 圓角 + 漸層是 GUI polish 的具體實作
+
+---
+
+### 程序材質：高光帶 + bevel 在旋轉 cell 上的座標數學
+*Phase 2 Day 2a · commit `<待 commit>`*
+
+#### What & Key Concepts
+- 每個 part cell 由三層 `DrawRectanglePro` 疊出來、**全部共用同一個 pivot 與 rotation**，所以旋轉時三層一起轉：
+  1. **Base fill** — 整 cell（scs × scs），純色（中心格用 `+120/ch` 亮色，其他用原色）
+  2. **高光帶** — cell 頂部，寬 `scs × 0.88` 高 `scs × 0.32`（左右各內縮 6%），色 `+70/ch` alpha 170
+  3. **Bevel** — cell 底部，寬 `scs` 高 `scs × 0.10`，色原色 `÷2` alpha 220
+- 座標計算（用 `inset = 0.06 * scs`、`bandH = 0.32 * scs`、`edgeH = 0.10 * scs`）：
+  ```
+  // base cell
+  origin = ((cc - col + 0.5) * scs,
+            (cr - r   + 0.5) * scs)
+
+  // 高光帶（在 cell 頂部、左右內縮）
+  bandRec.w = scs - 2 * inset
+  bandRec.h = bandH
+  bandOrigin.x = (cc - col + 0.5) * scs - inset   // 把 rect 從 cell 左緣往右挪 inset
+  bandOrigin.y = (cr - r   + 0.5) * scs           // 跟 cell 頂部對齊
+
+  // bevel（在 cell 底部）
+  edgeRec.w = scs
+  edgeRec.h = edgeH
+  edgeOrigin.x = (cc - col + 0.5) * scs
+  edgeOrigin.y = (cr - r   + 0.5) * scs - (scs - edgeH)   // 從頂往下挪 (scs - edgeH) 到底部
+  ```
+- 因為三層 `DrawRectanglePro` 都用 cell 的 pivot screen pos 跟 rotation 當參數，raylib 把它們一起轉、視覺上看起來是同一塊有材質的 cell。
+
+#### Why This Design
+- 為什麼算「特別材質」：rubric「圖片或特別材質」的「或」字明示 procedural 也算。高光帶 + bevel 模仿金屬鏡面/塑膠光澤效果、視覺上跟單色塊有明顯區別。
+- 為什麼不畫到 RenderTexture 一張紋理：要做但要 baking 邏輯 + 紋理 size 對齊 + 每個 part color 一張 → 複雜度高、儲存量大。每 cell 三 `DrawRectanglePro` GPU cost 一樣低（都是 1 個矩形 = 2 個三角形）。
+- 為什麼高光在頂部、bevel 在底部：模擬光源從上方來的真實感（高光對應反光、bevel 對應陰影）。倒過來就像光從地板照、不自然。
+- 為什麼高光帶左右內縮：純頂部矩形跟 cell 同寬會看起來像「被劈成兩半」；左右內縮就像「鏡面反光只在中央區」、看起來更像金屬。
+
+#### What I Should Be Able To Explain
+- Q：高光帶為什麼要左右 inset？  
+  A：跟 cell 同寬會看起來像被切兩半；inset 後高光集中在中央、像金屬反光、視覺更自然。
+- Q：三層 rect 怎麼確保旋轉時一起轉？  
+  A：`DrawRectanglePro` 的 `rec.x/y` 跟 `rotation` 三層都用同樣的值（pivot 螢幕位置 + currentAngle）；只有 `rec.w/h` 跟 `origin` 不同。raylib 把每個 rect 各自繞共同 pivot 旋轉相同角度。
+- Q：為什麼 +70 / ÷2 而不是 hardcode 顏色？  
+  A：每個 part 顏色不同（綠/藍/紅/黃...）。`+70/channel` 對所有色都會變亮、`÷2` 對所有色都會變暗。alpha 控制柔和度。比 hardcode 一張高光顏色表簡單且可遷移。
+- Q：origin 的 y 為什麼 base cell 跟高光帶相同？  
+  A：兩者的 rect 都從 cell 頂部開始畫；origin.y 對應到「rect 左上角」到 pivot 的垂直距離 = (cr - r + 0.5)*scs。Bevel 的 rect 從 cell 底部開始畫、所以 origin.y 要再減去 `(scs - edgeH)`。
+
+#### Score Connection
+- 圖形介面：使用圖片或特別材質 1.5%（[scoring.md:92](scoring.md#L92)） — 高光帶 + bevel 是本專案對「特別材質」的實作
+
+---
+
+### Drop shadow 為什麼要兩 pass 渲染
+*Phase 2 Day 2a · commit `<待 commit>`*
+
+#### What & Key Concepts
+- 對盤面上的零件（placed 或 held-on-board）畫陰影：純黑 alpha 110、offset (4, 5) px 朝右下。
+- **天真做法**：對每個 part 先畫 shadow、再畫 body
+- **問題**：若 partA 跟 partB 在繪製順序上 partA 先、partB 後，partA 的 shadow 畫完接著畫 partA body 沒問題；但接下來畫 partB shadow 時、會疊到 partA body 上（partB shadow 朝右下、可能覆蓋 partA body 的右上角）。視覺：partB shadow 看起來像「打在 partA 身上」、不真實。
+- **兩 pass 修法**：
+  ```
+  Pass 1: 對所有 part 畫 shadow（不畫 body）
+  Pass 2: 對所有 part 畫 body
+  ```
+  Pass 2 的 body 必定畫在所有 shadow 之上（因為 Pass 2 整段比 Pass 1 後執行）。Shadow 永遠在底層。
+
+#### Why This Design
+- 為什麼不用 depth buffer：2D 遊戲 raylib 預設沒 depth、用 painter's algorithm（後畫的在上）。Two-pass 是 painter's algorithm 下標準的「分離層」做法。
+- 為什麼不只給最後一個 part 畫 shadow：所有放在盤面上的 part 都應該有 shadow（同一個光源）、缺一個會看起來不一致。
+- 為什麼 shadow 不畫 tray idle 部件：tray slot 在「淺凹槽」隱喻、部件已經在槽裡、沒立體感、shadow 反而會把 slot 邊緣弄髒。實作上 `drawParts` 判斷 `onBoard = location.placed || (held && cursorCol >= 0)` 才畫 shadow。
+
+#### What I Should Be Able To Explain
+- Q：為什麼一定要 two-pass？  
+  A：一 pass 順序裡晚畫的 part 的 shadow 會疊到早畫的 part body 上、視覺上 shadow 像「打在身上」。Two-pass：先全部 shadow、再全部 body、確保 shadow 永遠在最底層。
+- Q：你的「painter's algorithm」是什麼？  
+  A：2D 渲染常用：後畫的覆蓋先畫的。raylib 預設沒 depth buffer、靠繪製順序決定誰在上。
+- Q：tray 部件為什麼沒陰影？  
+  A：tray slot 是「凹槽」隱喻、零件在槽裡沒立體感；加 shadow 會疊到 slot 邊緣、視覺髒。實作判斷 `onBoard` 才畫。
+- Q：shadow alpha 為什麼 110 而不是 255 或 50？  
+  A：110 對黑色 = ~43% 不透明、肉眼看是淡灰；視覺實驗結果。255 太黑像描邊、50 太淡看不出立體感。
+
+#### Score Connection
+- 圖形介面：實作 GUI 2.5%（[scoring.md:90](scoring.md#L90)） — drop shadow 是 GUI polish 細節之一

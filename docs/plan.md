@@ -326,3 +326,19 @@
   - Day 1.5 加白色圓點當 pivot marker，使用者要求改成「中心格亮色覆蓋」+ 旋轉時 pivot 應該完全不動 → Day 1.6 把 cursor 語意從 bbox top-left 改成 pivot target，內部用 `rotatedCenterCell` offset 換算
 - 驗證：8 項使用者目視驗收全綠（中心格亮、旋轉 pivot 不動、4 方向 CW、拔起不跳、Phase 1 流程零退化）
 - 下一步：Day 2a 視覺 polish + 程序材質（圓角 + 漸層 + 高光帶 + drop shadow） — 代碼已寫、待使用者目視驗收
+
+## Phase 2 Day 2a done — 2026-05-22
+
+- 完成項目（[src/ui/Renderer.cpp](src/ui/Renderer.cpp) 單檔重寫部分函式 +98 行）：
+  - 新 helper `drawRoundedCell` / `drawRoundedRect`（用 `DrawRectangleRounded` + `DrawRectangleRoundedLinesEx`）
+  - 板面空格（EMPTY/OCCUPIED 底）、CANNOT_PLACE 的 X 格、CANNOT_MOVE 固定零件格、tray slot 背景、Win banner 全部改圓角
+  - `Renderer::draw` 加 `DrawRectangleGradientV` 全屏垂直漸層底
+  - 新 `drawPartShadow`（offset 4/5px、alpha 110、純黑），`drawParts` 改兩 pass — 先掃所有 placed/held-on-board 畫 shadow、再掃畫所有 part 本體，shadow 不會疊到別的 part
+  - `drawPartAnimated` 加：每 cell 上方高光帶（30% 高、左右內縮 6%、+70/ch 色 alpha 170）+ 下方 bevel（10% 高、純色 ÷2 alpha 220）— 都用 `DrawRectanglePro` 跟 cell 一起旋轉
+- 拿到分數：**+4%**
+  - 實作 GUI 2.5%（[scoring.md:90](scoring.md#L90)）
+  - 使用圖片或特別材質 1.5%（[scoring.md:92](scoring.md#L92)）— 程序材質：高光帶 + bevel 構成 cell 的「鏡面/金屬」質感
+- 銀行存款：32.5 → **36.5%** / 65%
+- 驗證：使用者跑 `./build/game docs/io/Example1.txt` 手動驗收 8 項全綠 — 背景漸層、板面圓角、tray 圓角、cell 程序材質、drop shadow、中心格仍亮、Win banner 圓角、Phase 1 流程零退化
+- 卡點：無。一次寫一次過、smoke OK、目視驗收通過
+- 下一步：Day 2b 滑鼠（tray hover/拖曳/左鍵放置/右鍵 cancel） → Day 2c 音效（4 個 wav 接 raylib LoadSound）

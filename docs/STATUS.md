@@ -9,7 +9,7 @@
 
 ## 銀行存款
 
-**程式實作：6.5% / 65%**  
+**程式實作：21.5% / 65%**  
 口頭報告：尚未開始評估 / 60%
 
 > 每完成一個 Phase 更新一次。「銀行存款」= 已穩穩拿到的分（demo 不會被扣回去的）。
@@ -18,9 +18,9 @@
 
 ## 目前階段
 
-**Phase 1 — 程式碼完成，待手動互動驗證**
+**Phase 2 — 視覺打磨（即將開始）**
 
-Phase 0（基礎設施）與 Phase 1（MVP 程式碼）已完成；遊戲流程那 15% 需親手跑一輪 Example1.txt 才能勾。下一步：見 [plan.md §6 Phase 2](plan.md)（視覺打磨）。
+Phase 0（基礎設施）、Phase 1（MVP 單色可玩）已完成並親手驗證。下一步：[plan.md §6 Phase 2](plan.md) 動畫 + 滑鼠 + 程序材質 + 音效（預期 +15%）。
 
 ---
 
@@ -38,12 +38,12 @@ Phase 0（基礎設施）與 Phase 1（MVP 程式碼）已完成；遊戲流程�
 
 ### 遊戲流程（共 15%，**全部必拿**）
 
-- [ ] wasd / 滑鼠拖移選中零件 — 5%
-- [ ] r 旋轉零件 — 5%
-- [ ] Esc 拔掉零件 — 1%
-- [ ] Enter / 滑鼠左鍵放置 — 1%
-- [ ] 勝利判定 — 1.5%
-- [ ] 放置失敗印錯誤訊息 — 1.5%
+- [x] wasd / 滑鼠拖移選中零件 — 5%（鍵盤已驗，滑鼠 Phase 2 補上）
+- [x] r 旋轉零件 — 5%（4 方向循環已驗）
+- [x] Esc 拔掉零件 — 1%（持有→還原 / 盤面→拔起 兩種語意都驗過）
+- [x] Enter / 滑鼠左鍵放置 — 1%（鍵盤已驗，滑鼠 Phase 2 補上）
+- [x] 勝利判定 — 1.5%（You Win banner 驗過）
+- [x] 放置失敗印錯誤訊息 — 1.5%（重疊紅框 + 狀態列訊息驗過）
 
 ### 進階功能（共 10%）
 
@@ -83,13 +83,14 @@ Phase 0（基礎設施）與 Phase 1（MVP 程式碼）已完成；遊戲流程�
 ## 已完成
 
 - **Phase 0**（2026-05-22）：CMake + raylib FetchContent + src/{core,ui}/ skeleton + .gitignore；build 0 warning，視窗 OK。詳見 [LOG.md Phase 0](LOG.md#2026-05-22--phase-0-完成基礎設施)
-- **Phase 1 程式碼**（2026-05-22）：Part / Board / Parser / WinChecker / Game / Input / Renderer / main.cpp 共 9 檔；單色 Example1.txt 載入成功、視窗顯示零件與盤面 OK。**遊戲流程互動部分待手動驗證**。詳見 [LOG.md Phase 1](LOG.md#2026-05-22--phase-1-完成mvp-單色關卡可玩)
+- **Phase 1**（2026-05-22）：MVP 單色可玩。Part / Board / Parser / WinChecker / Game / Input / Renderer / main.cpp 共 9 檔；Example1.txt 手動互動驗證 8 項全綠（wasd / r 4循環 / Enter / Esc 雙語意 / 重疊紅框錯誤 / You Win）。詳見 [LOG.md Phase 1](LOG.md#2026-05-22--phase-1-完成mvp-單色關卡可玩)
 - **文件結構**：CLAUDE / plan / STATUS / LOG / learning-notes / DEV_GUIDE / my-note 7 檔到位
 
 ## 進行中
 
-- Phase 1 手動互動驗證（wasd / r / Esc / Enter / 重疊錯誤 / You Win banner — 8 個 checklist 項目）
-- 通過後進 Phase 2 視覺打磨
+- Phase 2 視覺打磨：動畫骨架 + 滑鼠 + 程序材質 + 音效（預期 +15%）
+- 材質策略：純程序材質（不引入 png 資產）
+- 音效策略：使用者用 jsfxr 生 4 個 wav（pickup / place / rotate / win）
 
 ## 已知 Bug
 

@@ -222,7 +222,7 @@
   - `./build/game docs/io/Example1.txt` 視窗開、raylib log 正常
   - bad path 印錯誤訊息、exit 1、不 crash
   - stdin 模式 prompt + 讀檔成功
-- **手動驗證待辦（使用者親自跑）**：plan §5 checklist 第 4~8 項：wasd / r 旋轉循環 / Enter 放置 / Esc 拔掉 / 重疊錯誤 / You Win banner
+- **手動驗證通過（2026-05-22 補測）**：wasd 移動 / R 4 方向循環 / Enter 放置 / Esc 雙語意（持有→還原、盤面→拔起）/ 重疊紅框 + 錯誤訊息 / 全擺對跳 You Win banner — 全部 8 項 OK
 - 卡點：無。skeleton 的 `enum BoardInfo` 加 `: int` 是唯一對 Framework 的改動，是為了讓 `OCCUPIED + partIndex`、`CANNOT_MOVE - color` 等任意 int 值在 C++17 下合法
-- 預估拿到分數：+20%（基本 5% + 遊戲流程 15%），等手動驗證後確認
-- 下一步：使用者跑一輪 Example1.txt，OK 就 commit + 進 Phase 2
+- 拿到分數：**+20%**（基本 5% + 遊戲流程 15%），銀行存款 21.5% / 65%
+- 下一步：Phase 2 視覺打磨（動畫 + 滑鼠 + 程序材質 + 音效，預期 +15%）

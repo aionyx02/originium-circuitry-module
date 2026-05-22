@@ -17,6 +17,9 @@
 > **新增 entry 時：(1) 把實際 entry append 到本檔最下方（時間正序），(2) 在這個索引「最上面」加一行。**  
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
+- 05-23? docs: add README.md / update learning log
+- **2026-05-22** — [Phase 2 Day 1：動畫骨架 + 旋轉/移動 pivot 中心](#2026-05-22--phase-2-day-1動畫骨架--旋轉移動-pivot-中心) · `Phase 2` · `Implementation + Refactor` · 動畫 5%+5% + 進階中心 1% = +11%，cursor 語意改成 pivot target 的設計演進
+- **2026-05-22** — [Phase 1 手動驗證通過](#2026-05-22--phase-1-手動驗證通過small) · `Phase 1` · `small` · 8 項全綠、+15% 入帳
 - **2026-05-22** — [文件 rename 與 reference 統一](#2026-05-22--文件-rename-與-reference-統一small) · `Phase 0` · `small` · Log/LEARNING_NOTES/mynote → LOG/learning-notes/my-note + 7 檔 reference 同步
 - **2026-05-22** — [文件結構與工作流程整理](#2026-05-22--文件結構與工作流程整理) · `Phase 0` · `Discussion + Refactor` · CLAUDE / STATUS / LOG / learning-notes / plan 重整、Phase 0/1 entry 遷移、路徑大清理
 - **2026-05-22** — [Phase 1 完成（MVP 單色關卡可玩）](#2026-05-22--phase-1-完成mvp-單色關卡可玩) · `Phase 1` · `Implementation` · 預期 +20%（基本 5% + 流程 15%），待手動互動驗證
@@ -522,3 +525,105 @@ Commit: 本 commit
 - `mynote.md` → `my-note.md`（kebab-case）
 
 連帶：同步更新 STATUS / plan / DEV_GUIDE / learning-notes / my-note / LOG / x.md 共 7 檔的所有 reference；刪掉 x.md 的「Already migrated」段（檔案實體已不存在）；修 plan.md 兩處殘留 LOGa-trival broken link 為 plain text。grep 驗證無殘留 stale ref。
+
+
+## 2026-05-22 — Phase 1 手動驗證通過（small）
+Phase: 1  
+Commit: 80f9d6d
+
+使用者親自跑 `./build/game docs/io/Example1.txt`，8 項全綠：wasd 移動 / R 4 方向循環 / Enter 放置 / Esc 雙語意（持有→還原、盤面→拔起）/ 預覽紅框 + 錯誤訊息 / 全擺對跳 You Win banner。配分 +15%（遊戲流程整段）已 bank。STATUS.md / plan.md 同 commit 一併勾掉。
+
+
+## 2026-05-22 — Phase 2 Day 1：動畫骨架 + 旋轉/移動 pivot 中心
+Type: Implementation + Refactor  
+Phase: 2  
+Feature: 旋轉動畫、零件跟游標連續移動、旋轉/移動中心不為空  
+Commit: 0fcfcd4
+
+### Context
+Phase 2 開頭三大配分項要拿：旋轉動畫 5%（[scoring.md:93](scoring.md#L93)）、零件跟游標連續移動 5%（[scoring.md:94](scoring.md#L94)）、進階旋轉/移動中心不為空 1%（[scoring.md:61](scoring.md#L61)）。Phase 1 完全沒有動畫；按 R 旋轉是瞬間切換、移動是瞬間跳格。對應 [plan.md §6](plan.md) Phase 2 Day 1。
+
+這次 session 也是「Phase 2 開始實施 process gap 改善」（(1) plan 提案、(2) 實作中、(3) 實作後 各 review 一次）的第一個實驗 — 結果見 HD/R 段。
+
+### AI Contribution
+1. **Plan 提案**（implementation 前先 ask）：對到 scoring 哪幾項、改哪幾個檔、Day 1/2/3 切分、材質策略選項、音效策略選項。
+2. **設計選擇**（implementation 中）：
+   - 動畫狀態加在 `Part`（5 個 float + 1 個 bool + `rotateCount`），lerp 邏輯放 `Renderer`（它有 layout）
+   - frame-rate independent lerp factor `1 - exp(-dt*k)` 取代固定 0.4，60FPS / 144FPS 動畫速度一致
+   - 旋轉動畫第一版用 `std::fmod` 做 shortest-arc 角度 lerp
+   - Pivot 中心格選法：離形心最近的占據格（`Part::computeCenterCell`）
+   - 中心格 visual 第一版用白色小圓點（`DrawCircle` 在 pivot 位置）
+3. **實作**（9 個檔改動，見 plan.md timeline）：
+   - `Part.h` / `Part.cpp` 加 `centerCellRow/Col` + `rotateCount` + 5 visual fields + `computeCenterCell` / `rotatedCenterCell` 方法
+   - `Parser.cpp` 載入後 call `p.computeCenterCell()`
+   - `Game.cpp` `Action::Rotate` 順便 `++rotateCount`
+   - `Renderer.h/cpp` signature 加 `dt`、`animateParts`、`computeTarget`、`drawPartAnimated` 用 `DrawRectanglePro` + 自訂 origin 繞 pivot 旋轉
+   - `main.cpp` 傳 `GetFrameTime()`
+
+### Human Decision / Review
+**第一次 review** — 使用者跑 Day 1 重測，回報 6 項：
+- A 開啟畫面 ✓
+- B 移動會滑 ✓
+- C 旋轉會轉 ✓
+- **D shortest-arc：失敗** ← AI 的 `fmod` 公式雖然數學上正確但使用者觀察到 4 次後反向
+- E 拔回 tray ✓
+- F Phase 1 流程沒退化 ✓
+- G 紅綠 highlight ✓
+
+**使用者修正**：要求改視覺、加進階分。AI 回應：
+- D 換成單調累加 `rotateCount`（永遠 +90°，不用 mod，不可能反向）
+- 加 `centerCellRow/Col` + `rotatedCenterCell` 方法 + 白色圓點
+- 同時補進階「旋轉/移動中心不為空」1%
+
+**第二次 review** — 使用者再驗：
+- D ✓、中心點可見 ✓、4 旋轉中心在占據格 ✓
+- 但使用者指出：「**旋轉時白點應該不會移動**」（AI 的設計裡 pivot 螢幕位置會隨 rotation 漂移，因為 cursor 還是指 bbox 左上角）
+- 使用者要求：「白色圓點換成亮色覆蓋」
+
+**使用者拍板**：改 cursor 語意 = pivot target。
+- AI 之前刻意避開這個改動（怕動到 canPlace API），但使用者明確要求視覺體驗。
+- AI 做法：保留 `Board::canPlace` API 不變、在 `Game::syncHeldLocation` 內部換算 bbox top-left = cursor - rotatedCenterCell offset。
+- `Game::handlePlace` 從盤面拔零件時 snap cursor 到舊 pivot 位置，避免視覺跳動。
+- 中心格改用 +120/ch 亮色覆蓋取代白點。
+
+**第三次 review**：全綠（pivot 不動 / 亮色清楚 / 旋轉 CW 一致 / 拔起不跳 / Phase 1 流程零退化）。
+
+### Details
+**`1 - exp(-dt*k)` 數學**：每 frame 把 current 往 target 拉一個比例。`k` 是「目標衰減速率」，每秒大約是 `1 - e^(-k)` 的比例被吸過去。位置 k=14（快）、角度/scale k=12。frame-rate 變了 dt 也變，公式自動補償，所以 60FPS / 144FPS 動畫速度一致。
+
+**`rotateCount` vs shortest-arc**：原本 `fmod(target - current + 540, 360) - 180` 算最短弧。但 `current` 累積會超過 360（每按一次 R `current` 往 target 跑、target 又繼續加）；若中間有浮點誤差，下次 mod 後的 diff 可能不是預期方向。改用 `rotateCount` 單調累加 → `currentAngle` 線性 lerp 到 `rotateCount * 90.0f`，永遠 +90° per R，視覺一定 CW。代價：`currentAngle` 會無限長大、但 float 在數千度內精度都夠，render 出來看起來一樣。
+
+**`rotatedCenterCell` 公式**：和 `rotatedShape` 用同一條旋轉公式 case 0~3，只是套到一個 cell（centerCellRow, centerCellCol）而不是整個 shape。
+
+**Cursor=pivot 語意重設計**：
+- 原本：cursor 移到 (cursorRow, cursorCol)，部件的「rotated bbox 左上角」會放這裡
+- 改後：cursor 移到 (cursorRow, cursorCol)，**部件的 pivot cell** 會落這裡。bbox 左上角自動由 cursor 減去 `rotatedCenterCell` offset 算出。
+- 影響：`Game::syncHeldLocation` 加 if cursorCol==TRAY_COL 分支（tray 不套 offset），其他情況 `location = cursor - rotatedCenterCell`；`Game::handlePlace`（持有時放置）改用 `p.location.row/col` 而不是 cursor；`Game::handlePlace`（從盤面拔起）snap cursor 到 `p.location + rotatedCenterCell` 避免視覺跳動。`Board::canPlace` API 完全沒動。
+- 為什麼：旋轉時 cursor 不動 → pivot 螢幕位置不動 → 其他格子繞 pivot 轉，符合 Tetris-style 旋轉預期。
+
+**`DrawRectanglePro` 數學**：raylib API 用 `rec.x/y` 當 pivot 螢幕位置 + `origin` 當「rect 左上角到 pivot 的 offset」。要把每 cell 畫成繞共同 pivot 旋轉，每 cell 的 origin = `((centerCol - col + 0.5) * scs, (centerRow - row + 0.5) * scs)` — 這是該 cell 的 top-left 到 pivot 的 vector，當 rotation=0 時還原到正確位置，當 rotation 變動時 raylib 自動把每個 cell 繞 pivot 轉。
+
+### Verification / Tests Performed
+- Build：0 warning 0 error（每次改動後 `cmake --build build`）
+- Smoke：`./build/game docs/io/Example1.txt` 開窗、raylib log 正常
+- **手動互動測試**（使用者親自三輪）：8 項全綠（見上 Human Decision 段）
+- 未驗證：高速 spam R / 多零件並行動畫的性能（lerp 計算 O(parts * 4 fields)，數十零件內無感）
+
+### Result
+- 動畫骨架 + 旋轉 pivot 全部 land，commit `0fcfcd4`。
+- 拿到分數：旋轉動畫 5% + 跟游標移動 5% + 進階中心 1% = **+11%**。
+- 銀行存款：21.5 → **32.5%** / 65%。
+
+### Risks / Follow-ups
+- Day 2a 視覺 polish 代碼已寫（圓角 + 漸層 + 高光帶 + bevel + drop shadow），**uncommitted、待使用者目視驗收**。LOG entry 將在 commit 後補。
+- Day 2b 滑鼠：使用者要求加；不直接加分但補 rubric 完整性。
+- Day 2c 音效：使用者已生 `sound1.wav` 一個（root），待生齊 4 個 + 接 raylib `LoadSound` / `PlaySound`。
+
+### Other Notes
+**口頭報告素材**（這 entry 三個段都有口試素材）：
+
+- **「為什麼 shortest-arc 換 rotateCount」**：經典「先 over-engineer 用 fmod、實測發現浮點累積問題、改用單調累加」的故事。可以講「fmod 數學上正確但脆弱、單調累加 robust、視覺結果一樣 → robust 比 clever 重要」。
+- **「為什麼 cursor 語意要改」**：旋轉視覺預期 = pivot 不動（Tetris 直覺）。第一版實作裡 cursor 還指 bbox 左上角、pivot 螢幕位置會漂；經 review 後拍板改 cursor 語意，但**用 Game 層內部換算保住 `Board::canPlace` API**，不動 core class 公開介面。展現了「會被使用者驅動修正 + 修正方式選擇兼顧『動視覺』與『不動 API』」。
+- **「為什麼 lerp 用 `1 - exp(-dt*k)` 而不是固定 0.4」**：frame-rate 獨立。可以講「如果哪天 demo 機是 144Hz 而開發機是 60Hz，固定 factor 的動畫就會跑兩倍快、感覺很假；指數衰減公式有 dt 在裡面、自動補償」。
+- **「pivot 中心格選法」**：離形心最近的占據格、用 squared distance 比較。可以講「為什麼不直接用 bbox 中心 — bbox 中心對 L 型零件會落在空格上，違反 rubric『中心不能是空的』；用形心 + 最近占據格保證落在實際存在的 cell」。
+- **「process gap 改善實驗」**：這 entry 是 Phase 2 開始實施「plan 提案 / 實作中 / 實作後」三段 review 的第一個案例。使用者三輪驗證都有實質介入修正（D 失敗、pivot 漂移、視覺要亮色），HD/R 段是真實的、不是 AI 包裝。可以講「我從 Phase 1 學到 AI 容易 self-direct，Phase 2 開始強制 checkpoint review」。

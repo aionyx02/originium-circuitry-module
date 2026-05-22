@@ -9,7 +9,7 @@
 
 ## 銀行存款
 
-**程式實作：21.5% / 65%**  
+**程式實作：32.5% / 65%**  
 口頭報告：尚未開始評估 / 60%
 
 > 每完成一個 Phase 更新一次。「銀行存款」= 已穩穩拿到的分（demo 不會被扣回去的）。
@@ -18,9 +18,9 @@
 
 ## 目前階段
 
-**Phase 2 — 視覺打磨（即將開始）**
+**Phase 2 — 視覺打磨進行中**
 
-Phase 0（基礎設施）、Phase 1（MVP 單色可玩）已完成並親手驗證。下一步：[plan.md §6 Phase 2](plan.md) 動畫 + 滑鼠 + 程序材質 + 音效（預期 +15%）。
+Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）已 commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）已實作待手動驗收；Day 2b（滑鼠）/ Day 2c（音效）未開工。
 
 ---
 
@@ -52,7 +52,7 @@ Phase 0（基礎設施）、Phase 1（MVP 單色可玩）已完成並親手驗�
 - [ ] 精美主畫面 / 關卡選擇 — 1%
 - [ ] 某列/欄滿足或超出需求時周圍提示 — 1%
 - [ ] 周圍顯示每列每欄目前填滿格數 — 1%
-- [ ] 旋轉/移動中心不為空 — 1%
+- [x] 旋轉/移動中心不為空 — 1%（Phase 2 Day 1.5/1.6：`Part::computeCenterCell` 選離形心最近占據格；中心格亮色覆蓋；cursor=pivot 語意使旋轉時 pivot 螢幕位置不動）
 - [ ] 雙色設定檔載入與遊玩 — 2%
 - [ ] 能讀取助教 demo 測資（雙色） — (+2%)
 
@@ -72,11 +72,11 @@ Phase 0（基礎設施）、Phase 1（MVP 單色可玩）已完成並親手驗�
 
 ### 圖形介面（共 15%）
 
-- [x] 實作 GUI — 2.5%
-- [ ] 音效 — 1%
-- [ ] 圖片或材質顯示零件 — 1.5%
-- [ ] 旋轉動畫 — 5%
-- [ ] 零件跟游標連續移動 — 5%
+- [x] 實作 GUI — 2.5%（基礎 GUI 已具備；Day 2a 加圓角 + 漸層 + drop shadow，**待手動驗收**）
+- [ ] 音效 — 1%（Day 2c 接 4 個 jsfxr 生的 wav）
+- [ ] 圖片或材質顯示零件 — 1.5%（Day 2a 加每 cell 上方高光帶 + 下方暗邊 bevel 程序材質，**待手動驗收**）
+- [x] 旋轉動畫 — 5%（Phase 2 Day 1：currentAngle lerp 到 `rotateCount * 90°`，frame-rate 獨立的 `1 - exp(-dt*k)` factor）
+- [x] 零件跟游標連續移動 — 5%（Phase 2 Day 1：每 frame 對 currentCenterX/Y lerp 到 cursor pivot 目標）
 
 ---
 
@@ -84,11 +84,13 @@ Phase 0（基礎設施）、Phase 1（MVP 單色可玩）已完成並親手驗�
 
 - **Phase 0**（2026-05-22）：CMake + raylib FetchContent + src/{core,ui}/ skeleton + .gitignore；build 0 warning，視窗 OK。詳見 [LOG.md Phase 0](LOG.md#2026-05-22--phase-0-完成基礎設施)
 - **Phase 1**（2026-05-22）：MVP 單色可玩。Part / Board / Parser / WinChecker / Game / Input / Renderer / main.cpp 共 9 檔；Example1.txt 手動互動驗證 8 項全綠（wasd / r 4循環 / Enter / Esc 雙語意 / 重疊紅框錯誤 / You Win）。詳見 [LOG.md Phase 1](LOG.md#2026-05-22--phase-1-完成mvp-單色關卡可玩)
+- **Phase 2 Day 1**（2026-05-22，commit `0fcfcd4`）：動畫骨架（per-part `currentCenterX/Y/Angle/Scale` lerp，`1 - exp(-dt*k)` frame-rate 獨立）+ 旋轉/移動 pivot（`Part::computeCenterCell` 取離形心最近占據格、cursor 改成 pivot target、中心格亮色 +120/ch）。+11%。
 - **文件結構**：CLAUDE / plan / STATUS / LOG / learning-notes / DEV_GUIDE / my-note 7 檔到位
 
 ## 進行中
 
-- Phase 2 視覺打磨：動畫骨架 + 滑鼠 + 程序材質 + 音效（預期 +15%）
+- Phase 2 Day 2a 視覺 polish + 程序材質：圓角板面 / tray / win banner、背景漸層、cell 上高光帶 + 下暗邊 bevel、drop shadow 兩 pass — **代碼已寫、smoke OK，等使用者目視驗收**
+- 後續：Day 2b 滑鼠（不加分但補 rubric 完整性）→ Day 2c 音效（+1%，使用者已生 sound1.wav 一個）
 - 材質策略：純程序材質（不引入 png 資產）
 - 音效策略：使用者用 jsfxr 生 4 個 wav（pickup / place / rotate / win）
 

@@ -29,6 +29,7 @@ void Game::update(Action a) {
                 auto& p = parts[heldPartIdx];
                 p.location.rotate = static_cast<Rotate>(
                     (static_cast<int>(p.location.rotate) + 1) % 4);
+                ++p.rotateCount;
             }
             break;
         }
@@ -62,8 +63,17 @@ void Game::clampCursor() {
 void Game::syncHeldLocation() {
     if (heldPartIdx < 0) return;
     auto& p = parts[heldPartIdx];
-    p.location.row = cursorRow;
-    p.location.col = cursorCol;
+    // Cursor points to the pivot cell's target. Derive bbox top-left so the
+    // pivot lands at (cursorRow, cursorCol) under the current rotation.
+    if (cursorCol == TRAY_COL) {
+        p.location.row = cursorRow;
+        p.location.col = cursorCol;
+    } else {
+        int rCr, rCc;
+        p.rotatedCenterCell(rCr, rCc);
+        p.location.row = cursorRow - rCr;
+        p.location.col = cursorCol - rCc;
+    }
 }
 
 void Game::autoSelectNextUnplaced() {
@@ -85,11 +95,12 @@ void Game::handlePlace() {
             return;
         }
         Part& p = parts[heldPartIdx];
-        if (!board.canPlace(p, cursorRow, cursorCol)) {
+        // location.row/col was synced from cursor minus rotated pivot offset
+        if (!board.canPlace(p, p.location.row, p.location.col)) {
             statusMessage = "Cannot place here: out of bounds, overlap, or blocked.";
             return;
         }
-        board.place(p, cursorRow, cursorCol);
+        board.place(p, p.location.row, p.location.col);
         const int placedIdx = heldPartIdx;
         heldPartIdx = -1;
         autoSelectNextUnplaced();
@@ -112,7 +123,14 @@ void Game::handlePlace() {
     if (Board::isOccupied(cell)) {
         const int partIdx = Board::occupiedPartIndex(cell);
         if (partIdx >= 0 && partIdx < static_cast<int>(parts.size())) {
-            board.remove(parts[partIdx]);
+            Part& p = parts[partIdx];
+            // Snap cursor to the pivot cell so syncHeldLocation reproduces
+            // the same bbox top-left and the part doesn't visually shift.
+            int rCr, rCc;
+            p.rotatedCenterCell(rCr, rCc);
+            cursorRow = p.location.row + rCr;
+            cursorCol = p.location.col + rCc;
+            board.remove(p);
             heldPartIdx = partIdx;
         }
     }

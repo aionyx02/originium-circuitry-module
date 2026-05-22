@@ -1,6 +1,7 @@
 #include "Renderer.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 
 #include "raylib.h"
@@ -9,6 +10,8 @@ namespace {
 
 constexpr int kTraySlotHeight = 78;
 constexpr int kTraySlotWidth  = 200;
+constexpr int kTrayInnerX     = 130;  // offset within slot where part center sits
+constexpr int kTrayInnerY     = 30;
 
 struct Layout {
     int rows;
@@ -80,7 +83,7 @@ void drawCenteredText(const char* msg, int boxX, int boxY, int boxW, int boxH, i
     DrawText(msg, boxX + (boxW - tw) / 2, boxY + (boxH - fontSize) / 2, fontSize, tint);
 }
 
-void drawBoard(const Game& g, const Layout& L) {
+void drawBoardBg(const Game& g, const Layout& L) {
     const Board& b = g.board;
     const Color emptyFill   = { 45,  50,  62, 255};
     const Color emptyBorder = { 80,  90, 110, 255};
@@ -93,9 +96,7 @@ void drawBoard(const Game& g, const Layout& L) {
             const int y = L.boardY + r * L.cellSize;
             const int cell = b._boardInfo[r][c];
 
-            if (cell == Board::EMPTY) {
-                drawFilledBordered(x, y, L.cellSize, emptyFill, emptyBorder);
-            } else if (cell == Board::CANNOT_PLACE) {
+            if (cell == Board::CANNOT_PLACE) {
                 drawFilledBordered(x, y, L.cellSize, blockedFill, blockedRed);
                 drawCenteredText("X", x, y, L.cellSize, L.cellSize, 24, blockedRed);
             } else if (Board::isCannotMove(cell)) {
@@ -106,13 +107,9 @@ void drawBoard(const Game& g, const Layout& L) {
                                     static_cast<unsigned char>(cc.b / 3), 255};
                 drawFilledBordered(x, y, L.cellSize, dim, cc);
                 drawCenteredText("=", x, y, L.cellSize, L.cellSize, 24, cc);
-            } else if (Board::isOccupied(cell)) {
-                const int partIdx = Board::occupiedPartIndex(cell);
-                const Color pc = partColor(static_cast<unsigned>(partIdx));
-                drawFilledBordered(x, y, L.cellSize, pc, Color{255, 255, 255, 90});
-                char buf[8];
-                std::snprintf(buf, sizeof(buf), "%d", partIdx);
-                drawCenteredText(buf, x, y, L.cellSize, L.cellSize, 22, BLACK);
+            } else {
+                // EMPTY or OCCUPIED — empty bg under (placed parts render on top)
+                drawFilledBordered(x, y, L.cellSize, emptyFill, emptyBorder);
             }
         }
     }
@@ -141,24 +138,25 @@ void drawConstraints(const Game& g, const Layout& L) {
     }
 }
 
-void drawHeldPreview(const Game& g, const Layout& L) {
+void drawPlacementHighlight(const Game& g, const Layout& L) {
     if (g.heldPartIdx < 0) return;
     if (g.cursorCol < 0) return;
     const Part& p = g.parts[g.heldPartIdx];
-    Color pc = partColor(p.partIndex);
-    const bool valid = g.board.canPlace(p, g.cursorRow, g.cursorCol);
-    Color fill = pc; fill.a = valid ? 140 : 90;
-    Color outline = valid ? pc : Color{220, 80, 80, 255};
+    // location.row/col = bbox top-left (synced from cursor via pivot offset)
+    const bool valid = g.board.canPlace(p, p.location.row, p.location.col);
+    Color fill    = valid ? Color{ 80, 220, 100,  70 } : Color{ 220, 80, 80,  80 };
+    Color outline = valid ? Color{ 80, 220, 100, 200 } : Color{ 220, 80, 80, 200 };
 
     for (auto [dr, dc] : p.rotatedCells()) {
-        const int rr = g.cursorRow + dr;
-        const int cc = g.cursorCol + dc;
+        const int rr = p.location.row + dr;
+        const int cc = p.location.col + dc;
         if (rr < 0 || cc < 0 ||
             rr >= L.rows || cc >= L.cols) continue;
         const int x = L.boardX + cc * L.cellSize;
         const int y = L.boardY + rr * L.cellSize;
         DrawRectangle(x, y, L.cellSize, L.cellSize, fill);
-        DrawRectangleLinesEx(Rectangle{(float)x, (float)y, (float)L.cellSize, (float)L.cellSize}, 2, outline);
+        DrawRectangleLinesEx(Rectangle{(float)x, (float)y,
+                                       (float)L.cellSize, (float)L.cellSize}, 2, outline);
     }
 }
 
@@ -176,22 +174,7 @@ void drawCursor(const Game& g, const Layout& L) {
     }
 }
 
-void drawTrayPartShape(const Part& p, int x, int y, int maxW, int maxH, Color fill) {
-    const int M = static_cast<int>(p.shape.size());
-    const int N = M > 0 ? static_cast<int>(p.shape[0].size()) : 0;
-    if (M == 0 || N == 0) return;
-    const int cs = std::min({28, maxW / N, maxH / M});
-    const int ox = x + (maxW - cs * N) / 2;
-    const int oy = y + (maxH - cs * M) / 2;
-    for (int r = 0; r < M; ++r) {
-        for (int c = 0; c < N; ++c) {
-            if (!p.shape[r][c]) continue;
-            DrawRectangle(ox + c * cs, oy + r * cs, cs - 2, cs - 2, fill);
-        }
-    }
-}
-
-void drawTray(const Game& g, const Layout& L) {
+void drawTrayBg(const Game& g, const Layout& L) {
     DrawText("TRAY", L.trayX, L.trayY - 30, 18, RAYWHITE);
     for (size_t i = 0; i < g.parts.size(); ++i) {
         const int slotY = L.trayY + static_cast<int>(i) * kTraySlotHeight;
@@ -206,10 +189,6 @@ void drawTray(const Game& g, const Layout& L) {
         char label[32];
         std::snprintf(label, sizeof(label), "P%zu  c%u", i, g.parts[i].colorIndex);
         DrawText(label, L.trayX, slotY - 2, 14, RAYWHITE);
-
-        Color pc = partColor(g.parts[i].partIndex);
-        if (!inTray) pc.a = 90;
-        drawTrayPartShape(g.parts[i], L.trayX + 80, slotY - 2, 100, 60, pc);
 
         const char* state =
             placed ? "placed" :
@@ -236,19 +215,128 @@ void drawWinBanner(int screenW, int screenH) {
     drawCenteredText("You Win!", bx, by, bw, bh, 40, GOLD);
 }
 
+// --- Phase 2 animation ---
+
+void computeTarget(const Part& p, int partIdx, const Game& g, const Layout& L,
+                   float& tx, float& ty, float& tAngle, float& tScale) {
+    const bool held = (partIdx == g.heldPartIdx);
+    // Monotonic CW angle — no shortest-arc wrap needed.
+    tAngle = static_cast<float>(p.rotateCount) * 90.0f;
+
+    // Center cell position within rotated shape (where the pivot cell ends up
+    // after rotation). The pivot is the part's logical rotation/move center.
+    int rCr = 0, rCc = 0;
+    p.rotatedCenterCell(rCr, rCc);
+
+    if (p.location.placed) {
+        tx = L.boardX + (p.location.col + rCc + 0.5f) * L.cellSize;
+        ty = L.boardY + (p.location.row + rCr + 0.5f) * L.cellSize;
+        tScale = 1.0f;
+    } else if (held) {
+        if (g.cursorCol == Game::TRAY_COL) {
+            tx = static_cast<float>(L.trayX - 6 + kTrayInnerX);
+            ty = static_cast<float>(L.trayY + g.cursorRow * kTraySlotHeight + kTrayInnerY);
+            tScale = 0.5f;
+        } else {
+            // Cursor IS the pivot target — pivot stays put through rotation.
+            tx = L.boardX + (g.cursorCol + 0.5f) * L.cellSize;
+            ty = L.boardY + (g.cursorRow + 0.5f) * L.cellSize;
+            tScale = 1.0f;
+            (void)rCr; (void)rCc;
+        }
+    } else {
+        tx = static_cast<float>(L.trayX - 6 + kTrayInnerX);
+        ty = static_cast<float>(L.trayY + partIdx * kTraySlotHeight + kTrayInnerY);
+        tScale = 0.4f;
+    }
+}
+
+void animateParts(Game& g, const Layout& L, float dt) {
+    const float posFactor   = 1.0f - std::exp(-dt * 14.0f);
+    const float angleFactor = 1.0f - std::exp(-dt * 12.0f);
+    const float scaleFactor = 1.0f - std::exp(-dt * 12.0f);
+
+    for (size_t i = 0; i < g.parts.size(); ++i) {
+        Part& p = g.parts[i];
+        float tx, ty, tAngle, tScale;
+        computeTarget(p, static_cast<int>(i), g, L, tx, ty, tAngle, tScale);
+        if (!p.visualInitialized) {
+            p.currentCenterX = tx;
+            p.currentCenterY = ty;
+            p.currentAngle   = tAngle;
+            p.currentScale   = tScale;
+            p.visualInitialized = true;
+        } else {
+            p.currentCenterX += (tx - p.currentCenterX) * posFactor;
+            p.currentCenterY += (ty - p.currentCenterY) * posFactor;
+            p.currentAngle   += (tAngle - p.currentAngle) * angleFactor;
+            p.currentScale   += (tScale - p.currentScale) * scaleFactor;
+        }
+    }
+}
+
+void drawPartAnimated(const Part& p, float cellSize, Color fill, float alpha) {
+    const int M = static_cast<int>(p.shape.size());
+    const int N = M > 0 ? static_cast<int>(p.shape[0].size()) : 0;
+    if (M == 0 || N == 0) return;
+    const float scs = cellSize * p.currentScale;
+
+    Color baseFill = fill;
+    baseFill.a = static_cast<unsigned char>(255 * alpha);
+    // Center cell uses brighter shade so the pivot is obvious. Blend toward
+    // white by +120 per channel; stays distinct across any part color.
+    Color centerFill = Color{
+        static_cast<unsigned char>(std::min(255, fill.r + 120)),
+        static_cast<unsigned char>(std::min(255, fill.g + 120)),
+        static_cast<unsigned char>(std::min(255, fill.b + 120)),
+        static_cast<unsigned char>(255 * alpha)
+    };
+
+    // Pivot = un-rotated center cell's center. Each cell drawn with origin offset
+    // = (centerCol - col + 0.5, centerRow - row + 0.5) * scs so DrawRectanglePro
+    // rotates all cells around the pivot.
+    const float cc = static_cast<float>(p.centerCellCol);
+    const float cr = static_cast<float>(p.centerCellRow);
+    for (int r = 0; r < M; ++r) {
+        for (int col = 0; col < N; ++col) {
+            if (!p.shape[r][col]) continue;
+            const bool isCenter = (r == p.centerCellRow && col == p.centerCellCol);
+            Rectangle rec = { p.currentCenterX, p.currentCenterY, scs, scs };
+            Vector2 origin = { (cc - col + 0.5f) * scs,
+                               (cr - r   + 0.5f) * scs };
+            DrawRectanglePro(rec, origin, p.currentAngle,
+                             isCenter ? centerFill : baseFill);
+        }
+    }
+}
+
+void drawParts(const Game& g, const Layout& L) {
+    for (size_t i = 0; i < g.parts.size(); ++i) {
+        const Part& p = g.parts[i];
+        const bool held = (static_cast<int>(i) == g.heldPartIdx);
+        const bool inTray = !p.location.placed && !held;
+        const Color fill = partColor(p.partIndex);
+        const float alpha = inTray ? 0.85f : 1.0f;
+        drawPartAnimated(p, static_cast<float>(L.cellSize), fill, alpha);
+    }
+}
+
 } // namespace
 
-void Renderer::draw(const Game& g, int screenW, int screenH) {
+void Renderer::draw(Game& g, int screenW, int screenH, float dt) {
     ClearBackground(Color{25, 28, 36, 255});
-
     DrawText("Originium Circuit Repair", 40, 24, 24, RAYWHITE);
 
     const Layout L = computeLayout(g, screenW, screenH);
+
+    animateParts(g, L, dt);
+
     drawConstraints(g, L);
-    drawBoard(g, L);
-    drawHeldPreview(g, L);
-    drawTray(g, L);
+    drawBoardBg(g, L);
+    drawPlacementHighlight(g, L);
     drawCursor(g, L);
+    drawTrayBg(g, L);
+    drawParts(g, L);
     drawStatus(g, screenW, screenH);
 
     if (g.won) drawWinBanner(screenW, screenH);

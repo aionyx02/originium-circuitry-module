@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
         if (a != Action::None) game.update(a);
 
         BeginDrawing();
-        renderer.draw(game, GetScreenWidth(), GetScreenHeight());
+        renderer.draw(game, GetScreenWidth(), GetScreenHeight(), GetFrameTime());
         EndDrawing();
     }
 

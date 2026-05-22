@@ -5,7 +5,7 @@
 
 class Renderer {
 public:
-    void draw(const Game& g, int screenW, int screenH);
+    void draw(Game& g, int screenW, int screenH, float dt);
 };
 
 #endif

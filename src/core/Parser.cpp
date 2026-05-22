@@ -87,6 +87,7 @@ GameData Parser::parse(std::istream& in) {
                 p.shape[r][c] = (v != 0);
             }
         }
+        p.computeCenterCell();
         parts.push_back(std::move(p));
     }
 

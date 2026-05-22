@@ -1,0 +1,16 @@
+docs/arknights_endfield_puzzle_docs
+
+# build artifacts
+build/
+out/
+cmake-build-*/
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# binaries
+*.o
+*.obj
+*.exe

@@ -18,6 +18,7 @@
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
 - 05-23? docs: add README.md / update learning log
+- **2026-05-24** — [Phase 2 Day 2c：音效（pickup / place / spin / win）](#2026-05-24--phase-2-day-2c音效pickup--place--spin--win) · `Phase 2` · `Implementation` · 音效 1% = +1%，main loop 加 InitAudioDevice + 4 個 LoadSound + 每 frame 狀態 diff 觸發、CMake 加 post-build copy_directory assets/
 - **2026-05-24** — [Day 2b pixel-perfect drag 第三輪：tray 撿起也立刻跟手](#2026-05-24--day-2b-pixel-perfect-drag-第三輪tray-撿起也立刻跟手small) · `Phase 2` · `small` · computeTarget / animateParts 把 mouseDrag 條件從「held+on board」放寬到「held」
 - **2026-05-22** — [Phase 2 Day 2b：滑鼠 hover / drag / 左鍵放置 / 右鍵 cancel](#2026-05-22--phase-2-day-2b滑鼠-hover--drag--左鍵放置--右鍵-cancel) · `Phase 2` · `Implementation + Refactor` · +0%（rubric 完整性），Layout 提到 public header、Game 加 `setCursor` cursor 原語、Input 加 `pollMouse` 翻譯滑鼠到既有 Action 流程
 - **2026-05-22** — [Phase 2 Day 2a：視覺 polish + 程序材質 + drop shadow](#2026-05-22--phase-2-day-2a視覺-polish--程序材質--drop-shadow) · `Phase 2` · `Implementation` · GUI 2.5% + 材質 1.5% = +4%，圓角 + 漸層 + 高光帶 + bevel + drop shadow 兩 pass
@@ -811,3 +812,137 @@ Phase: 2
 Commit: 本 commit
 
 使用者目視驗收第二版後回報「點 tray 撿起後要等手往板面走、part 才開始跟手」。把 [Renderer.cpp](../src/ui/Renderer.cpp) computeTarget 的 mouseControlling 分支從「held + on board」放寬到「held」（涵蓋 cursor 仍在 TRAY_COL 的情況）、且 animateParts 的 `mouseDrag` 條件同步改為 `held && mouseControlling`。結果：點 tray slot 那一 frame、part 立刻 snap 到 mouse 像素位置 + scale 1.0、之後一路跟手。沒動 Game/Input；只 2 處 Renderer 小編輯。Build 0/0、smoke OK。詳見上方 Phase 2 Day 2b entry 的「第三版」段。
+
+
+## 2026-05-24 — Phase 2 Day 2c：音效（pickup / place / spin / win）
+
+Type: Implementation
+Phase: 2
+Feature: Sound effects（音效；[scoring.md:91](scoring.md#L91) 1%）
+Commit: 待 commit
+
+### Context
+
+Phase 2 最後一格：音效。前面 Day 1（動畫骨架）+ Day 2a（GUI/材質/陰影）+ Day 2b（滑鼠）已把 Phase 2 圖形分項拿下 14% / 15%，剩這 1% 收尾就能進 Phase 3（雙色 + 進階功能 +12%）。
+
+使用者策略沿用 plan §6：用 [sfxr.me](https://sfxr.me/) 線上生短音效、放 `assets/sfx/`、不引入外部音檔處理庫（raylib 的 `LoadSound` 內建 miniaudio 支援 wav/mp3/ogg/flac）。
+
+### AI Contribution
+
+1. **方案盤點 + 風險條列**（4 點：資產佈局 / CMake 改動 / main.cpp 改動 / 不動的東西 + 6 個 edge case）— 在動 code 前確認使用者要怎麼接（[CLAUDE.md](../CLAUDE.md) large change workflow 第 1–4 步）
+2. **架構選擇**：避開「Game 產生 sound event hint / 抽 SoundManager 類別」的 over-engineer，改用「main loop snapshot 前後 frame、做 4 個 int/bool diff → 觸發音」。理由：1% 不值得擴 API，且這套做法不破 core 不能 include raylib 的界線
+3. **觸發優先序設計**：發現 `autoSelectNextUnplaced()` 會在 place 成功後立刻把 heldIdx 從 -1 set 回新 part — 一個 frame 同時滿足「place 觸發」+「pickup 觸發」。設成 `win > place > pickup > spin` 單音優先序、避免重音
+4. **raylib API 差異除錯**：第一次寫 `IsSoundReady`（5.0 名稱）→ compile error → grep 系統 raylib 5.5 header 確認 5.5 改名 `IsSoundValid` → 一次 replace_all 修好
+
+### Human Decision / Review
+
+- **拍板「下個 phase = Day 2c」**（不是 Phase 3）：保 Phase 2 完整再開新階段
+- **檔案命名 + 格式**：使用者把 4 個音檔放 `assets/sfx/` 為 `pickup.mp3 / place.mp3 / spin.mp3 / victory.mp3`（plan §6 寫的是 rotate.wav、實際使用者取名 spin.mp3 — 主檔調整 LoadSound 路徑配合）
+- **win 音檔候選 2 選 1**：assets/sfx/ 裡同時有 `victory.mp3` 跟 `win.wav` — AI 詢問後使用者選 `victory.mp3`（36KB MPEG layer III stereo，較有「交響樂」勝利感）
+- **「補好了，開始做」**：使用者一句話結束 plan 階段、進實作
+
+### Details
+
+**A. 資產佈局**
+
+`assets/sfx/` 4 個檔（raylib 5.5 LoadSound 內建 miniaudio decoder、wav/mp3 通吃）：
+
+| 觸發 | 檔名 | 大小 | 規格 |
+|---|---|---:|---|
+| pickup | pickup.mp3 | 663 KB | 44.1 kHz / stereo |
+| place  | place.mp3  | 6.1 KB | 44.1 kHz / stereo |
+| spin   | spin.mp3   | 6.6 KB | 44.1 kHz / stereo |
+| win    | victory.mp3 | 36 KB | 44.1 kHz / stereo / MPEG L3 256 kbps |
+
+> 殘留 `assets/sfx/win.wav`（原 `sound1.wav`、4KB 8-bit mono）目前未引用、可刪可留（不影響行為）。
+
+**B. CMakeLists.txt 改動**（[CMakeLists.txt:43–47](../CMakeLists.txt#L43)）
+
+```cmake
+add_custom_command(TARGET game POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:game>/assets)
+```
+
+每次 build 完把 `assets/` 整個 mirror 到 `$<TARGET_FILE_DIR:game>/assets`（debug build 在 `build/assets/`）— runtime 用相對路徑 `assets/sfx/xxx.mp3` 就找得到。Phase 6 才煩惱 Windows 最終 install 規則（也只是換成 `install(DIRECTORY ...)`）。
+
+**C. main.cpp 改動**（[src/main.cpp:45–67, 86–119, 129–134](../src/main.cpp)）
+
+1. 新 anon-namespace 兩個 helper：`countPlaced(Game&)` / `sumRotateCount(Game&)`
+2. `InitWindow` 後加 `InitAudioDevice()`；exit 前加 `CloseAudioDevice()`
+3. `LoadSound × 4`（pickup / place / spin / victory）→ exit 前 `UnloadSound × 4`
+4. 進 main loop 前 4 行 snapshot：
+
+   ```cpp
+   int  prevHeld       = game.heldPartIdx;
+   bool prevWon        = game.won;
+   int  prevPlacedCnt  = countPlaced(game);
+   int  prevRotateSum  = sumRotateCount(game);
+   ```
+
+5. 每 frame 跑完 `game.update + Input::pollMouse` 後算 4 個 now value、做 diff、依優先序最多放一個音：
+
+   ```cpp
+   if (wonNow && !prevWon)                     PlaySound(sndWin);
+   else if (placedCntNow > prevPlacedCnt)      PlaySound(sndPlace);
+   else if (prevHeld < 0 && heldNow >= 0)      PlaySound(sndPickup);
+   else if (rotateSumNow > prevRotateSum)      PlaySound(sndSpin);
+   ```
+
+   每呼叫前 `IsSoundValid(snd)` 守一下，缺檔/載入失敗會回 false、就靜音不 crash。
+
+6. 4 個 prev 更新：`prevHeld = heldNow; ...`
+
+**D. 不動的東西（界線守住）**
+
+- `core/`：Game / Part / Board / Parser / WinChecker / Action enum 完全沒動 — core 不能 include raylib 這條界線在 Phase 0 就立的，Day 2c 沒理由破
+- `ui/Renderer.*` / `ui/Input.*`：滑鼠 / 鍵盤 / 動畫 / 繪圖全部不碰
+- 沒新檔（沒抽 SoundManager / AudioBus 類別）
+
+**E. raylib 5.5 API 名稱踩雷**
+
+第一次寫 `IsSoundReady` → 4 個 compile error。grep `/opt/homebrew/Cellar/raylib/5.5/include/raylib.h` 發現 5.5 改名為 `IsSoundValid`（5.0 → 5.5 的 breaking rename，伴隨 `IsAudioStreamValid` / `IsTextureValid` 等批次 rename）。`replace_all` 一次修好。
+
+### Verification / Tests Performed
+
+- **Build**：`cmake --build build` → 0 warning 0 error
+- **post-build copy 驗證**：`ls build/assets/sfx/` → 5 檔全部 mirror（含 win.wav 殘留）
+- **Audio init smoke**：跑 `./build/game ../docs/io/Example1.txt` 1.5 秒、`grep -iE "audio|sound|wave"` raylib log：
+  - `AUDIO: Device initialized successfully | Backend: miniaudio | Core Audio`
+  - `FILEIO: [assets/sfx/pickup.mp3] File loaded successfully` + `WAVE: Data loaded successfully (44100 Hz, 32 bit, 2 channels)`
+  - 同 4 行 for place.mp3 / spin.mp3 / victory.mp3
+  - 沒 error、沒 warn
+- **手動互動驗證**（2026-05-24 通過）：
+  - [x] 開檔不該有聲音 — 驗收時暴露 Phase 1 keyboard-era `autoSelectNextUnplaced` 殘留 bug（零件自動跟手）；獨立 commit 修掉，與音效本身無關
+  - [x] 滑鼠左鍵點 tray → pickup
+  - [x] 持有時按 R → spin
+  - [x] 持有時左鍵點合法格 → place
+  - [x] 全部擺對 → victory（且不會跟 place 雙重播）
+  - [x] 不合法格 → 紅框 + 錯誤訊息、不放 place 音（placedCount 沒上升）
+  - [x] 鍵盤 wasd/R/Enter 觸發同樣的音
+
+### Result
+
+- **拿到分數：+1%**（音效 1%、[scoring.md:91](scoring.md#L91)）
+- **銀行存款：36.5 → 37.5%** / 65%
+- **Phase 2 收尾完成**：圖形介面分項 15% / 15% 全拿（GUI 2.5 + 音效 1 + 材質 1.5 + 旋轉動畫 5 + 跟游標 5）
+- **新增公開介面：無**（純 main.cpp + CMake、API 表面零增長）
+
+### Risks / Follow-ups
+
+- **`PlaySound` 重複播放會 cut off 前次**：raylib `PlaySound` 同個 Sound 重複呼叫會中斷之前那次。連按 R 4 次旋轉、spin 音會被連續中斷而非疊著放。若想疊放要改 `LoadSoundAlias` + 多 channel；目前不需要（1% 拿到了，oral 不會被問疊放）
+- **pickup.mp3 663 KB 偏大**：開檔 LoadSound 一次解碼到 RAM、不影響 runtime。若 Phase 6 打包想瘦身、用 jsfxr 重生一個短的（jsfxr 出來通常 < 10KB）
+- **Phase 6 Windows 打包**：post-build copy 是 dev-time 的；Phase 6 要改成 `install(DIRECTORY ${CMAKE_SOURCE_DIR}/assets DESTINATION .)` 加上 NSIS/zip 出貨。中文路徑 + LoadSound：raylib 5.5 在 Windows 用 UTF-8 path 應該 OK、Phase 6 dry run 時驗
+- **assets/sfx/win.wav 殘留**：使用者改檔過程中留下、code 沒引用、可刪可留；不影響功能
+
+### Other Notes
+
+**口頭報告素材**：
+
+- **「為什麼不抽 SoundManager 類別？」**：1% 的功能、整段純粹是「state 變了 → 播個音」、不需要狀態機 / 不需要音量管理 / 不需要 channel mixing。抽類別純粹是為了好看而不是為了解決問題。展示「YAGNI（You Aren't Gonna Need It）的判斷時機 — 不是任何 OOP 機會都該抽出類別」。
+- **「為什麼 sound trigger 放 main.cpp 而不是 Game.cpp？」**：Game 是 core、不能 include raylib（界線從 Phase 0 立的）。如果要在 Game 觸發音、就得在 Game 加「sound event 事件 enum」、Renderer 或 main 訂閱 — API 變寬了。但 Day 2c 的觸發訊號 100% 從外觀察 game state 就拿得到（heldIdx / won / placedCount / rotateSum 都是 public field）— 不必擴 API。展示「界線設計：public field 已經是訊號、不必加 event 系統」。
+- **「frame diff 觸發 vs event-driven 觸發」**：兩種寫法各有取捨。Diff 法：簡單、不破 API、可能誤觸（如 rotate 用 sum 變化）；Event 法：精確、需 Game 主動暴露事件。1% 功能 + Game state 已經夠表達就選 diff 法。展示「設計選擇要看 caller / cost / 是否一次性」。
+- **「優先序設計：為什麼 win 蓋 place」**：放置最後一個零件那 frame、placedCount 上升（會觸發 place）+ won 變 true（會觸發 win）。如果不設優先序、兩個音同 frame 播會吵且 win 被 place 切（PlaySound 後呼叫 PlaySound 會 cut off）。優先序 `win > place > pickup > spin` 是依「事件重要性 + 用戶期待」排的。展示「不是把所有訊息都丟給用戶、而是設計『一次顯示最重要的那一個』」。
+- **「raylib 5.5 API rename 的處理」**：寫 `IsSoundReady`（從 5.0 教學記憶）→ compile fail → grep 系統 raylib 5.5 header 確認 `IsSoundValid` → 修。展示「不要相信記憶中的 API、要查當下版本的 header；compile error 不是壞事、是『版本對齊』的提示」。
+- **「為什麼不接 raylib 的 `PauseSound` / `StopSound`？」**：遊戲沒「暫停選單」、Win banner 出來後關掉視窗就結束、不需要中斷音樂。YAGNI。
+

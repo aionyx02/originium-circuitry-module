@@ -39,3 +39,8 @@ target_link_libraries(game PRIVATE raylib)
 if(WIN32 AND MINGW)
     target_link_options(game PRIVATE -static -static-libgcc -static-libstdc++)
 endif()
+
+# Copy assets/ next to the built executable so runtime relative paths work.
+add_custom_command(TARGET game POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:game>/assets)

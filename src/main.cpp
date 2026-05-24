@@ -42,6 +42,22 @@ bool loadGame(const std::string& path, Game& game, std::string& errorOut) {
 
 } // namespace
 
+namespace {
+
+int countPlaced(const Game& g) {
+    int n = 0;
+    for (const auto& p : g.parts) if (p.location.placed) ++n;
+    return n;
+}
+
+int sumRotateCount(const Game& g) {
+    int s = 0;
+    for (const auto& p : g.parts) s += p.rotateCount;
+    return s;
+}
+
+} // namespace
+
 int main(int argc, char** argv) {
     std::string path = promptPath(argc, argv);
     if (path.empty()) {
@@ -64,6 +80,17 @@ int main(int argc, char** argv) {
     SetTargetFPS(60);
     SetExitKey(KEY_NULL);
 
+    InitAudioDevice();
+    Sound sndPickup = LoadSound("assets/sfx/pickup.mp3");
+    Sound sndPlace  = LoadSound("assets/sfx/place.mp3");
+    Sound sndSpin   = LoadSound("assets/sfx/spin.mp3");
+    Sound sndWin    = LoadSound("assets/sfx/victory.mp3");
+
+    int  prevHeld       = game.heldPartIdx;
+    bool prevWon        = game.won;
+    int  prevPlacedCnt  = countPlaced(game);
+    int  prevRotateSum  = sumRotateCount(game);
+
     Renderer renderer;
     while (!WindowShouldClose()) {
         const int sw = GetScreenWidth();
@@ -74,11 +101,37 @@ int main(int argc, char** argv) {
         if (a != Action::None) game.update(a);
         Input::pollMouse(L, game);
 
+        const int  heldNow      = game.heldPartIdx;
+        const bool wonNow       = game.won;
+        const int  placedCntNow = countPlaced(game);
+        const int  rotateSumNow = sumRotateCount(game);
+
+        // One sound per frame, priority: win > place > pickup > spin.
+        if (wonNow && !prevWon) {
+            if (IsSoundValid(sndWin)) PlaySound(sndWin);
+        } else if (placedCntNow > prevPlacedCnt) {
+            if (IsSoundValid(sndPlace)) PlaySound(sndPlace);
+        } else if (prevHeld < 0 && heldNow >= 0) {
+            if (IsSoundValid(sndPickup)) PlaySound(sndPickup);
+        } else if (rotateSumNow > prevRotateSum) {
+            if (IsSoundValid(sndSpin)) PlaySound(sndSpin);
+        }
+
+        prevHeld      = heldNow;
+        prevWon       = wonNow;
+        prevPlacedCnt = placedCntNow;
+        prevRotateSum = rotateSumNow;
+
         BeginDrawing();
         renderer.draw(game, sw, sh, GetFrameTime());
         EndDrawing();
     }
 
+    UnloadSound(sndPickup);
+    UnloadSound(sndPlace);
+    UnloadSound(sndSpin);
+    UnloadSound(sndWin);
+    CloseAudioDevice();
     CloseWindow();
     return 0;
 }

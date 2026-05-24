@@ -246,8 +246,8 @@
 - [x] Pivot cell 是亮色、旋轉時螢幕位置不動
 - [x] 圓角 + 漸層 + 程序材質視覺（Day 2a，commit `6f7abcb`）
 - [x] Drop shadow（Day 2a，commit `6f7abcb`）
-- [x] 滑鼠 hover / drag（pixel-perfect、從 tray 撿起即跟手）/ 左鍵放置 / 右鍵 cancel（Day 2b，2026-05-24 目視驗收通過）
-- [ ] 4 個音效（Day 2c）
+- [x] 滑鼠 hover / drag（pixel-perfect、從 tray 撿起即跟手）/ 左鍵放置 / 右鍵 cancel（Day 2b，commit `59401b4`、2026-05-24 目視驗收通過）
+- [x] 4 個音效（Day 2c，2026-05-24 代碼完成 + smoke 4 個 sound 全 load successfully + 手動驗收通過）
 - [x] Phase 1 鍵盤流程零退化
 
 ### 不在 Phase 2 做的事
@@ -377,3 +377,24 @@
   - [x] mouse drag 中按 W → 切回 keyboard mode、零件即刻 lerp 到 cursor cell
   - [x] 鍵盤路徑（wasd/R/Enter/Esc）跟之前一樣可用、零退化
 - 下一步：Day 2c 音效（使用者已有 sound1.wav + victory.mp3、需備齊 pickup / place / rotate / win 4 個 wav）
+
+## Phase 2 Day 2c done — 2026-05-24（代碼 + smoke / 待手動驗收）
+
+- 完成項目：
+  - [CMakeLists.txt](../CMakeLists.txt)：加 `add_custom_command(TARGET game POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:game>/assets)` — build 完 mirror assets/ 到 build/
+  - [src/main.cpp](../src/main.cpp)：anon-ns 新 helper `countPlaced` / `sumRotateCount`；`InitWindow` 後 `InitAudioDevice() + LoadSound × 4`（pickup / place / spin / victory mp3）；main loop 前 4 行 snapshot（prevHeld / prevWon / prevPlacedCnt / prevRotateSum）；每 frame `game.update + pollMouse` 後依優先序 `win > place > pickup > spin` 最多放一個音、每呼叫前 `IsSoundValid` 守缺檔；exit 前 `UnloadSound × 4 + CloseAudioDevice`
+  - 資產：使用者把 `pickup.mp3 / place.mp3 / spin.mp3 / victory.mp3` 放 `assets/sfx/`（另有未引用的 `win.wav` 殘留可刪）
+- 設計選擇：
+  - 不擴 `Action` enum、不抽 `SoundManager` 類別、不破 core 不能 include raylib 界線
+  - 觸發訊號 100% 從 game state 觀察得到（heldIdx / won / placedCount / rotateSum 都是 public field）→ main loop frame diff、不必加 event 系統
+  - 一個 frame 最多放一個音：避免最後 place 時同 frame 觸發 place + win 雙音（PlaySound 對同個 Sound 第二次呼叫會中斷前次）
+  - `IsSoundValid` guard：缺檔/載入失敗回 false、靜音不 crash（鼓勵漸進補資產）
+- 拿到分數：**+1%**（音效 1%、[scoring.md:91](scoring.md#L91)）
+- 銀行存款：36.5 → **37.5%** / 65%
+- Phase 2 圖形介面分項 15% / 15% 全到位（GUI 2.5 + 音效 1 + 材質 1.5 + 旋轉動畫 5 + 跟游標 5）
+- 卡點：raylib 5.5 把 `IsSoundReady`（5.0）改名為 `IsSoundValid` — 第一次 build compile error → grep `/opt/homebrew/Cellar/raylib/5.5/include/raylib.h` 確認 → replace_all 一次修好
+- 驗證：
+  - Build 0 warning 0 error；post-build copy 確認 `build/assets/sfx/` 5 檔到位
+  - Smoke `./build/game ../docs/io/Example1.txt` 1.5 秒、`grep -iE "audio|sound|wave"` raylib log：`AUDIO: Device initialized successfully | Backend: miniaudio | Core Audio` + 4 個音檔各自 `FILEIO: ... File loaded successfully` + `WAVE: Data loaded successfully (44100 Hz, 32 bit, 2 channels)`、無 error 無 warn
+  - **手動驗收待跑**（6 項在 STATUS.md 進行中段）
+- 下一步：使用者手動驗收 Day 2c → 通過後 `git add . && git commit` 把 Day 2b + Day 2c 一起 commit（或分兩 commit）→ Phase 2 closeout → Phase 3 規劃（雙色 + 進階功能，§7 展開）

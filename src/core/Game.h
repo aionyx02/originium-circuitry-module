@@ -29,8 +29,19 @@ public:
     bool won         = false;
     std::string statusMessage;
 
+    // UI hint: true when the last input that moved the cursor was the mouse.
+    // Lets Renderer switch the held-part visual target from cell-center to
+    // mouse pixel (pixel-perfect drag). Cleared on any keyboard Move*.
+    bool mouseControlling = false;
+
     void init(Board b, std::vector<Part> p);
     void update(Action a);
+
+    // Snap cursor to an absolute target. If isTray, col is ignored and cursor
+    // sits in the tray column (TRAY_COL). Clamps to valid range and re-syncs
+    // any held part's location. Used by mouse input; keyboard still goes
+    // through Action::Move* in update().
+    void setCursor(int row, int col, bool isTray);
 
     static constexpr int TRAY_COL = -1;
 

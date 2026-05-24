@@ -8,20 +8,8 @@
 
 namespace {
 
-constexpr int kTraySlotHeight = 78;
-constexpr int kTraySlotWidth  = 200;
 constexpr int kTrayInnerX     = 130;  // offset within slot where part center sits
 constexpr int kTrayInnerY     = 30;
-
-struct Layout {
-    int rows;
-    int cols;
-    int cellSize;
-    int boardX;
-    int boardY;
-    int trayX;
-    int trayY;
-};
 
 Color partColor(unsigned partIndex) {
     static const Color palette[] = {
@@ -46,6 +34,8 @@ Color colorBadge(unsigned colorIndex) {
     };
     return colors[colorIndex % (sizeof(colors) / sizeof(colors[0]))];
 }
+
+} // namespace
 
 Layout computeLayout(const Game& g, int screenW, int screenH) {
     Layout L;
@@ -72,6 +62,8 @@ Layout computeLayout(const Game& g, int screenW, int screenH) {
     L.trayY = 90;
     return L;
 }
+
+namespace {
 
 void drawFilledBordered(int x, int y, int size, Color fill, Color border) {
     DrawRectangle(x, y, size, size, fill);
@@ -245,12 +237,23 @@ void computeTarget(const Part& p, int partIdx, const Game& g, const Layout& L,
         ty = L.boardY + (p.location.row + rCr + 0.5f) * L.cellSize;
         tScale = 1.0f;
     } else if (held) {
-        if (g.cursorCol == Game::TRAY_COL) {
+        if (g.mouseControlling) {
+            // Pixel-perfect drag from the instant of pickup, regardless of
+            // whether cursor is still on tray (just clicked) or on the board.
+            // Aiming is done by the red/green preview frame at the cursor cell;
+            // on release the existing lerp slides the placed part to cell center.
+            const Vector2 mp = GetMousePosition();
+            tx = mp.x;
+            ty = mp.y;
+            tScale = 1.0f;
+            (void)rCr; (void)rCc;
+        } else if (g.cursorCol == Game::TRAY_COL) {
+            // Keyboard + held in tray: small preview at tray slot.
             tx = static_cast<float>(L.trayX - 6 + kTrayInnerX);
             ty = static_cast<float>(L.trayY + g.cursorRow * kTraySlotHeight + kTrayInnerY);
             tScale = 0.5f;
         } else {
-            // Cursor IS the pivot target — pivot stays put through rotation.
+            // Keyboard + on board: cursor IS the pivot target.
             tx = L.boardX + (g.cursorCol + 0.5f) * L.cellSize;
             ty = L.boardY + (g.cursorRow + 0.5f) * L.cellSize;
             tScale = 1.0f;
@@ -270,14 +273,26 @@ void animateParts(Game& g, const Layout& L, float dt) {
 
     for (size_t i = 0; i < g.parts.size(); ++i) {
         Part& p = g.parts[i];
+        const bool held = (static_cast<int>(i) == g.heldPartIdx);
+        // Pixel-perfect drag covers tray-held too — first frame after a click
+        // pickup should already snap to mouse (don't wait for mouse to enter board).
+        const bool mouseDrag = held && g.mouseControlling;
+
         float tx, ty, tAngle, tScale;
         computeTarget(p, static_cast<int>(i), g, L, tx, ty, tAngle, tScale);
+
         if (!p.visualInitialized) {
             p.currentCenterX = tx;
             p.currentCenterY = ty;
             p.currentAngle   = tAngle;
             p.currentScale   = tScale;
             p.visualInitialized = true;
+        } else if (mouseDrag) {
+            // Pixel-perfect: snap position to mouse (no lag); lerp angle/scale.
+            p.currentCenterX = tx;
+            p.currentCenterY = ty;
+            p.currentAngle  += (tAngle - p.currentAngle) * angleFactor;
+            p.currentScale  += (tScale - p.currentScale) * scaleFactor;
         } else {
             p.currentCenterX += (tx - p.currentCenterX) * posFactor;
             p.currentCenterY += (ty - p.currentCenterY) * posFactor;

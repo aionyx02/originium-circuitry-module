@@ -12,6 +12,7 @@ void Game::init(Board b, std::vector<Part> p) {
     heldPartIdx = -1;
     won = false;
     statusMessage.clear();
+    mouseControlling = false;
     autoSelectNextUnplaced();
 }
 
@@ -20,10 +21,10 @@ void Game::update(Action a) {
     if (won) return;
 
     switch (a) {
-        case Action::MoveUp:    --cursorRow; break;
-        case Action::MoveDown:  ++cursorRow; break;
-        case Action::MoveLeft:  --cursorCol; break;
-        case Action::MoveRight: ++cursorCol; break;
+        case Action::MoveUp:    --cursorRow; mouseControlling = false; break;
+        case Action::MoveDown:  ++cursorRow; mouseControlling = false; break;
+        case Action::MoveLeft:  --cursorCol; mouseControlling = false; break;
+        case Action::MoveRight: ++cursorCol; mouseControlling = false; break;
         case Action::Rotate: {
             if (heldPartIdx >= 0) {
                 auto& p = parts[heldPartIdx];
@@ -42,6 +43,13 @@ void Game::update(Action a) {
     syncHeldLocation();
 
     if (!won) won = WinChecker::isWon(board, parts);
+}
+
+void Game::setCursor(int row, int col, bool isTray) {
+    cursorRow = row;
+    cursorCol = isTray ? TRAY_COL : col;
+    clampCursor();
+    syncHeldLocation();
 }
 
 void Game::clampCursor() {

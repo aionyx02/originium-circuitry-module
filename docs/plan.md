@@ -244,11 +244,11 @@
 - [x] 移動有平滑動畫（不是瞬移）
 - [x] 旋轉「轉過去」（按 R 4 次方向一致 CW）
 - [x] Pivot cell 是亮色、旋轉時螢幕位置不動
-- [ ] 圓角 + 漸層 + 程序材質視覺（Day 2a 待驗收）
-- [ ] Drop shadow（Day 2a 待驗收）
-- [ ] 滑鼠 hover / drag / 左鍵放置（Day 2b）
+- [x] 圓角 + 漸層 + 程序材質視覺（Day 2a，commit `6f7abcb`）
+- [x] Drop shadow（Day 2a，commit `6f7abcb`）
+- [x] 滑鼠 hover / drag（pixel-perfect、從 tray 撿起即跟手）/ 左鍵放置 / 右鍵 cancel（Day 2b，2026-05-24 目視驗收通過）
 - [ ] 4 個音效（Day 2c）
-- [ ] Phase 1 鍵盤流程零退化
+- [x] Phase 1 鍵盤流程零退化
 
 ### 不在 Phase 2 做的事
 
@@ -342,3 +342,38 @@
 - 驗證：使用者跑 `./build/game docs/io/Example1.txt` 手動驗收 8 項全綠 — 背景漸層、板面圓角、tray 圓角、cell 程序材質、drop shadow、中心格仍亮、Win banner 圓角、Phase 1 流程零退化
 - 卡點：無。一次寫一次過、smoke OK、目視驗收通過
 - 下一步：Day 2b 滑鼠（tray hover/拖曳/左鍵放置/右鍵 cancel） → Day 2c 音效（4 個 wav 接 raylib LoadSound）
+
+## Phase 2 Day 2b done — 2026-05-22（代碼）+ 2026-05-24（目視驗收通過 + pixel-perfect 二/三輪 polish）
+
+- 完成項目：
+  - [src/ui/Renderer.h](src/ui/Renderer.h) 把 `Layout` struct + `computeLayout` + `kTraySlotHeight/Width` 從 anon namespace 提到 public header（讓 Input 也能用）
+  - [src/ui/Renderer.cpp](src/ui/Renderer.cpp) 移除重複定義、`computeLayout` 改為 public 自由函式
+  - [src/core/Game.h](src/core/Game.h) + [Game.cpp](src/core/Game.cpp)：新 `setCursor(int row, int col, bool isTray)` cursor 原語 — 設位置 + clampCursor + syncHeldLocation
+  - [src/ui/Input.h](src/ui/Input.h) + [Input.cpp](src/ui/Input.cpp)：新 `pollMouse(const Layout& L, Game& g)` — 板面 hit-test、tray hit-test、持有時 cursor 跟滑鼠 cell（drag follow）、左鍵走 `Action::Place`（pick/place 一鍵搞定）、右鍵走 `Action::Remove`（cancel / 拔起）
+  - [src/main.cpp](src/main.cpp)：每 frame 算 Layout、`Input::poll()` 後立刻 `Input::pollMouse(L, game)`
+- 設計選擇（C 方案，使用者於 plan 階段拍板）：
+  - 不擴 `Action` enum、不破 Input→Action 模型
+  - Game 提供 cursor 原語（單一 `setCursor`），Input 翻譯滑鼠座標 → setCursor + 既有 Action 流程
+  - 板面 hit-test 用 `(mouseX - boardX) / cellSize` 整除；tray 用 `(mouseY - trayY) / kTraySlotHeight`
+  - 持有時左鍵點 tray：no-op（plan 中使用者選的方案 — 不要意外丟回 tray）
+  - 板面已放零件被左鍵點到：未持有時撿起、持有時嘗試放置（既有 `handlePlace` 邏輯）
+  - drag follow 三輪迭代：
+    1. 第一版 cell-quantized — 使用者覺得卡頓
+    2. 第二版 pixel-perfect on board（Game 加 `mouseControlling` flag、Renderer 在 held + on board + mouseControlling 時 target = `GetMousePosition()` + currentCenterX/Y 直接 snap 不 lerp；放開時 part 變 placed、走既有 lerp 從 mouse pixel 滑到 cell center「落框感」）
+    3. 第三版（2026-05-24）pixel-perfect 從 tray 撿起起算 — 把 mouseDrag 條件從「on board + held」放寬成「held」，點 tray slot 那一 frame 就立刻跟手 + scale 1.0
+  - cursor 仍是 cell-quantized — 紅綠預覽框 + canPlace 仍用 cell；視覺與 cursor 解耦：「框框瞄準、視覺跟手」
+- 拿到分數：**+0%**（rubric 完整性而已，wasd/Enter 已涵蓋滑鼠分項）
+- 銀行存款：36.5% / 65%（不變）
+- 卡點：無。build 0 warning 0 error、smoke OK
+- **使用者目視驗收（2026-05-24 通過）**：
+  - [x] 滑鼠移到 tray 第 N 個 slot → 左鍵 → 撿起該 part（且**從 tray 撿起那一 frame 就跟手** — 第三版補的）
+  - [x] 撿起後移到板面 → 持有零件**緊貼游標**（pixel-perfect、無卡頓）
+  - [x] 持有時左鍵點空格（合法）→ 放置成功 + 從 mouse pixel 平滑滑落 cell center；點不合法格 → 紅框 + 錯誤訊息
+  - [x] 持有時右鍵 → 退回 tray
+  - [x] 未持有時左鍵點板面上已放零件 → 撿起來
+  - [x] 未持有時右鍵點板面上已放零件 → 拔到 tray
+  - [x] 持有時左鍵點 tray slot → 無動作（不會意外丟）
+  - [x] mouse drag 中按 R → 零件繼續跟手、旋轉動畫保留
+  - [x] mouse drag 中按 W → 切回 keyboard mode、零件即刻 lerp 到 cursor cell
+  - [x] 鍵盤路徑（wasd/R/Enter/Esc）跟之前一樣可用、零退化
+- 下一步：Day 2c 音效（使用者已有 sound1.wav + victory.mp3、需備齊 pickup / place / rotate / win 4 個 wav）

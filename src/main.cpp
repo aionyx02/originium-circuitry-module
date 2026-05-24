@@ -66,11 +66,16 @@ int main(int argc, char** argv) {
 
     Renderer renderer;
     while (!WindowShouldClose()) {
+        const int sw = GetScreenWidth();
+        const int sh = GetScreenHeight();
+        const Layout L = computeLayout(game, sw, sh);
+
         const Action a = Input::poll();
         if (a != Action::None) game.update(a);
+        Input::pollMouse(L, game);
 
         BeginDrawing();
-        renderer.draw(game, GetScreenWidth(), GetScreenHeight(), GetFrameTime());
+        renderer.draw(game, sw, sh, GetFrameTime());
         EndDrawing();
     }
 

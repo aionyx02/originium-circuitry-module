@@ -18,6 +18,8 @@
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
 - 05-23? docs: add README.md / update learning log
+- **2026-05-24** — [Day 2b pixel-perfect drag 第三輪：tray 撿起也立刻跟手](#2026-05-24--day-2b-pixel-perfect-drag-第三輪tray-撿起也立刻跟手small) · `Phase 2` · `small` · computeTarget / animateParts 把 mouseDrag 條件從「held+on board」放寬到「held」
+- **2026-05-22** — [Phase 2 Day 2b：滑鼠 hover / drag / 左鍵放置 / 右鍵 cancel](#2026-05-22--phase-2-day-2b滑鼠-hover--drag--左鍵放置--右鍵-cancel) · `Phase 2` · `Implementation + Refactor` · +0%（rubric 完整性），Layout 提到 public header、Game 加 `setCursor` cursor 原語、Input 加 `pollMouse` 翻譯滑鼠到既有 Action 流程
 - **2026-05-22** — [Phase 2 Day 2a：視覺 polish + 程序材質 + drop shadow](#2026-05-22--phase-2-day-2a視覺-polish--程序材質--drop-shadow) · `Phase 2` · `Implementation` · GUI 2.5% + 材質 1.5% = +4%，圓角 + 漸層 + 高光帶 + bevel + drop shadow 兩 pass
 - **2026-05-22** — [learning-notes.md 加 commit-grouped 索引 + 結構重組](#2026-05-22--learning-notesmd-加-commit-grouped-索引--結構重組small) · `Phase 2` · `small` · feature 名稱升 h3、加 `*Phase X · commit <short>*` meta、可對應到原始 commit 學習
 - **2026-05-22** — [Phase 2 Day 1：動畫骨架 + 旋轉/移動 pivot 中心](#2026-05-22--phase-2-day-1動畫骨架--旋轉移動-pivot-中心) · `Phase 2` · `Implementation + Refactor` · 動畫 5%+5% + 進階中心 1% = +11%，cursor 語意改成 pivot target 的設計演進
@@ -716,3 +718,96 @@ Phase 2 Day 1 動畫骨架 land 後（commit `0fcfcd4`），盤面的基本動�
 - **「為什麼 drop shadow 要兩 pass」**：兩 pass = 全部 shadow 先畫完、再畫全部 body → 確保 shadow 不疊到別的 part body。展示「考慮過繪製順序對視覺正確性的影響」。
 - **「為什麼用 `DrawRectanglePro` 而非 `DrawRectangleRounded` 畫旋轉 cell」**：`DrawRectangleRounded` 不支援旋轉（沒有 angle param）。raylib 圓角 API 只支援 axis-aligned 矩形。所以 part cells 還是用 `DrawRectanglePro`（無圓角但可旋轉），只有 axis-aligned 的 UI 元素（板面格、tray slot、Win banner）才用圓角 API。
 - **「一次寫一次過的意義」**：跟 Day 1 三輪 review 對照，Day 2a 沒有需要 iterate。原因：Day 1 的設計有 cursor 語意這種牽動 game logic 的決策、容易出錯；Day 2a 是純視覺、改的全在 Renderer 一個檔、沒有跨核心/UI 邊界、AI 自由度比較大也容易 review。可以講「我學到改動範圍越窄、AI 一次成功率越高」。
+
+
+
+## 2026-05-22 — Phase 2 Day 2b：滑鼠 hover / drag / 左鍵放置 / 右鍵 cancel
+Type: Implementation + Refactor
+Phase: 2
+Feature: 滑鼠輸入（板面 + tray hit-test、drag follow、左鍵 Place、右鍵 Remove）
+Commit: (本 commit)
+
+### Context
+Phase 2 Day 2a（commit `6f7abcb`）把視覺與材質補完後，剩下兩個 Day 2 子項：Day 2b 滑鼠、Day 2c 音效。Day 2b 本身**不直接加分**（鍵盤的 wasd 與 Enter 已涵蓋「移動」5% 與「放置」1%），但 [scoring.md:47](scoring.md#L47) / [:50](scoring.md#L50) 列出「或滑鼠拖移 / 左鍵放置」、補上能讓 rubric 完整性提高、demo 觀感也更接近原作。
+
+策略決定（plan 階段使用者拍板，三個問題）：
+1. **今天只做 Day 2b**（不一起做 Day 2c，因為使用者只有一個 wav 還沒生齊 4 個）
+2. **設計方案 C**：Game 加 cursor 原語 + Input::pollMouse 翻譯滑鼠 — 不擴 Action enum、不破 Input→Action 模型、未來 editor 也能重用
+3. **板面已放零件被左鍵點到**：未持有時 = 撿起該零件（對齊鍵盤 Enter 在 OCCUPIED 格的語意）
+
+### AI Contribution
+1. **Plan 提案**（implementation 前 ask）：比較三個跨核心/UI 邊界的設計方案（A/B/C），列出取捨；列出新檔/改檔；明確問三個 decision point。
+2. **設計選擇**（C 方案的具體拆解）：
+   - `Layout` struct 與 `kTraySlotHeight/Width` 提到 [Renderer.h](../src/ui/Renderer.h) public 區（之前在 Renderer.cpp anon namespace），讓 Input.cpp 能 include 後共用
+   - `computeLayout(Game, screenW, screenH)` 改成 public 自由函式（不放進 class）— 兩個 caller（main 算一次給 Input、Renderer 內部自己算一次）都是 read-only 函式呼叫、不需要 instance state
+   - `Game::setCursor(int row, int col, bool isTray)` 是**唯一**新增的 public Game API — 內部做 `cursorRow/Col = ...` + `clampCursor()` + `syncHeldLocation()`，跟既有 keyboard `Action::MoveX` 用同一條尾巴
+   - `Input::pollMouse(const Layout& L, Game& g)`：板面 hit-test 用 `(mouseX - boardX) / cellSize`、tray hit-test 用 `(mouseY - trayY) / kTraySlotHeight`；左鍵打 `g.update(Action::Place)`、右鍵打 `g.update(Action::Remove)` — **完全重用既有 handlePlace/handleRemove 三分支邏輯**
+3. **實作**（4 檔修改 + 0 新檔）：
+   - [src/ui/Renderer.h](../src/ui/Renderer.h)：加 `Layout` struct、`kTraySlotHeight/Width` constexpr、`Layout computeLayout(...)` 宣告
+   - [src/ui/Renderer.cpp](../src/ui/Renderer.cpp)：移除 anon ns 內的重複定義、把 `computeLayout` 移出 anon ns（變 public），再 reopen 一個 anon ns 包後面的繪圖 helper
+   - [src/core/Game.h](../src/core/Game.h) + [src/core/Game.cpp](../src/core/Game.cpp)：加 `setCursor`
+   - [src/ui/Input.h](../src/ui/Input.h) + [src/ui/Input.cpp](../src/ui/Input.cpp)：加 `pollMouse`
+   - [src/main.cpp](../src/main.cpp)：每 frame 算一次 Layout、`Input::poll()` 後立刻 `Input::pollMouse(L, game)`
+
+### Human Decision / Review
+**Plan 提案階段**（這次很重要、是「跨 boundary 設計題」）：
+- AI 提了 A/B/C 三方案，使用者**選 C**（cursor 原語 + pollMouse 翻譯滑鼠）
+- AI 問「今天兩件都做、還是只先做 Day 2b」，使用者**選只做 Day 2b**（Day 2c 音效要 4 個 wav、目前只有 sound1.wav）
+- AI 問「板面已放零件被左鍵點到時」，使用者**選未持有時撿起該零件**（對齊鍵盤 Enter 語意）
+- AI 在 plan 中**沒問**的（自行決定）：持有時左鍵點 tray slot = no-op（不要意外丟回 tray，要丟用右鍵）；drag follow 第一版用 cell-quantized（自認為 trade-off 合理 → 使用者隨後回報「希望緊跟滑鼠」、改成 pixel-perfect，見下 Details 與 [learning-notes.md](learning-notes.md) 同篇 entry）
+
+**Implementation 中**：使用者沒中途介入。
+
+**Implementation 後 review**：build 0 warning 0 error、smoke OK；使用者目視驗收 8 項待跑（list 已寫在 [plan.md](plan.md) 進度時間軸 Day 2b done 段）。
+
+### Details
+**為什麼不擴 Action enum 變 `std::variant`**：方案 A 看起來最乾淨（每個 mouse action 帶 row/col），但會強迫 core/Game.h 改成 `std::variant<MoveUp, ..., PlaceAt{row,col}, ...>`，所有 update() 的 switch 都要重寫成 `std::visit`，而且 keyboard 路徑也要適配。對解決「滑鼠多帶 row/col」這個問題來說太重武器。方案 C 用「先 setCursor、再用既有 Action」分兩步完成同樣事情、core API 加 1 個小函式即可。
+
+**為什麼 Layout 提到 public header 而不是另開新檔**：避免增加 .md/.h 檔數；Layout 是 UI 內部物、放在 Renderer.h 是 UI 內公開就足夠；Input.h include Renderer.h 不會形成循環依賴（Renderer.h → Game.h、Input.h → Renderer.h → Game.h、Game.h 不 include 任何 UI）。
+
+**drag follow 設計演進 — cell-quantized → pixel-perfect（兩輪迭代）**：
+
+第一版寫 cell-quantized（cursor 跟到 cell、Renderer 既有 lerp 到 cell center 自動產生 drag-follow）。使用者目視驗收前先試、回報「想要緊跟滑鼠、不要卡頓感、瞄準交給紅綠框、放開時落到框框那」。
+
+**第二版（pixel-perfect on board）**：(1) Game 加 `mouseControlling` flag（任何 mouse activity = true、任何鍵盤 `Action::Move*` = false）；(2) Renderer::computeTarget 在「held + on board + mouseControlling」分支讀 `GetMousePosition()`、target = mouse pixel；(3) animateParts 加 `mouseDrag` 條件分支、`currentCenterX/Y` **直接 snap 不 lerp**（只 lerp angle/scale）；(4) Input::pollMouse 末尾改成「mouseControlling && held && over board → 每 frame setCursor」、不再依賴 `mouseMoved` — 這樣 click-place 自動選下一個 part 後、新 part 也立刻跟上滑鼠。
+
+**第三版（pixel-perfect 從 tray pickup 起算）**：使用者試完第二版回報「點 tray 撿起後要等手往板面走、part 才開始跟手」。原因：第二版的 mouseDrag 條件是 `onBoardHeld && mouseControlling`，當 cursor 還在 TRAY_COL（剛點 tray 撿起、還沒移到板面）時不走 mouse-pixel 分支、用的還是 tray slot inner 位置（scale 0.5）。修法：把 `mouseDrag` 從「on board + held + mouseControlling」放寬成「held + mouseControlling」、computeTarget 對應分支也改成 mouseControlling 優先（無論 cursor 在 tray 還是 board 都走 mouse pixel + scale 1.0）。效果：點 tray slot 那一 frame、part 立刻 snap 到 mouse 像素位置、scale 同步補到 1.0；之後一路跟手。
+
+設計分離：**cursor 仍 cell-quantized**（紅綠預覽框 + canPlace 用 cell）/ **視覺跟 mouse pixel**（drag 手感、tray 撿起即刻生效）；放開時 part 變 placed、既有 lerp 從 mouse pixel 滑到 cell center，產生「落框感」。報告講「我學到視覺與 cursor 是兩件事 — cursor 是 game logic 的『指哪一格』、視覺是 UI 的『手上拿著的零件在哪』，分離後鍵盤模式跟滑鼠模式各取所需；連 tray↔board 邊界也不需要視覺特例」。
+
+**為什麼右鍵不需要 hit-test 也能用**：handleRemove 三分支（持有 → 退回 tray / cursorCol==TRAY_COL → no-op / OCCUPIED → 拔起）對任何 cursor 位置都成立。所以 Input::pollMouse 只要在板面 hit 到時把 cursor 設過去（讓「在哪格右鍵就拔哪格」生效）、其它情形（含 tray、空白區）右鍵就退回手上的 part — 全交給 handleRemove 處理。
+
+**Action::Place 同樣享用三分支**：handlePlace 已寫好「持有+板面 → 放置 / 持有+TRAY → 提示移到板面 / 未持有+板面 OCCUPIED → 撿起 / 未持有+TRAY → 撿起 tray 該 part」。pollMouse 設好 cursor 再呼叫 `update(Action::Place)`、四種情況都對。
+
+**`won` 後不再讀滑鼠**：pollMouse 第一行 `if (g.won) return;` — 跟 update() 對齊（won 後鍵盤也吃不到）。
+
+### Verification / Tests Performed
+- Build：`cmake --build build` → 0 warning 0 error、4 個 .o 重編、1 個 link
+- Smoke：`./build/game docs/io/Example1.txt` 開窗 ~2 秒、raylib log 顯示完整 init（rcore/rlgl/rshapes/rtextures/rtext/rmodels/raudio 全 load、OpenGL 4.1 Metal、target 16.667ms/frame）、沒 crash、沒 stderr 警告
+- **手動互動測試**（待使用者跑，8 項在 plan.md Day 2b done 段）：tray 左鍵撿起 / drag follow / 板面左鍵放置（合法+不合法）/ 右鍵退回 / 板面左鍵撿起已放零件 / 板面右鍵拔零件 / 持有時左鍵點 tray no-op / 鍵盤零退化
+
+### Result
+- 滑鼠輸入完成（代碼層面）。
+- 拿到分數：**+0%**（不直接加分；補 rubric 完整性與 demo 體驗）。
+- 銀行存款：36.5% / 65%（不變）。
+- 新增公開 API：`Game::setCursor`、`Input::pollMouse`、`Layout` struct（+ `computeLayout`、`kTraySlotHeight/Width`）— 之後 Phase 5 editor 可重用 setCursor。
+
+### Risks / Follow-ups
+- drag follow 是 cell-quantized；若 demo 時老師覺得「不夠絲滑」、可改 Renderer::computeTarget 在 held+on-board 時讀 `GetMousePosition()` 直接拿像素位置（單檔小改）
+- 沒處理 mouse capture / window focus 邊界情況（mouse 移出視窗時的行為照 raylib 預設）— 兩週專案不值得花時間
+- 持有時 cursor 同時被鍵盤跟滑鼠驅動：keyboard `Action::MoveX` 改 cursor、滑鼠 hover 也改 cursor。若使用者按 W 然後立刻 mouse hover 別處、cursor 會被 mouse 蓋掉。目前 OK（drag follow 就是要這樣）；不持有時 keyboard 路徑也不會被影響（pollMouse 不持有時不動 cursor）
+
+### Other Notes
+**口頭報告素材**：
+- **「為什麼不擴 Action enum 變 variant」**：方案 A 看起來最 OO 最乾淨，實際上是「為了一個小問題改動 core API 一大塊」。方案 C 用「先設 cursor、再走既有 Action」分兩步完成同樣事情、新增 1 個小函式 — 展示「設計 API 時優先考慮改動量、不要為了純度做不成比例的重構」。
+- **「為什麼 Layout 提到 public header 是合理選擇」**：Layout 是 UI 內部物（不該 leak 進 Game/Parser），但它需要被 Input 跟 Renderer 兩個 UI 模組共用 — 「public to UI、private to core」就是 Renderer.h 的位置。展示「邊界不是非黑即白、要看 caller 是誰」。
+- **「drag follow 從 cell-quantized 改成 pixel-perfect 的設計演進」**：第一版我自己選 cell-quantized（理由：Renderer 維持純函式、視覺對「放到哪格」更明確），使用者試之前回報想要「緊跟滑鼠、不要卡頓」。第二版分離視覺與 cursor：**cursor 仍 cell-quantized**（紅綠預覽框與 canPlace 不變）、**視覺跟 mouse pixel 且 snap 不 lerp**（手感緊）、**放開時走 placed lerp**（落框感）。報告講：「我學到 cursor 是 game logic 的『指哪一格』、視覺是 UI 的『手上拿著的零件在哪』、這兩件事可以分離。第一版我把它們綁在一起、結果手感不對；第二版用一個 UI hint flag `mouseControlling` 把它們解耦、鍵盤模式 cursor=視覺=cell、滑鼠模式 cursor=cell（瞄準）/ 視覺=pixel（手感）」。
+- **「Layout 從 anon-ns 提到 public」是必要的小重構**：對應 CLAUDE.md「Default: don't refactor」原則的例外 — refactor 是為了實作新功能、不是為了純度。報告講「我學到 refactor 的合理時機：當新功能需要跨檔共用、把該共用的東西公開出來，比 copy-paste 更乾淨」。
+- **「重用既有 handlePlace / handleRemove 三分支」**：keyboard 跟 mouse 走同一條尾巴 — 不需要寫「滑鼠版的 place」「滑鼠版的 remove」。展示「設計分離後的好處：input source 與 game logic 解耦」。
+
+
+## 2026-05-24 — Day 2b pixel-perfect drag 第三輪：tray 撿起也立刻跟手（small）
+Phase: 2
+Commit: 本 commit
+
+使用者目視驗收第二版後回報「點 tray 撿起後要等手往板面走、part 才開始跟手」。把 [Renderer.cpp](../src/ui/Renderer.cpp) computeTarget 的 mouseControlling 分支從「held + on board」放寬到「held」（涵蓋 cursor 仍在 TRAY_COL 的情況）、且 animateParts 的 `mouseDrag` 條件同步改為 `held && mouseControlling`。結果：點 tray slot 那一 frame、part 立刻 snap 到 mouse 像素位置 + scale 1.0、之後一路跟手。沒動 Game/Input；只 2 處 Renderer 小編輯。Build 0/0、smoke OK。詳見上方 Phase 2 Day 2b entry 的「第三版」段。

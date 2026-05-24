@@ -1,6 +1,6 @@
 # STATUS.md — 進度與配分追蹤
 
-> Last updated: 2026-05-22  
+> Last updated: 2026-05-24（Day 2b 滑鼠驗收通過）  
 > 規劃 / 策略：[plan.md](plan.md) ｜ 配分細節：[scoring.md](scoring.md) ｜ 工作規範：[CLAUDE.md](../CLAUDE.md) ｜ 協作紀錄：[LOG.md](LOG.md)
 
 > **這份檔只回答「現在到哪、勾了哪些分」**。決策原則去 CLAUDE.md，階段規劃去 plan.md。
@@ -20,7 +20,7 @@
 
 **Phase 2 — 視覺打磨進行中**
 
-Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）已 commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）使用者手動驗收 8 項全綠，待 commit；Day 2b（滑鼠）/ Day 2c（音效）未開工。
+Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）已 commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）commit `6f7abcb` 已併；Day 2b（滑鼠 hover/pixel-perfect drag/左鍵放置/右鍵 cancel）2026-05-24 目視驗收通過、待 commit；Day 2c（音效）未開工。
 
 ---
 
@@ -38,10 +38,10 @@ Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）已 co
 
 ### 遊戲流程（共 15%，**全部必拿**）
 
-- [x] wasd / 滑鼠拖移選中零件 — 5%（鍵盤已驗，滑鼠 Phase 2 補上）
-- [x] r 旋轉零件 — 5%（4 方向循環已驗）
-- [x] Esc 拔掉零件 — 1%（持有→還原 / 盤面→拔起 兩種語意都驗過）
-- [x] Enter / 滑鼠左鍵放置 — 1%（鍵盤已驗，滑鼠 Phase 2 補上）
+- [x] wasd / 滑鼠拖移選中零件 — 5%（鍵盤 + 滑鼠 pixel-perfect drag 均驗收通過）
+- [x] r 旋轉零件 — 5%（4 方向循環已驗；mouse drag 中按 R 也保留旋轉動畫）
+- [x] Esc 拔掉零件 — 1%（鍵盤 Esc 持有→還原 / 盤面→拔起 + 滑鼠右鍵 = Remove 雙語意都驗過）
+- [x] Enter / 滑鼠左鍵放置 — 1%（鍵盤 + 滑鼠均驗收通過）
 - [x] 勝利判定 — 1.5%（You Win banner 驗過）
 - [x] 放置失敗印錯誤訊息 — 1.5%（重疊紅框 + 狀態列訊息驗過）
 
@@ -85,12 +85,13 @@ Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）已 co
 - **Phase 0**（2026-05-22）：CMake + raylib FetchContent + src/{core,ui}/ skeleton + .gitignore；build 0 warning，視窗 OK。詳見 [LOG.md Phase 0](LOG.md#2026-05-22--phase-0-完成基礎設施)
 - **Phase 1**（2026-05-22）：MVP 單色可玩。Part / Board / Parser / WinChecker / Game / Input / Renderer / main.cpp 共 9 檔；Example1.txt 手動互動驗證 8 項全綠（wasd / r 4循環 / Enter / Esc 雙語意 / 重疊紅框錯誤 / You Win）。詳見 [LOG.md Phase 1](LOG.md#2026-05-22--phase-1-完成mvp-單色關卡可玩)
 - **Phase 2 Day 1**（2026-05-22，commit `0fcfcd4`）：動畫骨架（per-part `currentCenterX/Y/Angle/Scale` lerp，`1 - exp(-dt*k)` frame-rate 獨立）+ 旋轉/移動 pivot（`Part::computeCenterCell` 取離形心最近占據格、cursor 改成 pivot target、中心格亮色 +120/ch）。+11%。
-- **Phase 2 Day 2a**（2026-05-22）：視覺 polish + 程序材質。圓角板面 / tray / win banner、背景垂直漸層、每 cell 上方高光帶（+70/ch）+ 下方 bevel（÷2），drop shadow 兩 pass（offset 4/5px）。使用者手動驗收 A–H 全綠。+4%。
+- **Phase 2 Day 2a**（2026-05-22，commit `6f7abcb`）：視覺 polish + 程序材質。圓角板面 / tray / win banner、背景垂直漸層、每 cell 上方高光帶（+70/ch）+ 下方 bevel（÷2），drop shadow 兩 pass（offset 4/5px）。使用者手動驗收 A–H 全綠。+4%。
+- **Phase 2 Day 2b**（2026-05-22 代碼 + 2026-05-24 驗收，待 commit）：滑鼠。Layout struct 從 Renderer.cpp anon-ns 提到 Renderer.h 公開；Game 加 `setCursor(row, col, isTray)` cursor 原語 + `bool mouseControlling` UI hint flag；Input 加 `pollMouse(Layout, Game&)` 做板面/tray hit-test + 左鍵 = Place / 右鍵 = Remove。drag follow 三輪迭代：cell-quantized（卡頓）→ pixel-perfect on board（緊跟手）→ pixel-perfect 從 tray 撿起起算（點 tray 即跟手）。視覺與 cursor 解耦：cursor 仍 cell-quantized 給紅綠框 + canPlace、視覺 = mouse pixel + snap 不 lerp。**不加分**（rubric 完整性而已）。
 - **文件結構**：CLAUDE / plan / STATUS / LOG / learning-notes / DEV_GUIDE / my-note 7 檔到位
 
 ## 進行中
 
-- 後續：Day 2b 滑鼠（不加分但補 rubric 完整性）→ Day 2c 音效（+1%，使用者已生 sound1.wav 一個）
+- 後續：Day 2c 音效（+1%，使用者已備 sound1.wav + victory.mp3，需補齊 pickup / place / rotate / win 4 個 wav）
 - 材質策略：純程序材質（不引入 png 資產）
 - 音效策略：使用者用 jsfxr 生 4 個 wav（pickup / place / rotate / win）
 

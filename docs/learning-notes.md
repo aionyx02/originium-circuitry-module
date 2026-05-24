@@ -1,6 +1,6 @@
 # learning-notes.md — 主題式技術筆記
 
-> Last updated: 2026-05-22  
+> Last updated: 2026-05-24（Phase 2 Day 2b pixel-perfect 二輪 polish）  
 > 規劃：[plan.md](plan.md) ｜ 進度：[STATUS.md](STATUS.md) ｜ 過程紀錄：[LOG.md](LOG.md) ｜ 工作規範：[CLAUDE.md](../CLAUDE.md)
 
 > **這份檔回答「這段 code 在做什麼、為什麼這樣做、demo / 口頭報告我得能講出什麼」。**  
@@ -15,7 +15,12 @@
 > 連結若無法直接點開，用 Cmd+F 搜 Feature 名稱。  
 > 用「Phase X · commit `<short>`」標注每個 entry 在哪段 code 改動產生，方便對照原始 commit 學習。
 
-### Phase 2 Day 2a — `<待 commit>` (2026-05-22)
+### Phase 2 Day 2b — `<待 commit>` (2026-05-22)
+滑鼠 hover / drag / 左鍵放置 / 右鍵 cancel
+
+- [Cursor 原語：用單一 setCursor 把多 input source 接到同條 Action 尾](#cursor-原語用單一-setcursor-把多-input-source-接到同條-action-尾)
+
+### Phase 2 Day 2a — `6f7abcb` (2026-05-22)
 視覺 polish + 程序材質 + drop shadow
 
 - [raylib 圓角與漸層 API（axis-aligned UI 元素用）](#raylib-圓角與漸層-apiaxis-aligned-ui-元素用)
@@ -430,3 +435,91 @@ demo / 口頭報告會被問到時，要能講出來什麼？
 
 #### Score Connection
 - 圖形介面：實作 GUI 2.5%（[scoring.md:90](scoring.md#L90)） — drop shadow 是 GUI polish 細節之一
+
+---
+
+### Cursor 原語：用單一 setCursor 把多 input source 接到同條 Action 尾
+*Phase 2 Day 2b · commit `<待 commit>`*
+
+#### What & Key Concepts
+- Phase 1 的 input flow：
+  ```
+  Input::poll() (鍵盤)  →  Action  →  Game::update(Action)  →  改 cursor + handlePlace/handleRemove
+  ```
+- Phase 2 Day 2b 加滑鼠時、有兩種設計選擇：
+  - **方案 A**：擴 `Action` 變 `std::variant`、每個 mouse action 帶 row/col；core 全部要動。
+  - **方案 C（採用）**：保留 keyboard flow 不動；Game 加一個 cursor 原語 `setCursor(row, col, isTray)`；Input 加 `pollMouse(Layout, Game&)` 翻譯滑鼠座標 → setCursor、再呼叫既有 `Action::Place / Remove`。
+- 結果：keyboard 跟 mouse 共用同一條尾巴：
+  ```
+                                                ┌──────────────┐
+  Input::poll()       →  Action::Move/Place/... ┤              │
+                                                │ Game::update ├──→ handlePlace/Remove
+  Input::pollMouse()  →  setCursor + update(    │              │
+                          Action::Place/Remove) └──────────────┘
+  ```
+
+#### Why This Design
+- **不擴 Action 的成本**：方案 A 看起來最 OO，但 `std::variant<MoveUp, ..., PlaceAt{row,col}, ...>` 要把所有 `update()` 的 switch 改寫成 `std::visit`、keyboard branch 也要適配 — 為了一個「滑鼠多帶 row/col」的小問題改動 core API 一大塊。
+- **單一 cursor 原語的好處**：`setCursor` 內部只是 `cursorRow/Col = ...` + `clampCursor()` + `syncHeldLocation()`，跟既有 keyboard `Action::MoveX` 用同一個 clamp + sync 尾巴 — invariant 不會走兩條不同的路。
+- **handlePlace / handleRemove 已經是三分支設計**：
+  - handlePlace：持有+板面 → 放置 / 持有+TRAY → 提示 / 未持有+板面 OCCUPIED → 撿起 / 未持有+TRAY → 撿起 tray 該 part
+  - handleRemove：持有 → 退回 tray / cursorCol==TRAY_COL → no-op / OCCUPIED → 拔起
+  - 對任何 cursor 位置都成立。滑鼠只需要把 cursor 設過去、再走 Action 就對。
+- **未來重用**：Phase 5 editor 也會有「點哪一格」需求 — `setCursor` 直接重用。
+- **代價（已知）**：cursor 同時被鍵盤跟滑鼠驅動 — 滑鼠 hover 會蓋掉 keyboard 剛改的 cursor。**只有持有時** pollMouse 才會主動跟 cursor；不持有時 keyboard 路徑零干擾。
+
+#### 設計演進：cell-quantized → pixel-perfect drag follow
+第一版（PR 提交前）寫 cell-quantized：cursor 跟到 cell、Renderer 既有 lerp 到 cell center 自動產生 drag-follow 視覺；好處是 Renderer 維持「只看 Game state」的純函式。使用者目視驗收前回報想要「緊跟滑鼠、不要卡頓感、瞄準交給紅綠框、放開時落到框框那」、改成 pixel-perfect。
+
+**關鍵洞察**：cursor 跟視覺其實是兩件事 —
+- **cursor**（cell-quantized）= game logic 的「使用者目前指哪一格」、紅綠預覽框 / canPlace / 最終落點 都用 cell
+- **part visual**（mouse pixel）= UI 的「手上拿著的零件目前長在螢幕哪裡」、純美學
+
+把這兩件事用 `bool Game::mouseControlling` 解耦：
+- 任何 mouse activity（移動、左/右鍵）→ `mouseControlling = true`
+- 任何鍵盤 `Action::Move*` → `mouseControlling = false`
+- Renderer 在「held + mouseControlling」分支 target = `GetMousePosition()` + scale 1.0；其它分支照舊（涵蓋 tray cursor，因此**從 tray 點擊撿起的那一 frame 就已跟手**、不等 mouse 移到板面）
+- animateParts 加 `mouseDrag = held && mouseControlling`：snap `currentCenterX/Y`（不 lerp），只 lerp angle/scale
+
+**手感結果**：
+- mouse mode：part 緊跟滑鼠像素、零延遲；紅綠框落在 cursor cell；點下時 handlePlace 用 cursor cell（不是 mouse pixel）驗證 + 放置 — 視覺上「框內合法 = 點下 = 放這格」
+- keyboard mode：跟 Phase 2 Day 1 一樣，視覺 = cursor cell center、所有東西 cell-quantized
+- 放開時：`heldPartIdx = -1` → 那 part 變 placed → computeTarget 走 placed 分支（cell center）→ 既有 lerp 從 mouse pixel 滑到 cell center 產生「落框感」
+
+**反思**：第一版設計時、我把「視覺跟 cursor 綁在一起」當作 Renderer 純函式的保證、結果手感差。**Renderer 直接讀 `GetMousePosition()` 確實打破了純函式性**（每 frame 不同 mouse → 不同 target），但這個耦合只發生在「held + mouseControlling」這個窄分支、其它分支仍是 Game state 的純函式。**邊界該打破時就要打破、不要為了純度抹掉手感**。
+
+#### Implementation Notes
+- [Game::setCursor](../src/core/Game.cpp) 三行：
+  ```cpp
+  void Game::setCursor(int row, int col, bool isTray) {
+      cursorRow = row;
+      cursorCol = isTray ? TRAY_COL : col;
+      clampCursor();
+      syncHeldLocation();
+  }
+  ```
+- [Input::pollMouse](../src/ui/Input.cpp) 結構：
+  1. `GetMouseDelta` / 點擊偵測 → 算 `mouseActive`；mouseActive → `g.mouseControlling = true`
+  2. 板面 hit-test：`(mouseX - boardX) / cellSize` 整除 → (boardRow, boardCol) 或 -1
+  3. tray hit-test：`(mouseY - trayY) / kTraySlotHeight` 整除 → trayRow 或 -1
+  4. 左鍵：在板面 → `setCursor` + `update(Action::Place)`；在 tray 且未持有 → `setCursor` + `update(Action::Place)`
+  5. 右鍵：在板面就先 `setCursor`、無論在哪 → `update(Action::Remove)`
+  6. **末尾**：若 `mouseControlling && held && over board` → `setCursor` 跟著 mouse cell（每 frame、不依賴 mouseMoved）— 這樣 click-place 自動選下一個 part 後、新 part 也立刻跟上滑鼠
+- Layout 從 [Renderer.cpp](../src/ui/Renderer.cpp) anon namespace 提到 [Renderer.h](../src/ui/Renderer.h) public — Input.cpp include Renderer.h 後共用 `Layout` / `computeLayout` / `kTraySlotHeight/Width`。沒形成循環（Renderer.h → Game.h；Input.h → Renderer.h → Game.h；Game.h 不 include 任何 UI）。
+
+#### What I Should Be Able To Explain
+- Q：為什麼不擴 Action enum 變 variant？  
+  A：成本不成比例 — 只為了「滑鼠多帶 row/col」就要把 update() 的 switch 全部改寫、keyboard branch 也要適配。方案 C 用 cursor 原語分兩步、新增 1 個小函式即可。設計時優先考慮改動量、不要為了純度做大重構。
+- Q：keyboard 跟 mouse 為什麼能共用同一條尾巴？  
+  A：因為 cursor 是抽象的「使用者目前指的格子」、不限定誰改它的。`setCursor` 內部做 clamp + sync held、跟既有 `Action::MoveX` 共用尾巴。`handlePlace / handleRemove` 已經是「對任何 cursor 位置都成立」的三分支設計、不需要寫滑鼠版的 place / remove。
+- Q：為什麼最後選 pixel-perfect drag follow？跟最初 cell-quantized 的設計演進是？  
+  A：第一版選 cell-quantized（Renderer 維持純函式、視覺=cursor 簡單）、使用者試之前回報「希望緊跟滑鼠、不要卡頓」。改成 pixel-perfect：拆開 cursor 跟視覺、cursor 仍 cell-quantized（紅綠框、canPlace、落點）、視覺 = mouse pixel 且 snap 不 lerp。Renderer 確實在這個窄分支裡讀 `GetMousePosition()`、打破純函式性、但其它分支不受影響。學到：邊界該打破時就要打破、不要為了純度抹掉手感。
+- Q：mouseControlling 怎麼切換？keyboard 跟 mouse 衝突時誰贏？  
+  A：任何 mouse activity（移動、點擊）→ `mouseControlling = true`；任何鍵盤 `Action::Move*` → `mouseControlling = false`。Place/Remove/Rotate 不變動 flag。所以 mouse drag 中按 R 旋轉 → 維持 mouse mode；mouse drag 中按 W 移動 → 切回 keyboard mode、cursor 跟 part 立刻跳到 cell。
+- Q：Layout 為什麼能從 anon namespace 提到 public header？  
+  A：Layout 是 UI 內部物（不該 leak 進 Game/Parser/Solver），但需要被 Input 跟 Renderer 兩個 UI 模組共用 — 「public to UI、private to core」就是 Renderer.h 的位置。邊界不是非黑即白、要看 caller 是誰。
+- Q：cursor 同時被鍵盤跟滑鼠驅動會打架嗎？  
+  A：只有持有時 pollMouse 才會主動跟 cursor、不持有時 keyboard 路徑零干擾。持有時就是要 drag follow — 玩家按 W 然後 mouse hover 別處、cursor 跟著 mouse 是預期行為。
+
+#### Score Connection
+- 遊戲流程：wasd/滑鼠移動 5%（[scoring.md:47](scoring.md#L47)）+ Enter/左鍵放置 1%（[scoring.md:50](scoring.md#L50)） — 不增加分數，但補上「或滑鼠拖移 / 左鍵放置」的 rubric 完整性與 demo 體驗

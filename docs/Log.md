@@ -17,6 +17,7 @@
 > **新增 entry 時：(1) 把實際 entry append 到本檔最下方（時間正序），(2) 在這個索引「最上面」加一行。**  
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
+- **2026-05-24** — [Phase 2 UI polish：Exo 2 字體 + tray redesign](#2026-05-24--phase-2-ui-polishexo-2-字體--tray-redesign) · `Phase 2` · `Implementation + Review` · 使用者指定 Exo 2，AI 重整 sidebar/tray/status/win banner；經截圖 review 後修正 tray preview 重疊、色條與選取框
 - 05-23? docs: add README.md / update learning log
 - **2026-05-24** — [移除 autoSelectNextUnplaced（滑鼠模式下零件無故跟手 bug）](#2026-05-24--移除-autoselectnextunplaced滑鼠模式零件無故跟手-bugsmall) · `Phase 2` · `small` · Day 2c 驗收暴露的 Phase 1 keyboard-era 殘留、兩處 call + 函式 + 宣告全拔掉
 - **2026-05-24** — [Phase 2 Day 2c：音效（pickup / place / spin / win）](#2026-05-24--phase-2-day-2c音效pickup--place--spin--win) · `Phase 2` · `Implementation` · 音效 1% = +1%，main loop 加 InitAudioDevice + 4 個 LoadSound + 每 frame 狀態 diff 觸發、CMake 加 post-build copy_directory assets/
@@ -954,3 +955,93 @@ Commit: 待 commit（緊接 Day 2c `2ea7726`）
 
 Day 2c 音效驗收時使用者回報：「一進入遊戲零件就跟滑鼠、放完第一個下一個自動跟」。根因是 Phase 1 keyboard-era 的 `Game::autoSelectNextUnplaced()` — 兩處呼叫（[Game.cpp init() 末](../src/core/Game.cpp)、[handlePlace 放置成功後](../src/core/Game.cpp)）讓 `heldPartIdx` 永遠 ≥ 0。鍵盤時代這是 feature（開檔就有東西可控、放完接下一個流暢）；Phase 2 Day 2b 加滑鼠後變 bug（使用者期待「我點才開始持有」）。修法：兩處呼叫拔掉、整個函式 + Game.h 的 declaration 刪掉（YAGNI、不留死代碼）、順便刪掉 handlePlace 裡跟著沒用的 `placedIdx` 跟 `"All parts placed."` 訊息（最後一個放完 won banner 會 cover）。Build 0/0；行為改動：(a) 開檔 heldPartIdx = -1、tray 零件靜止不跟手；(b) 放置成功後 heldPartIdx = -1、不自動接下一個、使用者需點 tray 或按 Enter 主動撿；(c) 鍵盤路徑相容（cursor 初始在 TRAY_COL row 0，按 Enter 一樣撿第一件）。音效 priority 不受影響。**口頭素材**：好的 invariant 在新 input source 加入後可能變 bug — 不是 code 寫錯、是需求變了；發現的時機是 manual verification、testing 不可少。
 
+
+## 2026-05-24 — Phase 2 UI polish：Exo 2 字體 + tray redesign
+
+Type: Implementation + Review  
+Phase: 2  
+Feature: UI polish / tray layout / font asset  
+Commit: 待 commit
+
+### Context
+
+Phase 2 已完成並驗收，進 Phase 3 前使用者希望先把 UI 調得更好看，特別提到「字體想改、要帥帥風」以及 tray 想調整。這次不是為了新增配分，而是把已拿到的 GUI/動畫/滑鼠成果整理成更像完整作品的視覺狀態，降低 demo 時的 debug 感。
+
+### AI Contribution
+
+AI 先閱讀 `Renderer.cpp/.h`、`Input.cpp`、`main.cpp` 與進度文件，指出目前 UI 的主要問題：預設 raylib 字體太像 debug HUD、tray 顯示 `P0 c0 / placed / held / in tray` 太內部狀態、底部快捷鍵文字過長、整體缺乏一致視覺語言。
+
+實作時 AI：
+- 下載並加入 Google Fonts 的 Exo 2 字體到 `assets/fonts/Exo2-Regular.ttf`
+- 在 `Renderer` 中加入 `LoadFontEx` / `UnloadFont`，並在缺字體時 fallback 到 raylib default font
+- 把文字繪製改成 `DrawTextEx` / `MeasureTextEx`，讓 title、tray、status、win banner 都走同一套字體
+- 重整左側 tray 成 sidebar：`ORIGINIUM / CIRCUIT REPAIR` header、`PARTS CACHE`、`PART 01`、`READY / ACTIVE / INSTALLED`
+- 使用者截圖 review 後，第二輪修掉 tray preview 太大、跨 slot、黃色選取框太搶、色條全部綠色等問題
+- 新增 `computeTrayPreviewTarget()`，根據 rotated cells 的 bounding box 計算 tray preview scale/position，讓不同形狀都能 fit 進 slot 右側 preview box
+
+### Human Decision / Review
+
+使用者決定：
+- 字體選 **Exo 2**（AI 原先提 Rajdhani / Exo 2 / Orbitron，使用者拍板 Exo 2）
+- 先讓 AI 做一版、使用者目視效果後再調
+- 第一版截圖 review 後，使用者同意 AI 對 tray 的診斷並要求直接修改
+
+使用者提供的截圖讓問題非常明確：綠色零件 preview 跨到下一格、藍/紅/黃 preview 偏大偏右、黃色選取框和冷色系風格衝突、色條未對應零件顏色。第二輪修改依照這些目視回饋進行。
+
+### Details
+
+**A. 字體與資產**
+
+- 新增 `assets/fonts/Exo2-Regular.ttf`
+- `CMakeLists.txt` 既有 post-build `copy_directory assets` 規則會自動把字體複製到 `build/assets/fonts/`
+- `Renderer` 建構時載入 `assets/fonts/Exo2-Regular.ttf`，若失敗則使用 `GetFontDefault()`
+- `main.cpp` 用區塊 scope 包住 `Renderer renderer; while (...)`，確保 `Renderer::~Renderer()` 在 `CloseWindow()` 前釋放 font texture
+
+**B. tray / sidebar 視覺調整**
+
+- `kTraySlotHeight` 從 78 調成 88，`kTraySlotWidth` 從 200 調成 238
+- 左側預留寬度從 260 調成 310，讓 sidebar 和 board 不互相擠壓
+- tray header 壓矮，slot 往上移，減少第一版過多留白
+- slot 文字改成玩家可讀語意：`PART 01`、`READY`、`ACTIVE`、`INSTALLED`
+- slot 左側色條改用 `partColor(partIndex)`，避免第一版全部顯示綠色
+- cursor/selected 狀態由亮黃色改為 cyan glow，與冷色科技風一致
+
+**C. tray preview fit-to-box**
+
+第一版仍用固定 tray scale，導致高或寬的零件跨 slot。第二版新增：
+
+- `computeRotatedBounds()`：掃 `p.rotatedCells()` 算目前旋轉下的 occupied bounds
+- `computeTrayPreviewTarget()`：用 bounds 計算 shape rows/cols，根據 preview box 尺寸算 `tScale`
+- preview center 再扣回 rotated pivot offset，確保零件視覺中心在 preview box 中
+
+這讓 tray 裡的零件 preview 與 board 上的 pivot/旋轉語意共用同一套 animation fields，不需要另開一套 tray-only drawing。
+
+### Verification / Tests Performed
+
+- `cmake --build build` 通過
+- `file assets/fonts/Exo2-Regular.ttf` 確認為 TrueType Font
+- `find build/assets -maxdepth 3 -type f` 確認 build 後有 `build/assets/fonts/Exo2-Regular.ttf`
+- 使用者第一版截圖 review 後進行第二輪修正；第二輪已完成 build 驗證，待使用者再次目視確認
+
+### Result
+
+- UI 字體從 raylib default 換成 Exo 2
+- tray 從 debug list 改為完整 sidebar/cache panel
+- status message / shortcuts / win banner 改為同一套視覺語言
+- tray preview 現在會自動縮放，不再因固定 scale 跨 slot
+- 這次不新增配分，但提升 Phase 2 既有 GUI 成果的 demo 質感
+
+### Risks / Follow-ups
+
+- 尚未針對所有測資、多零件數量和不同 board 尺寸做截圖驗證；若零件很多，sidebar 高度可能超出 720 高度，需要 scroll 或壓縮 slot
+- `computeTrayPreviewTarget()` 目前最多 scale 到 0.48，若未來有非常小的零件，可能看起來偏保守，可再調上限
+- board 區仍偏原本 Phase 2 風格；下一步可加 board frame、constraint badge 與更清楚的 row/column hint 層級
+- Exo 2 字體授權屬 Google Fonts/OFL，打包時要確認是否需要附授權文字（Phase 6 packaging 可處理）
+
+### Other Notes
+
+**口頭報告素材**：
+
+- **「AI 不是一次生成最終 UI，而是 human review 後迭代」**：第一版完成後使用者截圖指出實際觀感問題，AI 再根據截圖分析並做第二輪修改。這能展示 AI 協作中人類 review 的必要性。
+- **「固定常數 vs layout-driven」**：第一版固定 tray scale，遇到不同形狀就跨格；第二版改用 bounding box 算 scale，從「調常數」進化成「根據資料排版」。
+- **「功能完成後仍要 polish」**：Phase 2 配分已拿滿，但 demo 觀感仍會影響口頭報告與老師印象，所以在進 Phase 3 前做小範圍 UI polish 是合理投資。

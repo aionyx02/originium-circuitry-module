@@ -2,6 +2,7 @@
 #define ORIGINIUM_UI_RENDERER_H
 
 #include "core/Game.h"
+#include "raylib.h"
 
 struct Layout {
     int rows;
@@ -13,14 +14,21 @@ struct Layout {
     int trayY;
 };
 
-constexpr int kTraySlotHeight = 78;
-constexpr int kTraySlotWidth  = 200;
+constexpr int kTraySlotHeight = 88;
+constexpr int kTraySlotWidth  = 238;
 
 Layout computeLayout(const Game& g, int screenW, int screenH);
 
 class Renderer {
 public:
+    Renderer();
+    ~Renderer();
+
     void draw(Game& g, int screenW, int screenH, float dt);
+
+private:
+    Font uiFont{};
+    bool hasUiFont = false;
 };
 
 #endif

@@ -8,8 +8,8 @@
 
 namespace {
 
-constexpr int kTrayInnerX     = 130;  // offset within slot where part center sits
-constexpr int kTrayInnerY     = 30;
+constexpr int kTrayPreviewX   = 124;  // offset within slot where preview box starts
+constexpr int kTrayPreviewW   = 98;
 
 Color partColor(unsigned partIndex) {
     static const Color palette[] = {
@@ -42,7 +42,7 @@ Layout computeLayout(const Game& g, int screenW, int screenH) {
     L.rows = std::max(1, static_cast<int>(g.board.rows));
     L.cols = std::max(1, static_cast<int>(g.board.cols));
 
-    const int leftReserve   = 260;
+    const int leftReserve   = 310;
     const int rightPadding  = 60;
     const int topReserve    = 80;
     const int bottomReserve = 120;
@@ -58,17 +58,12 @@ Layout computeLayout(const Game& g, int screenW, int screenH) {
     L.boardX = screenW - boardW - rightPadding;
     L.boardY = topReserve + (availH - boardH) / 2;
 
-    L.trayX = 40;
-    L.trayY = 90;
+    L.trayX = 46;
+    L.trayY = 118;
     return L;
 }
 
 namespace {
-
-void drawFilledBordered(int x, int y, int size, Color fill, Color border) {
-    DrawRectangle(x, y, size, size, fill);
-    DrawRectangleLines(x, y, size, size, border);
-}
 
 void drawRoundedCell(int x, int y, int size, Color fill, Color border) {
     Rectangle r = { (float)x, (float)y, (float)size, (float)size };
@@ -81,12 +76,33 @@ void drawRoundedRect(Rectangle r, float roundness, Color fill, Color border, flo
     DrawRectangleRoundedLinesEx(r, roundness, 8, borderThick, border);
 }
 
-void drawCenteredText(const char* msg, int boxX, int boxY, int boxW, int boxH, int fontSize, Color tint) {
-    const int tw = MeasureText(msg, fontSize);
-    DrawText(msg, boxX + (boxW - tw) / 2, boxY + (boxH - fontSize) / 2, fontSize, tint);
+void drawGlowRect(Rectangle r, float roundness, Color color) {
+    Color soft = color;
+    soft.a = 42;
+    DrawRectangleRounded(Rectangle{r.x - 3.0f, r.y - 3.0f, r.width + 6.0f, r.height + 6.0f},
+                         roundness, 8, soft);
+    DrawRectangleRoundedLinesEx(r, roundness, 8, 2.0f, color);
 }
 
-void drawBoardBg(const Game& g, const Layout& L) {
+float textWidth(Font font, const char* msg, float fontSize, float spacing = 1.0f) {
+    return MeasureTextEx(font, msg, fontSize, spacing).x;
+}
+
+void drawText(Font font, const char* msg, float x, float y, float fontSize, Color tint,
+              float spacing = 1.0f) {
+    DrawTextEx(font, msg, Vector2{x, y}, fontSize, spacing, tint);
+}
+
+void drawCenteredText(Font font, const char* msg, int boxX, int boxY, int boxW, int boxH,
+                      int fontSize, Color tint) {
+    const Vector2 size = MeasureTextEx(font, msg, static_cast<float>(fontSize), 1.0f);
+    DrawTextEx(font, msg,
+               Vector2{boxX + (boxW - size.x) / 2.0f,
+                       boxY + (boxH - size.y) / 2.0f},
+               static_cast<float>(fontSize), 1.0f, tint);
+}
+
+void drawBoardBg(const Game& g, const Layout& L, Font font) {
     const Board& b = g.board;
     const Color emptyFill   = { 45,  50,  62, 255};
     const Color emptyBorder = { 80,  90, 110, 255};
@@ -101,7 +117,7 @@ void drawBoardBg(const Game& g, const Layout& L) {
 
             if (cell == Board::CANNOT_PLACE) {
                 drawRoundedCell(x, y, L.cellSize, blockedFill, blockedRed);
-                drawCenteredText("X", x, y, L.cellSize, L.cellSize, 24, blockedRed);
+                drawCenteredText(font, "X", x, y, L.cellSize, L.cellSize, 24, blockedRed);
             } else if (Board::isCannotMove(cell)) {
                 const int colorIdx = Board::cannotMoveColor(cell);
                 const Color cc = colorBadge(static_cast<unsigned>(colorIdx));
@@ -109,7 +125,7 @@ void drawBoardBg(const Game& g, const Layout& L) {
                                     static_cast<unsigned char>(cc.g / 3),
                                     static_cast<unsigned char>(cc.b / 3), 255};
                 drawRoundedCell(x, y, L.cellSize, dim, cc);
-                drawCenteredText("=", x, y, L.cellSize, L.cellSize, 24, cc);
+                drawCenteredText(font, "=", x, y, L.cellSize, L.cellSize, 24, cc);
             } else {
                 // EMPTY or OCCUPIED — empty bg under (placed parts render on top)
                 drawRoundedCell(x, y, L.cellSize, emptyFill, emptyBorder);
@@ -118,7 +134,7 @@ void drawBoardBg(const Game& g, const Layout& L) {
     }
 }
 
-void drawConstraints(const Game& g, const Layout& L) {
+void drawConstraints(const Game& g, const Layout& L, Font font) {
     const Board& b = g.board;
     if (b.colors == 0) return;
 
@@ -130,14 +146,14 @@ void drawConstraints(const Game& g, const Layout& L) {
         const int y = L.boardY - 30;
         char buf[16];
         std::snprintf(buf, sizeof(buf), "%u", b._constraints[color][L.rows + c]);
-        drawCenteredText(buf, x, y, L.cellSize, 20, 18, tint);
+        drawCenteredText(font, buf, x, y, L.cellSize, 20, 18, tint);
     }
     for (int r = 0; r < L.rows; ++r) {
         const int x = L.boardX - 30;
         const int y = L.boardY + r * L.cellSize;
         char buf[16];
         std::snprintf(buf, sizeof(buf), "%u", b._constraints[color][r]);
-        drawCenteredText(buf, x, y, 24, L.cellSize, 18, tint);
+        drawCenteredText(font, buf, x, y, 24, L.cellSize, 18, tint);
     }
 }
 
@@ -164,62 +180,153 @@ void drawPlacementHighlight(const Game& g, const Layout& L) {
 }
 
 void drawCursor(const Game& g, const Layout& L) {
+    const Color cursor = Color{109, 236, 218, 255};
     if (g.cursorCol >= 0) {
         const int x = L.boardX + g.cursorCol * L.cellSize;
         const int y = L.boardY + g.cursorRow * L.cellSize;
         DrawRectangleLinesEx(Rectangle{(float)x - 2, (float)y - 2,
-                                       (float)L.cellSize + 4, (float)L.cellSize + 4}, 3, YELLOW);
+                                       (float)L.cellSize + 4, (float)L.cellSize + 4}, 3, cursor);
     } else {
         const int y = L.trayY + g.cursorRow * kTraySlotHeight - 4;
         const int x = L.trayX - 6;
-        DrawRectangleLinesEx(Rectangle{(float)x - 2, (float)y - 2,
-                                       (float)kTraySlotWidth + 4, (float)kTraySlotHeight + 4}, 3, YELLOW);
+        drawGlowRect(Rectangle{(float)x - 1.0f, (float)y - 1.0f,
+                               (float)kTraySlotWidth + 2.0f, (float)kTraySlotHeight + 2.0f},
+                     0.10f, cursor);
     }
 }
 
-void drawTrayBg(const Game& g, const Layout& L) {
-    DrawText("TRAY", L.trayX, L.trayY - 30, 18, RAYWHITE);
+void drawSidebar(const Game& g, const Layout& L, Font font) {
+    const int partCount = static_cast<int>(g.parts.size());
+    const float panelH = std::max(430.0f, partCount * kTraySlotHeight + 140.0f);
+    Rectangle panel = {24.0f, 20.0f, 276.0f, panelH};
+    drawRoundedRect(panel, 0.08f, Color{18, 22, 32, 224}, Color{72, 94, 112, 255}, 1.0f);
+    DrawRectangleGradientV(25, 21, 274, static_cast<int>(panelH) - 2,
+                           Color{35, 43, 56, 120}, Color{16, 20, 30, 40});
+
+    drawText(font, "ORIGINIUM", 44.0f, 30.0f, 27.0f, Color{232, 244, 245, 255}, 1.5f);
+    drawText(font, "CIRCUIT REPAIR", 46.0f, 59.0f, 14.0f, Color{109, 236, 218, 255}, 1.2f);
+
+    DrawRectangle(46, 90, 70, 2, Color{109, 236, 218, 190});
+    drawText(font, "PARTS CACHE", static_cast<float>(L.trayX), static_cast<float>(L.trayY - 30),
+             15.0f, Color{174, 191, 203, 255}, 1.4f);
+}
+
+void drawTrayBg(const Game& g, const Layout& L, Font font) {
     for (size_t i = 0; i < g.parts.size(); ++i) {
         const int slotY = L.trayY + static_cast<int>(i) * kTraySlotHeight;
         const bool placed = g.parts[i].location.placed;
         const bool held   = static_cast<int>(i) == g.heldPartIdx;
         const bool inTray = !placed && !held;
 
-        const Color slotBg = inTray ? Color{45, 50, 62, 255} : Color{35, 38, 46, 255};
+        const Color slotBg =
+            held   ? Color{36, 55, 61, 255} :
+            inTray ? Color{31, 37, 48, 255} :
+                     Color{21, 25, 33, 230};
+        const Color border =
+            held   ? Color{109, 236, 218, 255} :
+            placed ? Color{64, 79, 88, 210} :
+                     Color{75, 88, 104, 255};
         Rectangle slotRec = { (float)(L.trayX - 6), (float)(slotY - 6),
                               (float)kTraySlotWidth, (float)kTraySlotHeight };
-        drawRoundedRect(slotRec, 0.18f, slotBg, Color{90, 100, 120, 255}, 1.0f);
+        drawRoundedRect(slotRec, 0.10f, slotBg, border, held ? 2.0f : 1.0f);
 
         char label[32];
-        std::snprintf(label, sizeof(label), "P%zu  c%u", i, g.parts[i].colorIndex);
-        DrawText(label, L.trayX, slotY - 2, 14, RAYWHITE);
+        std::snprintf(label, sizeof(label), "PART %02zu", i + 1);
+        drawText(font, label, static_cast<float>(L.trayX), static_cast<float>(slotY),
+                 15.0f, placed ? Color{114, 128, 139, 255} : Color{232, 244, 245, 255}, 1.0f);
+
+        const Color cc = partColor(g.parts[i].partIndex);
+        DrawRectangleRounded(Rectangle{(float)L.trayX, (float)(slotY + 26), 44.0f, 8.0f},
+                             0.8f, 6, placed ? Color{cc.r, cc.g, cc.b, 80} : cc);
+
+        const Rectangle preview = {(float)(L.trayX + kTrayPreviewX), (float)(slotY + 10),
+                                   (float)kTrayPreviewW, (float)(kTraySlotHeight - 22)};
+        Color previewFrame = held ? Color{109, 236, 218, 86} : Color{74, 91, 105, 95};
+        DrawRectangleRoundedLinesEx(preview, 0.12f, 6, 1.0f, previewFrame);
 
         const char* state =
-            placed ? "placed" :
-            held   ? "held"   : "in tray";
-        DrawText(state, L.trayX, slotY + kTraySlotHeight - 24, 12, Color{180, 185, 200, 255});
+            placed ? "INSTALLED" :
+            held   ? "ACTIVE"    : "READY";
+        const Color stateColor =
+            held   ? Color{109, 236, 218, 255} :
+            placed ? Color{112, 124, 132, 255} :
+                     Color{170, 184, 196, 255};
+        drawText(font, state, static_cast<float>(L.trayX),
+                 static_cast<float>(slotY + kTraySlotHeight - 30), 13.0f, stateColor, 1.2f);
     }
 }
 
-void drawStatus(const Game& g, int screenW, int screenH) {
+void drawStatus(const Game& g, int screenW, int screenH, Font font) {
     if (!g.statusMessage.empty()) {
-        DrawText(g.statusMessage.c_str(), 40, screenH - 80, 18, Color{255, 200, 100, 255});
+        Rectangle msgBg = {34.0f, (float)screenH - 92.0f,
+                           std::min(560.0f, textWidth(font, g.statusMessage.c_str(), 18.0f) + 28.0f),
+                           34.0f};
+        drawRoundedRect(msgBg, 0.18f, Color{48, 33, 25, 230}, Color{255, 176, 88, 220}, 1.0f);
+        drawText(font, g.statusMessage.c_str(), 48.0f, static_cast<float>(screenH - 84),
+                 18.0f, Color{255, 203, 126, 255}, 1.0f);
     }
-    DrawText("WASD/Arrows: move   R: rotate   Enter/Space: place/pick   Esc/Bksp: drop/remove",
-             40, screenH - 40, 16, Color{160, 170, 190, 255});
+    drawText(font, "WASD / ARROWS  MOVE      R  ROTATE      ENTER / CLICK  PLACE      ESC / RMB  CANCEL",
+             40.0f, static_cast<float>(screenH - 38), 15.0f, Color{143, 160, 174, 255}, 1.0f);
     (void)screenW;
 }
 
-void drawWinBanner(int screenW, int screenH) {
-    const int bw = 380, bh = 90;
+void drawWinBanner(int screenW, int screenH, Font font) {
+    const int bw = 430, bh = 108;
     const int bx = (screenW - bw) / 2;
     const int by = (screenH - bh) / 2;
     Rectangle r = { (float)bx, (float)by, (float)bw, (float)bh };
-    drawRoundedRect(r, 0.24f, Color{0, 0, 0, 220}, GOLD, 3.0f);
-    drawCenteredText("You Win!", bx, by, bw, bh, 40, GOLD);
+    drawRoundedRect(r, 0.12f, Color{9, 14, 20, 232}, Color{109, 236, 218, 255}, 2.5f);
+    drawCenteredText(font, "CIRCUIT RESTORED", bx, by + 20, bw, 44, 32, Color{230, 249, 246, 255});
+    drawCenteredText(font, "All constraints satisfied", bx, by + 64, bw, 24, 16, Color{109, 236, 218, 255});
 }
 
 // --- Phase 2 animation ---
+
+void computeRotatedBounds(const Part& p, int& minR, int& maxR, int& minC, int& maxC) {
+    minR = 0;
+    maxR = 0;
+    minC = 0;
+    maxC = 0;
+    bool any = false;
+    for (auto [dr, dc] : p.rotatedCells()) {
+        if (!any) {
+            minR = maxR = dr;
+            minC = maxC = dc;
+            any = true;
+        } else {
+            minR = std::min(minR, dr);
+            maxR = std::max(maxR, dr);
+            minC = std::min(minC, dc);
+            maxC = std::max(maxC, dc);
+        }
+    }
+}
+
+void computeTrayPreviewTarget(const Part& p, int partIdx, const Layout& L,
+                              float& tx, float& ty, float& tScale) {
+    int minR, maxR, minC, maxC;
+    computeRotatedBounds(p, minR, maxR, minC, maxC);
+
+    int rCr = 0;
+    int rCc = 0;
+    p.rotatedCenterCell(rCr, rCc);
+
+    const int shapeRows = std::max(1, maxR - minR + 1);
+    const int shapeCols = std::max(1, maxC - minC + 1);
+    const float previewW = static_cast<float>(kTrayPreviewW - 16);
+    const float previewH = static_cast<float>(kTraySlotHeight - 30);
+    tScale = std::min(previewW / (shapeCols * L.cellSize),
+                      previewH / (shapeRows * L.cellSize));
+    tScale = std::min(tScale, 0.48f);
+
+    const float scs = L.cellSize * tScale;
+    const float previewCenterX = L.trayX + kTrayPreviewX + kTrayPreviewW * 0.5f;
+    const float previewCenterY = L.trayY + partIdx * kTraySlotHeight + kTraySlotHeight * 0.48f;
+    const float occupiedCenterC = (minC + maxC + 1) * 0.5f;
+    const float occupiedCenterR = (minR + maxR + 1) * 0.5f;
+    tx = previewCenterX - (occupiedCenterC - rCc) * scs;
+    ty = previewCenterY - (occupiedCenterR - rCr) * scs;
+}
 
 void computeTarget(const Part& p, int partIdx, const Game& g, const Layout& L,
                    float& tx, float& ty, float& tAngle, float& tScale) {
@@ -249,9 +356,7 @@ void computeTarget(const Part& p, int partIdx, const Game& g, const Layout& L,
             (void)rCr; (void)rCc;
         } else if (g.cursorCol == Game::TRAY_COL) {
             // Keyboard + held in tray: small preview at tray slot.
-            tx = static_cast<float>(L.trayX - 6 + kTrayInnerX);
-            ty = static_cast<float>(L.trayY + g.cursorRow * kTraySlotHeight + kTrayInnerY);
-            tScale = 0.5f;
+            computeTrayPreviewTarget(p, g.cursorRow, L, tx, ty, tScale);
         } else {
             // Keyboard + on board: cursor IS the pivot target.
             tx = L.boardX + (g.cursorCol + 0.5f) * L.cellSize;
@@ -260,9 +365,7 @@ void computeTarget(const Part& p, int partIdx, const Game& g, const Layout& L,
             (void)rCr; (void)rCc;
         }
     } else {
-        tx = static_cast<float>(L.trayX - 6 + kTrayInnerX);
-        ty = static_cast<float>(L.trayY + partIdx * kTraySlotHeight + kTrayInnerY);
-        tScale = 0.4f;
+        computeTrayPreviewTarget(p, partIdx, L, tx, ty, tScale);
     }
 }
 
@@ -406,25 +509,43 @@ void drawParts(const Game& g, const Layout& L) {
 
 } // namespace
 
+Renderer::Renderer() {
+    uiFont = LoadFontEx("assets/fonts/Exo2-Regular.ttf", 64, nullptr, 0);
+    hasUiFont = IsFontValid(uiFont);
+    if (hasUiFont) {
+        SetTextureFilter(uiFont.texture, TEXTURE_FILTER_BILINEAR);
+    } else {
+        uiFont = GetFontDefault();
+    }
+}
+
+Renderer::~Renderer() {
+    if (hasUiFont) {
+        UnloadFont(uiFont);
+    }
+}
+
 void Renderer::draw(Game& g, int screenW, int screenH, float dt) {
+    Font font = hasUiFont ? uiFont : GetFontDefault();
+
     // Vertical gradient bg — darker top fades to deeper bottom.
     ClearBackground(Color{18, 20, 28, 255});
     DrawRectangleGradientV(0, 0, screenW, screenH,
-                           Color{38, 42, 58, 255},
-                           Color{18, 20, 28, 255});
-    DrawText("Originium Circuit Repair", 40, 24, 24, RAYWHITE);
+                           Color{26, 34, 43, 255},
+                           Color{10, 13, 19, 255});
 
     const Layout L = computeLayout(g, screenW, screenH);
 
     animateParts(g, L, dt);
 
-    drawConstraints(g, L);
-    drawBoardBg(g, L);
+    drawSidebar(g, L, font);
+    drawConstraints(g, L, font);
+    drawBoardBg(g, L, font);
     drawPlacementHighlight(g, L);
     drawCursor(g, L);
-    drawTrayBg(g, L);
+    drawTrayBg(g, L, font);
     drawParts(g, L);
-    drawStatus(g, screenW, screenH);
+    drawStatus(g, screenW, screenH, font);
 
-    if (g.won) drawWinBanner(screenW, screenH);
+    if (g.won) drawWinBanner(screenW, screenH, font);
 }

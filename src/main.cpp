@@ -91,40 +91,42 @@ int main(int argc, char** argv) {
     int  prevPlacedCnt  = countPlaced(game);
     int  prevRotateSum  = sumRotateCount(game);
 
-    Renderer renderer;
-    while (!WindowShouldClose()) {
-        const int sw = GetScreenWidth();
-        const int sh = GetScreenHeight();
-        const Layout L = computeLayout(game, sw, sh);
+    {
+        Renderer renderer;
+        while (!WindowShouldClose()) {
+            const int sw = GetScreenWidth();
+            const int sh = GetScreenHeight();
+            const Layout L = computeLayout(game, sw, sh);
 
-        const Action a = Input::poll();
-        if (a != Action::None) game.update(a);
-        Input::pollMouse(L, game);
+            const Action a = Input::poll();
+            if (a != Action::None) game.update(a);
+            Input::pollMouse(L, game);
 
-        const int  heldNow      = game.heldPartIdx;
-        const bool wonNow       = game.won;
-        const int  placedCntNow = countPlaced(game);
-        const int  rotateSumNow = sumRotateCount(game);
+            const int  heldNow      = game.heldPartIdx;
+            const bool wonNow       = game.won;
+            const int  placedCntNow = countPlaced(game);
+            const int  rotateSumNow = sumRotateCount(game);
 
-        // One sound per frame, priority: win > place > pickup > spin.
-        if (wonNow && !prevWon) {
-            if (IsSoundValid(sndWin)) PlaySound(sndWin);
-        } else if (placedCntNow > prevPlacedCnt) {
-            if (IsSoundValid(sndPlace)) PlaySound(sndPlace);
-        } else if (prevHeld < 0 && heldNow >= 0) {
-            if (IsSoundValid(sndPickup)) PlaySound(sndPickup);
-        } else if (rotateSumNow > prevRotateSum) {
-            if (IsSoundValid(sndSpin)) PlaySound(sndSpin);
+            // One sound per frame, priority: win > place > pickup > spin.
+            if (wonNow && !prevWon) {
+                if (IsSoundValid(sndWin)) PlaySound(sndWin);
+            } else if (placedCntNow > prevPlacedCnt) {
+                if (IsSoundValid(sndPlace)) PlaySound(sndPlace);
+            } else if (prevHeld < 0 && heldNow >= 0) {
+                if (IsSoundValid(sndPickup)) PlaySound(sndPickup);
+            } else if (rotateSumNow > prevRotateSum) {
+                if (IsSoundValid(sndSpin)) PlaySound(sndSpin);
+            }
+
+            prevHeld      = heldNow;
+            prevWon       = wonNow;
+            prevPlacedCnt = placedCntNow;
+            prevRotateSum = rotateSumNow;
+
+            BeginDrawing();
+            renderer.draw(game, sw, sh, GetFrameTime());
+            EndDrawing();
         }
-
-        prevHeld      = heldNow;
-        prevWon       = wonNow;
-        prevPlacedCnt = placedCntNow;
-        prevRotateSum = rotateSumNow;
-
-        BeginDrawing();
-        renderer.draw(game, sw, sh, GetFrameTime());
-        EndDrawing();
     }
 
     UnloadSound(sndPickup);

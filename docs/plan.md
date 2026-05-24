@@ -378,7 +378,7 @@
   - [x] 鍵盤路徑（wasd/R/Enter/Esc）跟之前一樣可用、零退化
 - 下一步：Day 2c 音效（使用者已有 sound1.wav + victory.mp3、需備齊 pickup / place / rotate / win 4 個 wav）
 
-## Phase 2 Day 2c done — 2026-05-24（代碼 + smoke / 待手動驗收）
+## Phase 2 Day 2c done — 2026-05-24（驗收通過 / commit `2ea7726`）
 
 - 完成項目：
   - [CMakeLists.txt](../CMakeLists.txt)：加 `add_custom_command(TARGET game POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:game>/assets)` — build 完 mirror assets/ 到 build/
@@ -396,5 +396,5 @@
 - 驗證：
   - Build 0 warning 0 error；post-build copy 確認 `build/assets/sfx/` 5 檔到位
   - Smoke `./build/game ../docs/io/Example1.txt` 1.5 秒、`grep -iE "audio|sound|wave"` raylib log：`AUDIO: Device initialized successfully | Backend: miniaudio | Core Audio` + 4 個音檔各自 `FILEIO: ... File loaded successfully` + `WAVE: Data loaded successfully (44100 Hz, 32 bit, 2 channels)`、無 error 無 warn
-  - **手動驗收待跑**（6 項在 STATUS.md 進行中段）
-- 下一步：使用者手動驗收 Day 2c → 通過後 `git add . && git commit` 把 Day 2b + Day 2c 一起 commit（或分兩 commit）→ Phase 2 closeout → Phase 3 規劃（雙色 + 進階功能，§7 展開）
+  - **手動驗收通過**（2026-05-24，6 項全綠 + 額外暴露 Phase 1 keyboard-era `autoSelectNextUnplaced` 殘留 bug — 開檔零件自動跟手、放完自動接下一個；獨立 commit 修掉、不算 Day 2c 退化）
+- 下一步：auto-select bugfix commit 後 → Phase 2 closeout → Phase 3 規劃（雙色 + 進階功能，§7 展開）

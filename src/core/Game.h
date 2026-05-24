@@ -50,7 +50,6 @@ private:
     void handleRemove();
     void clampCursor();
     void syncHeldLocation();
-    void autoSelectNextUnplaced();
 };
 
 #endif

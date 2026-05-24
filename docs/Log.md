@@ -18,6 +18,7 @@
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
 - 05-23? docs: add README.md / update learning log
+- **2026-05-24** — [移除 autoSelectNextUnplaced（滑鼠模式下零件無故跟手 bug）](#2026-05-24--移除-autoselectnextunplaced滑鼠模式零件無故跟手-bugsmall) · `Phase 2` · `small` · Day 2c 驗收暴露的 Phase 1 keyboard-era 殘留、兩處 call + 函式 + 宣告全拔掉
 - **2026-05-24** — [Phase 2 Day 2c：音效（pickup / place / spin / win）](#2026-05-24--phase-2-day-2c音效pickup--place--spin--win) · `Phase 2` · `Implementation` · 音效 1% = +1%，main loop 加 InitAudioDevice + 4 個 LoadSound + 每 frame 狀態 diff 觸發、CMake 加 post-build copy_directory assets/
 - **2026-05-24** — [Day 2b pixel-perfect drag 第三輪：tray 撿起也立刻跟手](#2026-05-24--day-2b-pixel-perfect-drag-第三輪tray-撿起也立刻跟手small) · `Phase 2` · `small` · computeTarget / animateParts 把 mouseDrag 條件從「held+on board」放寬到「held」
 - **2026-05-22** — [Phase 2 Day 2b：滑鼠 hover / drag / 左鍵放置 / 右鍵 cancel](#2026-05-22--phase-2-day-2b滑鼠-hover--drag--左鍵放置--右鍵-cancel) · `Phase 2` · `Implementation + Refactor` · +0%（rubric 完整性），Layout 提到 public header、Game 加 `setCursor` cursor 原語、Input 加 `pollMouse` 翻譯滑鼠到既有 Action 流程
@@ -945,4 +946,11 @@ add_custom_command(TARGET game POST_BUILD
 - **「優先序設計：為什麼 win 蓋 place」**：放置最後一個零件那 frame、placedCount 上升（會觸發 place）+ won 變 true（會觸發 win）。如果不設優先序、兩個音同 frame 播會吵且 win 被 place 切（PlaySound 後呼叫 PlaySound 會 cut off）。優先序 `win > place > pickup > spin` 是依「事件重要性 + 用戶期待」排的。展示「不是把所有訊息都丟給用戶、而是設計『一次顯示最重要的那一個』」。
 - **「raylib 5.5 API rename 的處理」**：寫 `IsSoundReady`（從 5.0 教學記憶）→ compile fail → grep 系統 raylib 5.5 header 確認 `IsSoundValid` → 修。展示「不要相信記憶中的 API、要查當下版本的 header；compile error 不是壞事、是『版本對齊』的提示」。
 - **「為什麼不接 raylib 的 `PauseSound` / `StopSound`？」**：遊戲沒「暫停選單」、Win banner 出來後關掉視窗就結束、不需要中斷音樂。YAGNI。
+
+
+## 2026-05-24 — 移除 autoSelectNextUnplaced（滑鼠模式零件無故跟手 bug）（small）
+Phase: 2
+Commit: 待 commit（緊接 Day 2c `2ea7726`）
+
+Day 2c 音效驗收時使用者回報：「一進入遊戲零件就跟滑鼠、放完第一個下一個自動跟」。根因是 Phase 1 keyboard-era 的 `Game::autoSelectNextUnplaced()` — 兩處呼叫（[Game.cpp init() 末](../src/core/Game.cpp)、[handlePlace 放置成功後](../src/core/Game.cpp)）讓 `heldPartIdx` 永遠 ≥ 0。鍵盤時代這是 feature（開檔就有東西可控、放完接下一個流暢）；Phase 2 Day 2b 加滑鼠後變 bug（使用者期待「我點才開始持有」）。修法：兩處呼叫拔掉、整個函式 + Game.h 的 declaration 刪掉（YAGNI、不留死代碼）、順便刪掉 handlePlace 裡跟著沒用的 `placedIdx` 跟 `"All parts placed."` 訊息（最後一個放完 won banner 會 cover）。Build 0/0；行為改動：(a) 開檔 heldPartIdx = -1、tray 零件靜止不跟手；(b) 放置成功後 heldPartIdx = -1、不自動接下一個、使用者需點 tray 或按 Enter 主動撿；(c) 鍵盤路徑相容（cursor 初始在 TRAY_COL row 0，按 Enter 一樣撿第一件）。音效 priority 不受影響。**口頭素材**：好的 invariant 在新 input source 加入後可能變 bug — 不是 code 寫錯、是需求變了；發現的時機是 manual verification、testing 不可少。
 

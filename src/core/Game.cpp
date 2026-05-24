@@ -13,7 +13,6 @@ void Game::init(Board b, std::vector<Part> p) {
     won = false;
     statusMessage.clear();
     mouseControlling = false;
-    autoSelectNextUnplaced();
 }
 
 void Game::update(Action a) {
@@ -84,18 +83,6 @@ void Game::syncHeldLocation() {
     }
 }
 
-void Game::autoSelectNextUnplaced() {
-    if (heldPartIdx >= 0) return;
-    for (size_t i = 0; i < parts.size(); ++i) {
-        if (!parts[i].location.placed) {
-            heldPartIdx = static_cast<int>(i);
-            cursorCol   = TRAY_COL;
-            cursorRow   = static_cast<int>(i);
-            return;
-        }
-    }
-}
-
 void Game::handlePlace() {
     if (heldPartIdx >= 0) {
         if (cursorCol < 0) {
@@ -109,13 +96,7 @@ void Game::handlePlace() {
             return;
         }
         board.place(p, p.location.row, p.location.col);
-        const int placedIdx = heldPartIdx;
         heldPartIdx = -1;
-        autoSelectNextUnplaced();
-        if (heldPartIdx < 0) {
-            statusMessage = "All parts placed.";
-        }
-        (void)placedIdx;
         return;
     }
 

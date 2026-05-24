@@ -1,6 +1,6 @@
 # STATUS.md — 進度與配分追蹤
 
-> Last updated: 2026-05-24（Day 2c 音效驗收通過）  
+> Last updated: 2026-05-24（Day 2c 音效 + auto-select bugfix 驗收通過）  
 > 規劃 / 策略：[plan.md](plan.md) ｜ 配分細節：[scoring.md](scoring.md) ｜ 工作規範：[CLAUDE.md](../CLAUDE.md) ｜ 協作紀錄：[LOG.md](LOG.md)
 
 > **這份檔只回答「現在到哪、勾了哪些分」**。決策原則去 CLAUDE.md，階段規劃去 plan.md。
@@ -18,9 +18,9 @@
 
 ## 目前階段
 
-**Phase 2 完成 — 待 commit + 進 Phase 3**
+**Phase 2 完成 — auto-select bugfix 待 commit + 進 Phase 3**
 
-Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）commit `6f7abcb`；Day 2b（滑鼠 hover/pixel-perfect drag/左鍵放置/右鍵 cancel）commit `59401b4`；Day 2c（音效：InitAudioDevice + 4 個 LoadSound + frame diff 觸發、CMake post-build copy assets/）2026-05-24 驗收通過、待 commit。Phase 2 圖形分項 **15 / 15 全到位**。
+Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）commit `6f7abcb`；Day 2b（滑鼠 hover/pixel-perfect drag/左鍵放置/右鍵 cancel）commit `59401b4`；Day 2c（音效：InitAudioDevice + 4 個 LoadSound + frame diff 觸發、CMake post-build copy assets/）commit `2ea7726`、2026-05-24 驗收通過；auto-select bugfix（Day 2c 驗收暴露的 Phase 1 殘留）驗收通過、待 commit。Phase 2 圖形分項 **15 / 15 全到位**。
 
 ---
 
@@ -87,7 +87,8 @@ Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit
 - **Phase 2 Day 1**（2026-05-22，commit `0fcfcd4`）：動畫骨架（per-part `currentCenterX/Y/Angle/Scale` lerp，`1 - exp(-dt*k)` frame-rate 獨立）+ 旋轉/移動 pivot（`Part::computeCenterCell` 取離形心最近占據格、cursor 改成 pivot target、中心格亮色 +120/ch）。+11%。
 - **Phase 2 Day 2a**（2026-05-22，commit `6f7abcb`）：視覺 polish + 程序材質。圓角板面 / tray / win banner、背景垂直漸層、每 cell 上方高光帶（+70/ch）+ 下方 bevel（÷2），drop shadow 兩 pass（offset 4/5px）。使用者手動驗收 A–H 全綠。+4%。
 - **Phase 2 Day 2b**（2026-05-22 代碼 + 2026-05-24 驗收，commit `59401b4`）：滑鼠。Layout struct 從 Renderer.cpp anon-ns 提到 Renderer.h 公開；Game 加 `setCursor(row, col, isTray)` cursor 原語 + `bool mouseControlling` UI hint flag；Input 加 `pollMouse(Layout, Game&)` 做板面/tray hit-test + 左鍵 = Place / 右鍵 = Remove。drag follow 三輪迭代：cell-quantized（卡頓）→ pixel-perfect on board（緊跟手）→ pixel-perfect 從 tray 撿起起算（點 tray 即跟手）。視覺與 cursor 解耦：cursor 仍 cell-quantized 給紅綠框 + canPlace、視覺 = mouse pixel + snap 不 lerp。**不加分**（rubric 完整性而已）。
-- **Phase 2 Day 2c**（2026-05-24，代碼 + smoke + 手動驗收通過 / 待 commit）：音效。CMakeLists.txt 加 post-build `copy_directory ${CMAKE_SOURCE_DIR}/assets`；main.cpp 加 `InitAudioDevice` + 4 個 `LoadSound`（assets/sfx/{pickup,place,spin,victory}.mp3）+ 每 frame snapshot `heldIdx / won / placedCount / rotateSum` 做 diff、依優先序 `win > place > pickup > spin` 最多放一個音 + `IsSoundValid` 守缺檔。core / Renderer / Input 完全不碰。+1%。
+- **Phase 2 Day 2c**（2026-05-24，commit `2ea7726`）：音效。CMakeLists.txt 加 post-build `copy_directory ${CMAKE_SOURCE_DIR}/assets`；main.cpp 加 `InitAudioDevice` + 4 個 `LoadSound`（assets/sfx/{pickup,place,spin,victory}.mp3）+ 每 frame snapshot `heldIdx / won / placedCount / rotateSum` 做 diff、依優先序 `win > place > pickup > spin` 最多放一個音 + `IsSoundValid` 守缺檔。core / Renderer / Input 完全不碰。+1%。
+- **auto-select bugfix**（2026-05-24，驗收通過 / 待 commit）：拔掉 Phase 1 keyboard-era 的 `Game::autoSelectNextUnplaced()` — 兩處呼叫（init 末 + handlePlace 放置成功後）+ 函式定義 + 宣告全刪。修掉滑鼠模式下「開檔零件自動跟手 + 放完自動接下一個」的 bug（Day 2c 驗收時暴露）。鍵盤路徑相容（cursor 初始在 TRAY_COL row 0，按 Enter 一樣撿第一件）。
 - **文件結構**：CLAUDE / plan / STATUS / LOG / learning-notes / DEV_GUIDE / my-note 7 檔到位
 
 ## 進行中

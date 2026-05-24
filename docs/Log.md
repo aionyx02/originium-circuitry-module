@@ -17,6 +17,7 @@
 > **新增 entry 時：(1) 把實際 entry append 到本檔最下方（時間正序），(2) 在這個索引「最上面」加一行。**  
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
+- **2026-05-24** — [Phase 3 task 化為 GitHub Issues + issue template 4 輪迭代](#2026-05-24--phase-3-task-化為-github-issues--issue-template-4-輪迭代) · `Phase 3` · `Discussion + Implementation` · plan.md 保策略 + Issues 取代 STATUS checklist + LOG 不動；template 跑 V1→V4 四輪，使用者自寫 04 / 05 驗證 template 可獨立操作
 - **2026-05-24** — [Phase 2 UI polish：Exo 2 字體 + tray redesign](#2026-05-24--phase-2-ui-polishexo-2-字體--tray-redesign) · `Phase 2` · `Implementation + Review` · 使用者指定 Exo 2，AI 重整 sidebar/tray/status/win banner；經截圖 review 後修正 tray preview 重疊、色條與選取框
 - 05-23? docs: add README.md / update learning log
 - **2026-05-24** — [移除 autoSelectNextUnplaced（滑鼠模式下零件無故跟手 bug）](#2026-05-24--移除-autoselectnextunplaced滑鼠模式零件無故跟手-bugsmall) · `Phase 2` · `small` · Day 2c 驗收暴露的 Phase 1 keyboard-era 殘留、兩處 call + 函式 + 宣告全拔掉
@@ -1045,3 +1046,113 @@ AI 先閱讀 `Renderer.cpp/.h`、`Input.cpp`、`main.cpp` 與進度文件，指�
 - **「AI 不是一次生成最終 UI，而是 human review 後迭代」**：第一版完成後使用者截圖指出實際觀感問題，AI 再根據截圖分析並做第二輪修改。這能展示 AI 協作中人類 review 的必要性。
 - **「固定常數 vs layout-driven」**：第一版固定 tray scale，遇到不同形狀就跨格；第二版改用 bounding box 算 scale，從「調常數」進化成「根據資料排版」。
 - **「功能完成後仍要 polish」**：Phase 2 配分已拿滿，但 demo 觀感仍會影響口頭報告與老師印象，所以在進 Phase 3 前做小範圍 UI polish 是合理投資。
+
+
+
+## 2026-05-24 — Phase 3 task 化為 GitHub Issues + issue template 4 輪迭代
+
+Type: Discussion + Implementation
+Phase: Phase 3（規劃中）
+Feature: 開發流程改革 — 從 STATUS.md checkbox 轉成 GitHub Issues + 訂出 issue template
+Commit: 未 commit（純文件草稿，待全套定稿一次推）
+
+### Context
+
+Phase 2 結束、Phase 3 即將開工，且 partner 即將加入（[plan.md §2](plan.md) 列 Phase 3 為 partner 可接點）。原本 task 用 plan.md 詳細計劃 + [STATUS.md](STATUS.md) checkbox 追蹤；solo 階段這套省事，但要分工給 partner 時：
+- checkbox 沒辦法 assign / 留討論串 / 跟 PR 連結
+- 沒辦法獨立關閉、留歷史紀錄
+- partner 不熟專案脈絡時，啃 plan.md 整段比讀單條 issue 慢
+
+使用者提出評估「issue 化分工」。本次的目標：把 Phase 3 規劃從 plan.md 的「列大綱」展開成「可分工的 issue 集」，並訂出統一 issue template 供後續 Phase 4–7 沿用。
+
+### AI Contribution
+
+1. **方案分析**：對比「issue vs 純 plan.md checkbox」優缺，提出混合制（plan.md 保策略 / Issues 取代 STATUS checklist / LOG.md 不動），給 3 個待用戶拍板的決策題
+2. **scope 拆分**：對照 [scoring.md §進階功能 / §自動解題](scoring.md) 反推 Phase 3 的 7 個子項（扣 Phase 2 Day 1 已銀行的「中心不為空 1%」），建議合併規則（列/欄 hint 1+1=2%、雙色 parser+demo 測資 2+2=4%）後初版 5 個 issue
+3. **source code 取證**：寫 issue 前讀 [Game.h](../src/core/Game.h) / [Board.h](../src/core/Board.h) / [Part.h](../src/core/Part.h) / [Parser.cpp](../src/core/Parser.cpp) / [WinChecker.cpp](../src/core/WinChecker.cpp) / [Renderer.cpp](../src/ui/Renderer.cpp)，挖到 [Renderer.cpp:141](../src/ui/Renderer.cpp#L141) 有 `const int color = 0; // Phase 1: single color` 這條關鍵 hardcode — 寫進 #5 雙色 issue 當「真實工作量入口點」（避免把雙色當作大工程而錯估時程）
+4. **template 4 輪迭代**：依使用者每輪 feedback 重寫 03-main-menu.md
+   - **V1 簡版**：為什麼做 / AC / 設計筆記 / LOG 提醒
+   - **V2 厚 context**：補背景 / 玩家視角 / 當前狀態 / 語意差異（回應「context 補足一點」）
+   - **V3 工業級結構**：Title `[Feature]` + 雙語 / Labels / Goal / Scope / Context（Why this / Why partner-friendly / Current state）/ AC（Must-have / Polish / Optional Polish）/ Non-goals + Future Work / Implementation Notes / Process Notes / Dependencies / Test Plan / LOG Notes（回應 7 點 feedback）
+   - **V4 scope 微調**：補 Labels 5 個字段 / Goal→Scope 拆 / 加 Level List Behavior 子段 / Non-goals 改成 Not in scope + Future Work 軟化語氣 / `Game::init` 改成「需驗證可重複呼叫」/ 補 State isolation trap / build 改「no new warnings」/ Example5 移到 Optional / Process + LOG Notes 合併成 Closing Checklist（回應 10 點 feedback）
+
+### Human Decision / Review
+
+**結構決策**
+- issue 平台：GitHub remote 已存在（[github.com/aionyx02/originium-circuitry-module](https://github.com/aionyx02/originium-circuitry-module)，private repo），但採「本地 markdown 草稿 → `gh issue create` 批次推」流程，留人工 review 一道
+- Phase 3 / 4 詳細計劃寫在 [plan.md §7](plan.md)（不外移到獨立檔），對稱 §5 §6 既有結構
+- 先寫 Phase 3 當 template、過了才寫 Phase 4
+- 兩個合併：列/欄 hint 兩個 1% 合成 #4、雙色 parser + demo 測資合成 #5
+- 三個合併：reset + 新遊戲 合成單一 issue（共享 90% state-reset code path、避免 PR 重複動 Game.h）
+
+**template feedback**
+- V1 → V2：「context 補足一點」（issue 太單薄，partner 看不出脈絡）
+- V2 → V3 七點：Title 改 `[Feature]` 雙語格式 / 補 Labels / Goal 拆 Scope / Why partner-friendly 不要寫「不碰 core」改寫成「不改 puzzle core data structures」/ AC 三層 / Process Notes 獨立 / Dependencies 三段 / Non-goals 加 / Test Plan 加
+- V3 → V4 十點：Title 加「流程 Flow」/ Labels 五個明定 / 加 Level List Behavior / Non-goals 軟化語氣 / `Game::init` 標「需驗證」/ 加 State isolation trap / build 改「no new warnings」/ Example5 移到 Optional / 合併 Process+LOG 成 Closing Checklist 等
+
+**自驗收**
+- 使用者於對話過程**直接用 V4 template 自寫** [04-row-col-hints.md](issues/phase-3/04-row-col-hints.md) 與 [05-dual-color.md](issues/phase-3/05-dual-color.md)，證明 template 已足夠清晰、可獨立操作、不需 AI 在場
+- 使用者編輯時順手把 03-main-menu.md 內 "Issue #1" → "Issue #2" 改了，暗示後續會調整 issue 順序（main menu 可能升 #1、reset+new game 變 #2）
+
+### Details
+
+**最終 issue template 結構**（套用於 03 / 04 / 05；後續 Phase 4–7 沿用）：
+1. Title + meta + Labels
+2. Goal（一段話）
+3. Scope（含可選 sub-section 如 Level List Behavior）
+4. Context（Why this issue / Why partner-friendly / Current state）
+5. Acceptance Criteria（Must-have / Polish / Optional Polish）
+6. Non-goals / Future Work（Not in scope / Future Work 兩段）
+7. Implementation Notes（既有檔 / 新檔 / 設計選擇 / 已知 trap）
+8. Dependencies / Related Issues（Depends on / Related / Blocks / Coordination Needed）
+9. Test Plan（Build / Manual / Regression；可選 Optional / After Issue #N）
+10. Closing Checklist（merge 自 Process Notes + LOG.md Notes）
+
+**目前檔案狀態**：
+```
+docs/issues/
+├── README.md                       ← 索引 + 批次 gh CLI 指令（待重編號後同步）
+└── phase-3/
+    ├── 01-reset.md                 ← 舊檔，待刪
+    ├── 02-new-game.md              ← 舊檔，待刪
+    ├── 01-reset-and-new-game.md    ← 合併版（2%），V2 厚 context 版，尚未套 V4 template
+    ├── 03-main-menu.md             ← (1%) V4 template 範本
+    ├── 04-row-col-hints.md         ← (2%) 使用者自寫套用 V4
+    └── 05-dual-color.md            ← (4%) 使用者自寫套用 V4
+```
+
+**plan.md §7 草稿**：已準備好新 §7 內容（含 issue 連結與 day 切分），會話中已展示給使用者，但**尚未 edit plan.md**。等所有 issue 定稿後一次 edit + 配合舊 §7 / §8 順移。
+
+### Verification / Tests Performed
+
+純規劃與文件草稿，**尚未進行程式測試**。review 方式：
+- 使用者目視 review 每版 template
+- 使用者自寫 04 / 05 套用 V4 template — 驗證 template 可獨立操作
+- AI 對照 [scoring.md](scoring.md) 反推 issue 配分總和 = 9%（扣除已銀行的 1%），與 [plan.md §2](plan.md) 預期一致
+
+### Result
+
+- 開發流程升級為三軸：**plan.md 保策略 + GitHub Issues 追 task + LOG.md 記 AI 使用**
+- Phase 3 五份 issue 草稿就緒（其中 03 / 04 / 05 已套 V4 template）
+- 共識 V4 template structure 固定，後續 Phase 4 / 5 / 6 / 7 都會沿用
+- 仍未 commit、未推 GitHub、未 edit plan.md / [STATUS.md](STATUS.md)，留作下一輪 review 後一次推
+
+### Risks / Follow-ups
+
+- **未確認的編號**：03-main-menu.md 已把內部 "Issue #1" 引用改為 "Issue #2"，暗示順序會變（main menu 升 #1、reset+new game 變 #2？），但 01-reset-and-new-game.md 還沒同步調整。需用戶定案最終順序與檔名再批次重命名
+- **舊檔未刪**：`01-reset.md` 與 `02-new-game.md` 仍在 phase-3/，需在合併版定稿後刪除
+- **01-reset-and-new-game.md 還沒套 V4**：仍是 V2 厚 context 版，需用 V4 template 重寫
+- **plan.md §7 未更新**：草稿在會話中，未進檔
+- **README.md / 批次 gh 指令未更新**：仍列 5 個 issue，重編號後需同步
+- **Phase 4 issues 未寫**：等 Phase 3 完全定稿才寫
+- **gh CLI 未實際跑過**：repo 已存在，但 `gh label create` / `gh api repos/.../milestones` 未實測，第一次推可能撞到 label / milestone 命名衝突
+
+### Other Notes
+
+**口頭報告素材**：
+
+- **「issue 化的時機」**：solo 階段用 checkbox 就好、要 partner 加入時才升級到 issue — 這個「不過早 over-engineer」的判斷是 AI 主動提的（"Partner 加入 (Phase 3) 之前不用急著切。現在 solo 把 STATUS.md 的 checkbox 改成 issue 反而是純 overhead；等到要分工 Solver / Editor 給 partner 那刻才開 Issues，效益最大"）
+- **「template 4 輪迭代」**：V1 簡版 → V2 補 context → V3 工業級結構 → V4 scope 微調，每輪都由使用者明確列點 feedback 推動。可以展示「AI 不是一次寫到位，而是 user review 後逼出更好版本」
+- **「issue ≠ LOG」**：很多人會以為 GitHub Issue 關掉就算紀錄完了；本專案明確區分 issue（task tracker）與 LOG（AI 使用紀錄），後者是 [CLAUDE.md](../CLAUDE.md) Hard Constraint #5 直接對應的 30% 評分項。這個區分本身就是口頭報告好素材
+- **「用 source code 真實狀態反推 issue」**：寫 #5 雙色之前先 grep [Renderer.cpp](../src/ui/Renderer.cpp) 找到 `const int color = 0; // Phase 1: single color` 那行，讓 issue 從「雙色 = 4% 大工程」改寫成「雙色 = Renderer hint loop + layout，核心已支援」— 避免 issue 因為對程式現況不熟而誤估工作量
+- **「使用者反向驗證 template」**：V4 template 完成後使用者直接自寫兩個 issue 套用之，這比 AI 自己宣告「template 通用」有說服力 — 是「user 是最後判官」的具體展現

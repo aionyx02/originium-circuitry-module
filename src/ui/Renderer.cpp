@@ -10,20 +10,9 @@ namespace {
 
 constexpr int kTrayPreviewX   = 124;  // offset within slot where preview box starts
 constexpr int kTrayPreviewW   = 98;
-
-Color partColor(unsigned partIndex) {
-    static const Color palette[] = {
-        { 76, 175,  80, 255},
-        { 33, 150, 243, 255},
-        {244,  67,  54, 255},
-        {255, 193,   7, 255},
-        {156,  39, 176, 255},
-        {  0, 188, 212, 255},
-        {255,  87,  34, 255},
-        {139, 195,  74, 255},
-    };
-    return palette[partIndex % (sizeof(palette) / sizeof(palette[0]))];
-}
+constexpr int kConstraintGap  = 8;
+constexpr int kColHintHeight  = 22;
+constexpr int kRowHintWidth   = 28;
 
 Color colorBadge(unsigned colorIndex) {
     static const Color colors[] = {
@@ -42,9 +31,10 @@ Layout computeLayout(const Game& g, int screenW, int screenH) {
     L.rows = std::max(1, static_cast<int>(g.board.rows));
     L.cols = std::max(1, static_cast<int>(g.board.cols));
 
-    const int leftReserve   = 310;
+    const int colorCount    = std::max(1, static_cast<int>(g.board.colors));
+    const int leftReserve   = 310 + (colorCount - 1) * kRowHintWidth;
     const int rightPadding  = 60;
-    const int topReserve    = 80;
+    const int topReserve    = 80 + (colorCount - 1) * kColHintHeight;
     const int bottomReserve = 120;
 
     const int availW = screenW - leftReserve - rightPadding - 60;
@@ -138,22 +128,25 @@ void drawConstraints(const Game& g, const Layout& L, Font font) {
     const Board& b = g.board;
     if (b.colors == 0) return;
 
-    const int color = 0; // Phase 1: single color
-    const Color tint = colorBadge(static_cast<unsigned>(color));
+    const int colorCount = static_cast<int>(b.colors);
+    for (int color = 0; color < colorCount; ++color) {
+        const Color tint = colorBadge(static_cast<unsigned>(color));
+        const int stackedFromBoard = colorCount - color;
 
-    for (int c = 0; c < L.cols; ++c) {
-        const int x = L.boardX + c * L.cellSize;
-        const int y = L.boardY - 30;
-        char buf[16];
-        std::snprintf(buf, sizeof(buf), "%u", b._constraints[color][L.rows + c]);
-        drawCenteredText(font, buf, x, y, L.cellSize, 20, 18, tint);
-    }
-    for (int r = 0; r < L.rows; ++r) {
-        const int x = L.boardX - 30;
-        const int y = L.boardY + r * L.cellSize;
-        char buf[16];
-        std::snprintf(buf, sizeof(buf), "%u", b._constraints[color][r]);
-        drawCenteredText(font, buf, x, y, 24, L.cellSize, 18, tint);
+        for (int c = 0; c < L.cols; ++c) {
+            const int x = L.boardX + c * L.cellSize;
+            const int y = L.boardY - kConstraintGap - stackedFromBoard * kColHintHeight;
+            char buf[16];
+            std::snprintf(buf, sizeof(buf), "%u", b._constraints[color][L.rows + c]);
+            drawCenteredText(font, buf, x, y, L.cellSize, kColHintHeight, 18, tint);
+        }
+        for (int r = 0; r < L.rows; ++r) {
+            const int x = L.boardX - kConstraintGap - stackedFromBoard * kRowHintWidth;
+            const int y = L.boardY + r * L.cellSize;
+            char buf[16];
+            std::snprintf(buf, sizeof(buf), "%u", b._constraints[color][r]);
+            drawCenteredText(font, buf, x, y, kRowHintWidth, L.cellSize, 18, tint);
+        }
     }
 }
 
@@ -235,7 +228,7 @@ void drawTrayBg(const Game& g, const Layout& L, Font font) {
         drawText(font, label, static_cast<float>(L.trayX), static_cast<float>(slotY),
                  15.0f, placed ? Color{114, 128, 139, 255} : Color{232, 244, 245, 255}, 1.0f);
 
-        const Color cc = partColor(g.parts[i].partIndex);
+        const Color cc = colorBadge(g.parts[i].colorIndex);
         DrawRectangleRounded(Rectangle{(float)L.trayX, (float)(slotY + 26), 44.0f, 8.0f},
                              0.8f, 6, placed ? Color{cc.r, cc.g, cc.b, 80} : cc);
 
@@ -501,7 +494,7 @@ void drawParts(const Game& g, const Layout& L) {
         const Part& p = g.parts[i];
         const bool held = (static_cast<int>(i) == g.heldPartIdx);
         const bool inTray = !p.location.placed && !held;
-        const Color fill = partColor(p.partIndex);
+        const Color fill = colorBadge(p.colorIndex);
         const float alpha = inTray ? 0.85f : 1.0f;
         drawPartAnimated(p, static_cast<float>(L.cellSize), fill, alpha);
     }

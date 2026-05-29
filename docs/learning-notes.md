@@ -674,3 +674,47 @@ const fs::path root = "assets/levels";
 #### Score Connection
 
 - 進階功能：精美主畫面 / 關卡選擇 1%（[scoring.md:58](scoring.md#L58)）— 目前程式碼完成，待手動驗收後入帳。
+
+---
+
+### Dual-color renderer：constraints 從單色 hardcode 改成 C 色 layout
+
+*Phase 3 · commit `<待 commit>`*
+
+#### What & Key Concepts
+
+雙色關卡的 core 其實早就大致準備好：`Parser` 會依 `C` 讀每色 constraints，`WinChecker` 也會依 `board.colors` 逐色檢查。真正卡住的是 Renderer 仍有 Phase 1 留下的單色假設：
+
+```cpp
+const int color = 0; // Phase 1: single color
+```
+
+這次把 constraint hints 改成 loop over `board.colors`：
+
+- column hint：每個顏色一排，往 board 上方堆疊。
+- row hint：每個顏色一欄，往 board 左側堆疊。
+- `computeLayout` 依色數增加 top / left reserve，避免雙色 hints 壓到 sidebar。
+- tray 色條與零件本體改用 `Part::colorIndex`，讓零件顏色、固定格顏色、hint 顏色使用同一套 `colorBadge(...)`。
+
+#### Why This Design
+
+- **不動 core**：多色資料已經在 `Board::_constraints[color][...]`、`Part::colorIndex`、`Board::cannotMoveColor(...)` 裡；UI 只需要正確呈現，不應重寫 parser 或 win rules。
+- **每色一排/一欄最直觀**：比把兩個數字塞同一格更容易看懂，也方便下一張 issue 04-row-col-hints 加 `current/need` 和 overfilled 狀態。
+- **單色不退化**：`board.colors == 1` 時 offset 算出來接近原本 `boardY - 30` / `boardX - 30` 的位置，不會突然多出雙色空白。
+- **顏色語意一致**：原本 `partColor(partIndex)` 讓每個零件用不同顏色，雙色時會和 constraints 的 color index 斷開。改成 `colorBadge(colorIndex)` 後，同色零件會和同色 hint / fixed cells 對應。
+
+#### What I Should Be Able To Explain
+
+- Q：為什麼雙色不需要大改 Parser？
+  A：Parser 從 Phase 1 就用 `for (int color = 0; color < C; ++color)` 讀 constraints 和 fixed cells，part 也有 `colorIndex`。雙色缺的是 Renderer 把這些資料畫出來。
+- Q：row / column constraints 的 index 怎麼存？
+  A：`_constraints[color][0..rows-1]` 是每列需求，`_constraints[color][rows..rows+cols-1]` 是每欄需求。所以 column hint 取 `b._constraints[color][L.rows + c]`，row hint 取 `b._constraints[color][r]`。
+- Q：為什麼零件本體要用 `colorIndex`，不是 `partIndex`？
+  A：`partIndex` 是「第幾個零件」，只適合當 unique id；`colorIndex` 才是 puzzle 規則裡的顏色。WinChecker 也用 `parts[partIdx].colorIndex` 計數，所以 UI 應跟規則一致。
+- Q：助教 demo 雙色測資怎麼拿分？
+  A：保持 runtime path 載入：`./build/game path/to/ta-dual-color.txt`。只要格式符合純文字規格，Parser 讀 `C=2`，Renderer 依 `board.colors` 畫兩色 hints，WinChecker 依兩色 constraints 判勝。
+
+#### Score Connection
+
+- 進階功能：雙色設定檔載入與遊玩 2%（[scoring.md:62](scoring.md#L62)）— 程式碼完成，待 Example5/6 手動遊玩與勝利驗收後入帳。
+- 助教 demo 雙色測資 2%（[scoring.md:63](scoring.md#L63)）— demo day 才能用助教檔案實測。

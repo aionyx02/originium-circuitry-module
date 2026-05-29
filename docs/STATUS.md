@@ -1,26 +1,26 @@
 # STATUS.md — 進度與配分追蹤
 
-> Last updated: 2026-05-29（Phase 3 issue 02-new-game + 03-main-menu 驗收通過 +2%）  
+> Last updated: 2026-05-29（Phase 3 issue 05-dual-color 程式碼完成，待手動驗收）
 > 規劃 / 策略：[plan.md](plan.md) ｜ 配分細節：[scoring.md](scoring.md) ｜ 工作規範：[CLAUDE.md](../CLAUDE.md) ｜ 協作紀錄：[LOG.md](LOG.md)
 
 > **這份檔只回答「現在到哪、勾了哪些分」**。決策原則去 CLAUDE.md，階段規劃去 plan.md。
 
 ---
 
-## 銀行存款
+## 目前分數
 
 **程式實作：40.5% / 65%**  
 口頭報告：尚未開始評估 / 60%
 
-> 每完成一個 Phase 更新一次。「銀行存款」= 已穩穩拿到的分（demo 不會被扣回去的）。
+> 每完成一個 Phase 更新一次。「目前分數」= 已穩穩拿到的分（demo 不會被扣回去的）。
 
 ---
 
 ## 目前階段
 
-**Phase 3 進行中 — issue 02-new-game + 03-main-menu 驗收通過 +2%**
+**Phase 3 進行中 — issue 05-dual-color 程式碼完成，待手動驗收**
 
-Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）commit `6f7abcb`；Day 2b（滑鼠 hover/pixel-perfect drag/左鍵放置/右鍵 cancel）commit `59401b4`；Day 2c（音效：InitAudioDevice + 4 個 LoadSound + frame diff 觸發、CMake post-build copy assets/）commit `2ea7726`、2026-05-24 驗收通過；auto-select bugfix（Day 2c 驗收暴露的 Phase 1 殘留）commit `c33d562`。Phase 2 圖形分項 **15 / 15 全到位**。Phase 3 issue [01-reset](issues/phase-3/01-reset.md) 驗收通過（`Action::Reset` + `Game::initialBoard/Parts` 快照 + `Game::resetToInitial()` + Backspace 鍵改綁 Reset），**+1% 入帳**。Phase 3 issue [02-new-game](issues/phase-3/02-new-game.md) 已 commit `7240b43` 並手動驗收通過，**+1% 入帳**。Phase 3 issue [03-main-menu](issues/phase-3/03-main-menu.md) 驗收通過：`assets/levels/Example1-6.txt` 到位、menu 正式從 `assets/levels` 掃關卡、支援 hover highlight / keyboard selection / Exo 2 / 圓角漸層，**+1% 入帳**。
+Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）commit `6f7abcb`；Day 2b（滑鼠 hover/pixel-perfect drag/左鍵放置/右鍵 cancel）commit `59401b4`；Day 2c（音效：InitAudioDevice + 4 個 LoadSound + frame diff 觸發、CMake post-build copy assets/）commit `2ea7726`、2026-05-24 驗收通過；auto-select bugfix（Day 2c 驗收暴露的 Phase 1 殘留）commit `c33d562`。Phase 2 圖形分項 **15 / 15 全到位**。Phase 3 issue [01-reset](issues/phase-3/01-reset.md) 驗收通過（`Action::Reset` + `Game::initialBoard/Parts` 快照 + `Game::resetToInitial()` + Backspace 鍵改綁 Reset），**+1% 入帳**。Phase 3 issue [02-new-game](issues/phase-3/02-new-game.md) 已 commit `7240b43` 並手動驗收通過，**+1% 入帳**。Phase 3 issue [03-main-menu](issues/phase-3/03-main-menu.md) 驗收通過：`assets/levels/Example1-6.txt` 到位、menu 正式從 `assets/levels` 掃關卡、支援 hover highlight / keyboard selection / Exo 2 / 圓角漸層，**+1% 入帳**。Phase 3 issue [05-dual-color](issues/phase-3/05-dual-color.md) 程式碼完成：constraint hints 改為依 `board.colors` 多色顯示，零件/固定格/hints 顏色對齊；build 通過，Example5/6 啟動 smoke 通過，待手動目視與勝利驗收後入帳。
 
 ---
 
@@ -95,8 +95,8 @@ Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit
 
 ## 進行中
 
-- Phase 3 02-new-game + 03-main-menu：驗收通過，+2% 入帳（正式 `assets/levels` level list + Phase 2 visual language + same-process new game flow）
-- Phase 3 下一步：接雙色 [05-dual-color](issues/phase-3/05-dual-color.md)，再接列欄提示 [04-row-col-hints](issues/phase-3/04-row-col-hints.md)
+- Phase 3 05-dual-color：程式碼完成，待手動驗收 Example5/6 雙色 hints、零件顏色、可玩與可勝利；驗收通過後「雙色設定檔載入與遊玩」+2% 入帳，助教 demo 雙色測資 +2% 留到 demo day
+- Phase 3 下一步：手動驗收雙色 [05-dual-color](issues/phase-3/05-dual-color.md)，再接列欄提示 [04-row-col-hints](issues/phase-3/04-row-col-hints.md)
 - 材質策略：純程序材質（不引入 png 資產）
 - 音效策略：使用者已用 jsfxr 生 pickup / place / spin 3 個 mp3 + 沿用 victory.mp3 當 win 音
 
@@ -108,7 +108,7 @@ Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit
 
 ## 更新規則
 
-- 每完成一個 checklist 項目並驗證 → 打勾、更新「銀行存款」、補一句到「已完成」
+- 每完成一個 checklist 項目並驗證 → 打勾、更新「目前分數」、補一句到「已完成」
 - 每個 Phase 結束 → 對應 plan.md 進度時間軸新增一條
 - 已知 Bug 不要藏，立刻寫上來；修好了從清單刪掉並記到 LOG.md
 - 修動本檔記得改最上方的 `Last updated`

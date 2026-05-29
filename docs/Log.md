@@ -17,6 +17,7 @@
 > **新增 entry 時：(1) 把實際 entry append 到本檔最下方（時間正序），(2) 在這個索引「最上面」加一行。**  
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
+- **2026-05-29** — [Phase 3 issue 05-dual-color 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-05-dual-color-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · constraint hints 改為依 `board.colors` 多色顯示，零件顏色改用 `Part::colorIndex`
 - **2026-05-29** — [Phase 3 issue 02-new-game + 03-main-menu 手動驗收通過（small）](#2026-05-29--phase-3-issue-02-new-game--03-main-menu-手動驗收通過small) · `Phase 3` · `small` · new game flow + main menu 驗收通過，+2% 入帳（38.5 → 40.5%）
 - **2026-05-29** — [Phase 3 issue 03-main-menu 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-03-main-menu-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · `assets/levels` 正式關卡來源 + menu list polish + hover/keyboard selection 修正
 - **2026-05-29** — [Phase 3 issue 02-new-game 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-02-new-game-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · `AppState` + minimal menu + `N` 回 menu + 選關後重新 parse/init；build 通過，待手動驗收後 +1%
@@ -377,7 +378,7 @@ Feature: Parser + Part/Board/WinChecker + Game + Input + Renderer + main 互動�
 Commit: 
 
 ### Context
-Phase 1 目標：MVP 可跑單色關卡。對應 [plan.md](plan.md) §5 詳細計劃，預期銀行存款 +20%（基本 5% + 流程 15%）。
+Phase 1 目標：MVP 可跑單色關卡。對應 [plan.md](plan.md) §5 詳細計劃，預期可新增 20% 分數（基本 5% + 流程 15%）。
 
 ### AI Contribution
 1. **讀規格**：把 [docs/io/input-file-format.md](io/input-file-format.md)、[docs/io/sample-input-output.md](io/sample-input-output.md)、[docs/io/Example1.txt](io/Example1.txt) 全讀過，確認：
@@ -443,7 +444,7 @@ Feature: 文件結構、CLAUDE.md、STATUS.md、learning-notes.md、LOG.md、pla
 對應 [scoring.md](scoring.md)：口頭報告 30%（AI 使用紀錄）+ 15%（程式熟悉度）兩個大頭的素材，都來自這次整理出來的 doc 結構。
 
 ### AI Contribution
-1. **Phase 規劃**：讀完 [scoring.md](scoring.md)、[structure-design.md](structure-design.md)、[game-rule.md](game-rule.md)、[io/](io/) 範例、[Framework/](../Framework/) skeleton、[demo/main.cpp](../demo/main.cpp)、舊 LOG.md，提出 Phase 0–7 拿分策略（MVP-first → 銀行存款分數 → 美化），寫進 [plan.md](plan.md)。
+1. **Phase 規劃**：讀完 [scoring.md](scoring.md)、[structure-design.md](structure-design.md)、[game-rule.md](game-rule.md)、[io/](io/) 範例、[Framework/](../Framework/) skeleton、[demo/main.cpp](../demo/main.cpp)、舊 LOG.md，提出 Phase 0–7 拿分策略（MVP-first → 目前分數 → 美化），寫進 [plan.md](plan.md)。
 2. **發現重大矛盾並 flag**：舊 LOG.md 寫「關卡檔用 JSON」但教師格式是純文字 → 用 JSON = 失去助教 demo 測資 4%。標為推翻決策。
 3. **CLAUDE.md 升級**（從舊版重寫成新版 [x.md](../x.md)）：
    - 加 5 條 **Hard Constraints**（runtime path / plain text / clean Windows / Part/Board 命名 / AI 紀錄 30%）
@@ -451,7 +452,7 @@ Feature: 文件結構、CLAUDE.md、STATUS.md、learning-notes.md、LOG.md、pla
    - **Source of Truth** 指向 plan.md
    - Tech Stack 寫到版本（C++17 / raylib 5.5 / MinGW static）
 4. **CLAUDE.md 瘦身**：~150 行 → ~115 行，砍 Project Goal 重複段、Coding Rules generic baseline、Refactoring Rule 跟 large trigger 重疊段。
-5. **STATUS.md 重寫**：英文 → 中文、每項加配分、修正分數誤導（Load+Display 是同一個 2%、編輯器 6 子項合計 5%）、加 `Last updated` 戳記、加銀行存款累積區、刪掉重複 plan.md 的 Decisions / Next Priorities 段。
+5. **STATUS.md 重寫**：英文 → 中文、每項加配分、修正分數誤導（Load+Display 是同一個 2%、編輯器 6 子項合計 5%）、加 `Last updated` 戳記、加目前分數累積區、刪掉重複 plan.md 的 Decisions / Next Priorities 段。
 6. **learning-notes.md 重寫**：合併冗餘欄位、刪首篇 AI-meta entry、加「寫/不寫」規則（後續修正為「以非平凡概念為判準，跟事件大小無關」）、語言彈性（中英文皆可）。
 7. **LOG.md 加大事/小事分流**：完整 10 欄 template 給大事、one-liner 給小事。
 8. **LOG.md 加完整索引**：最新在上、annotated（`Phase` · `Type` · 一句話）、附維護規則（append 在最下、索引在最上加一行）。
@@ -509,7 +510,7 @@ Feature: 文件結構、CLAUDE.md、STATUS.md、learning-notes.md、LOG.md、pla
 - **7 個 canonical doc 結構就緒**，每個 single purpose、不互相重複。
 - plan.md 有 Phase 0–7 規劃 + Phase 1 詳細計劃 + 已勾掉 Phase 0/1（在另一個 session 完成）。
 - CLAUDE.md 草稿（x.md）stable：5 條 Hard Constraints、大/小事 workflow、AI 紀錄方式、Tech Stack 版本明確。
-- STATUS.md 把 scoring.md 全項目對齊配分 checklist，加銀行存款累積區。
+- STATUS.md 把 scoring.md 全項目對齊配分 checklist，加目前分數累積區。
 - LOG.md 有完整索引（最新在上）+ template + 3 個 entry（流程奠基、Phase 0、Phase 1）+ 本 entry。
 - 後續 Phase 紀錄直接套既有結構，不會再有「該寫哪裡」的猶豫。
 
@@ -628,7 +629,7 @@ Phase 2 開頭三大配分項要拿：旋轉動畫 5%（[scoring.md:93](scoring.
 ### Result
 - 動畫骨架 + 旋轉 pivot 全部 land，commit `0fcfcd4`。
 - 拿到分數：旋轉動畫 5% + 跟游標移動 5% + 進階中心 1% = **+11%**。
-- 銀行存款：21.5 → **32.5%** / 65%。
+- 目前分數：21.5 → **32.5%** / 65%。
 
 ### Risks / Follow-ups
 - Day 2a 視覺 polish 代碼已寫（圓角 + 漸層 + 高光帶 + bevel + drop shadow），**uncommitted、待使用者目視驗收**。LOG entry 將在 commit 後補。
@@ -718,7 +719,7 @@ Phase 2 Day 1 動畫骨架 land 後（commit `0fcfcd4`），盤面的基本動�
 ### Result
 - 視覺 polish + 程序材質完成。
 - 拿到分數：實作 GUI 2.5% + 圖片/材質 1.5% = **+4%**。
-- 銀行存款：32.5 → **36.5%** / 65%。
+- 目前分數：32.5 → **36.5%** / 65%。
 
 ### Risks / Follow-ups
 - 高光帶 / bevel 顏色與透明度都是 hardcoded `+70 / ÷2 / alpha 170 / alpha 220`，未來想調可能要實驗
@@ -801,7 +802,7 @@ Phase 2 Day 2a（commit `6f7abcb`）把視覺與材質補完後，剩下兩個 D
 ### Result
 - 滑鼠輸入完成（代碼層面）。
 - 拿到分數：**+0%**（不直接加分；補 rubric 完整性與 demo 體驗）。
-- 銀行存款：36.5% / 65%（不變）。
+- 目前分數：36.5% / 65%（不變）。
 - 新增公開 API：`Game::setCursor`、`Input::pollMouse`、`Layout` struct（+ `computeLayout`、`kTraySlotHeight/Width`）— 之後 Phase 5 editor 可重用 setCursor。
 
 ### Risks / Follow-ups
@@ -935,7 +936,7 @@ add_custom_command(TARGET game POST_BUILD
 ### Result
 
 - **拿到分數：+1%**（音效 1%、[scoring.md:91](scoring.md#L91)）
-- **銀行存款：36.5 → 37.5%** / 65%
+- **目前分數：36.5 → 37.5%** / 65%
 - **Phase 2 收尾完成**：圖形介面分項 15% / 15% 全拿（GUI 2.5 + 音效 1 + 材質 1.5 + 旋轉動畫 5 + 跟游標 5）
 - **新增公開介面：無**（純 main.cpp + CMake、API 表面零增長）
 
@@ -1348,7 +1349,7 @@ Phase 3 第一個 issue 落地。[docs/issues/phase-3/01-reset.md](issues/phase-
 
 ### Result
 
-程式碼三檔 + doc 三檔完成。等使用者手動驗收 → 通過後可勾 STATUS.md「重置盤面」+1%（37.5% → 38.5%）+ commit。**目前銀行存款未變動**。
+程式碼三檔 + doc 三檔完成。等使用者手動驗收 → 通過後可勾 STATUS.md「重置盤面」+1%（37.5% → 38.5%）+ commit。**目前分數未變動**。
 
 ### Risks / Follow-ups
 
@@ -1373,7 +1374,7 @@ Phase 3 第一個 issue 落地。[docs/issues/phase-3/01-reset.md](issues/phase-
 Phase: 3  
 Commit: 待 commit
 
-使用者跑 `./build/game docs/io/Example1.txt`，issue [01-reset](issues/phase-3/01-reset.md#L132) 的 6 條 Manual Tests + 3 條 Regression Checks 全綠：放幾個零件 → Backspace 回 tray；旋轉後 reset → CW_0；持有零件 reset → held 清掉；快勝利時 reset → won=false 可繼續；勝利後 reset → 重新可玩；reset 後再勝一次；鍵盤 / 滑鼠 / Phase 2 動畫 / 音效零退化。配分 +1%（重置盤面 1%、[scoring.md:56](scoring.md#L56)）入帳，銀行存款 37.5 → 38.5% / 65%。STATUS.md / plan.md 同步更新。
+使用者跑 `./build/game docs/io/Example1.txt`，issue [01-reset](issues/phase-3/01-reset.md#L132) 的 6 條 Manual Tests + 3 條 Regression Checks 全綠：放幾個零件 → Backspace 回 tray；旋轉後 reset → CW_0；持有零件 reset → held 清掉；快勝利時 reset → won=false 可繼續；勝利後 reset → 重新可玩；reset 後再勝一次；鍵盤 / 滑鼠 / Phase 2 動畫 / 音效零退化。配分 +1%（重置盤面 1%、[scoring.md:56](scoring.md#L56)）入帳，目前分數 37.5 → 38.5% / 65%。STATUS.md / plan.md 同步更新。
 
 
 ## 2026-05-29 — Phase 3 issue 02-new-game 程式碼完成（待手動驗收）
@@ -1552,4 +1553,74 @@ Issue #6 程式碼完成、build 通過，但尚未把 +1% 入帳。STATUS 目�
 Phase: 3  
 Commit: 待 commit
 
-使用者手動驗收通過：`./build/game` 無 argv 進主畫面、關卡列表由 `assets/levels` 顯示、hover highlight / Up-Down / Enter / 左鍵選關正常、InGame 按 `N` 回 menu 可選新關且不殘留舊狀態；`./build/game docs/io/Example1.txt` 給 argv 仍直接進關卡。配分 +2% 入帳：新遊戲流程 1%（[scoring.md:57](scoring.md#L57)）+ 精美主畫面 / 關卡選擇 1%（[scoring.md:58](scoring.md#L58)），銀行存款 38.5 → 40.5% / 65%。STATUS.md / plan.md 同步更新。
+使用者手動驗收通過：`./build/game` 無 argv 進主畫面、關卡列表由 `assets/levels` 顯示、hover highlight / Up-Down / Enter / 左鍵選關正常、InGame 按 `N` 回 menu 可選新關且不殘留舊狀態；`./build/game docs/io/Example1.txt` 給 argv 仍直接進關卡。配分 +2% 入帳：新遊戲流程 1%（[scoring.md:57](scoring.md#L57)）+ 精美主畫面 / 關卡選擇 1%（[scoring.md:58](scoring.md#L58)），目前分數 38.5 → 40.5% / 65%。STATUS.md / plan.md 同步更新。
+
+
+## 2026-05-29 — Phase 3 issue 05-dual-color 程式碼完成（待手動驗收）
+
+Type: Implementation
+Phase: 3
+Feature: Issue 05-dual-color
+Commit: 待 commit
+
+### Context
+
+使用者要求開始做 [issues/phase-3/05-dual-color.md](issues/phase-3/05-dual-color.md)。這張 issue 目標是拿下雙色設定檔載入與顯示 2%（[scoring.md:62](scoring.md#L62)），並讓 demo day 的助教雙色測資 +2%（[scoring.md:63](scoring.md#L63)）有可走的 argv code path。
+
+前置檢查發現 core 已大致支援多色：`Parser` 依 `C` loop constraints，`WinChecker` 依 `board.colors` 判斷每色行列需求，`Board::cannotMoveColor(...)` 也可取固定格顏色。真正 blocker 是 Renderer 的 `drawConstraints` 仍固定 `color = 0`。
+
+### AI Contribution
+
+- 讀 `CLAUDE.md`、`STATUS.md`、`issues/phase-3/05-dual-color.md`、`plan.md`，確認工作流程與配分。
+- 檢查 `src/ui/Renderer.cpp::drawConstraints`、`computeLayout`、`drawParts`、`drawTrayBg`，確認單色 hardcode 與顏色語意不一致的位置。
+- 實作：
+  - `drawConstraints` 改為 loop `color < board.colors`。
+  - column hints 每色一排、row hints 每色一欄。
+  - `computeLayout` 依色數調整 top / left reserve。
+  - tray 色條與零件本體改用 `Part::colorIndex` 對應 `colorBadge(...)`。
+- 更新 `STATUS.md`、`plan.md`、`learning-notes.md` 和本 LOG entry。
+
+### Human Decision / Review
+
+使用者先要求檢查 `drawConstraints`，確認沒有其他核心 blocker 後，明確要求「開始幫我做 phase-3/05-dual-color.md」。本次先完成程式碼與 smoke test，GUI 目視、實際遊玩與勝利驗收留給使用者跑。
+
+### Details
+
+原本 Renderer 有兩個單色時代的假設：
+
+- `drawConstraints` 只畫第 0 色，所以 Example5 / Example6 即使 parser 讀到兩色，也只會顯示第一色 constraints。
+- `drawParts` / `drawTrayBg` 用 `partIndex` 配色，會讓同色 puzzle 零件被畫成不同顏色；這對單色關卡只是美術選擇，但對雙色關卡會混淆「這個零件算哪個顏色」。
+
+新的 layout 使用固定小尺寸 hint boxes：
+
+- `kColHintHeight = 22`
+- `kRowHintWidth = 28`
+- `kConstraintGap = 8`
+
+`stackedFromBoard = colorCount - color` 讓 color 0 離 board 較遠、最後一色離 board 較近。單色時位置接近原本 `boardY - 30` / `boardX - 30`；雙色時會在上方/左側多堆一排。
+
+### Verification / Tests Performed
+
+- `cmake --build build`：成功，`[100%] Built target game`。
+- `./build/game docs/io/Example5.txt`：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+- `./build/game docs/io/Example6.txt`：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+
+尚未完成手動 GUI 驗收。需要使用者測：
+
+- Example5 / Example6 兩色 row / column hints 都顯示，且顏色與零件 / fixed cells 對應。
+- Example5 / Example6 可正常放置、拔除、旋轉，並可達成 win。
+- Example1–4 單色 layout 不退化。
+
+### Result
+
+Issue 05-dual-color 程式碼完成，build 與 Example5/6 啟動 smoke 通過。STATUS 暫不把 +2% 入帳，等手動目視與遊玩驗收通過後再勾「雙色設定檔載入與遊玩」。
+
+### Risks / Follow-ups
+
+- 我沒有在本輪完整手動解 Example5 / Example6，因此「可勝利」仍需使用者實測。
+- 助教 demo 雙色測資要到 demo day 才有檔案；目前能保證的是 runtime argv path 沒被破壞，且 renderer 不再寫死單色。
+- `drawConstraints` 下一張 issue 04-row-col-hints 還會再動，建議在這個多色 layout 上加 current / need，不要回到單色分支。
+
+### Other Notes
+
+口頭報告可以講這次是「用 source inspection 縮小問題範圍」：不是看到雙色就重寫 parser，而是先確認資料流，最後只改 UI 呈現層。這能展示對架構邊界的理解。

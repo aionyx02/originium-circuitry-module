@@ -633,3 +633,44 @@ if (appState == AppState::Menu) {
 #### Score Connection
 
 - 進階功能：遊戲進行中或遊戲結束後可直接開啟新遊戲 1%（[scoring.md:57](scoring.md#L57)）— 目前程式碼完成，待手動驗收後入帳。
+
+---
+
+### Menu level source：assets/levels 作為打包後關卡入口
+
+*Phase 3 · commit `<待 commit>`*
+
+#### What & Key Concepts
+
+主畫面選關不能依賴 `docs/io`，因為 demo 打包時要出貨的是 exe + `assets/` folder，而不是整個 repo 文件目錄。因此 #6 把 Example1–6 複製到 `assets/levels/`，並讓 `findLevels()` 只掃：
+
+```cpp
+const fs::path root = "assets/levels";
+```
+
+這件事把「開發測資」和「遊戲可選關卡」分開：
+
+- `docs/io`：保留為格式文件與助教範例來源，方便閱讀與比對
+- `assets/levels`：runtime menu 的正式關卡來源，會被 CMake post-build copy 到 `build/assets/levels`
+
+#### Why This Design
+
+- **打包一致性**：CMake 已經會 copy `assets/` 到 executable 旁。menu 掃 `assets/levels`，Windows demo 時只要帶 exe + assets 就能選關。
+- **符合 issue 行為**：#6 指定主畫面要從 `assets/levels/*.txt` 動態掃，而且顯示 filename only、按 filename 排序。
+- **missing / empty graceful**：若 `assets/levels` 不存在或沒有 txt，`findLevels()` 回空 vector；menu 顯示 no playable levels，不 crash。
+- **hover 與 keyboard 解耦**：滑鼠 hover 可以有高亮，但只有滑鼠真的移動時才更新 selected；這避免滑鼠停在某格時，Up/Down 每 frame 被拉回 hover 格。
+
+#### What I Should Be Able To Explain
+
+- Q：為什麼不繼續 fallback 到 `docs/io`？  
+  A：`docs/io` 是開發/文件資料，不是 runtime asset。正式 demo 打包不保證有 docs folder；menu 應依賴會跟 exe 一起出貨的 `assets/levels`。
+- Q：為什麼 assets/levels 裡要複製 Example1–6，而不是移動？  
+  A：`docs/io` 仍是輸入格式文件與測資參考位置；`assets/levels` 是遊戲可選關卡清單。兩者用途不同，複製可以避免文件連結與既有測試路徑失效。
+- Q：如果關卡超過 6 個怎麼辦？  
+  A：menu 每次顯示 6 列，`menuVisibleStart(selected, levelCount)` 讓列表圍繞目前 selected 捲動；Up/Down 可以走完整清單。
+- Q：hover 跟鍵盤選取如何避免衝突？  
+  A：hover row 仍可視覺高亮；但 selected 只有在 mouse delta 非 0 時才被 hover 更新。滑鼠靜止時，鍵盤 Up/Down 可以自由切換；左鍵點擊會直接選 hover 的關卡。
+
+#### Score Connection
+
+- 進階功能：精美主畫面 / 關卡選擇 1%（[scoring.md:58](scoring.md#L58)）— 目前程式碼完成，待手動驗收後入帳。

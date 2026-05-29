@@ -17,6 +17,8 @@
 > **新增 entry 時：(1) 把實際 entry append 到本檔最下方（時間正序），(2) 在這個索引「最上面」加一行。**  
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
+- **2026-05-29** — [Phase 3 issue 02-new-game + 03-main-menu 手動驗收通過（small）](#2026-05-29--phase-3-issue-02-new-game--03-main-menu-手動驗收通過small) · `Phase 3` · `small` · new game flow + main menu 驗收通過，+2% 入帳（38.5 → 40.5%）
+- **2026-05-29** — [Phase 3 issue 03-main-menu 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-03-main-menu-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · `assets/levels` 正式關卡來源 + menu list polish + hover/keyboard selection 修正
 - **2026-05-29** — [Phase 3 issue 02-new-game 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-02-new-game-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · `AppState` + minimal menu + `N` 回 menu + 選關後重新 parse/init；build 通過，待手動驗收後 +1%
 - **2026-05-29** — [首頁 menu 字體改用 Exo 2（small）](#2026-05-29--首頁-menu-字體改用-exo-2small) · `Phase 3` · `small` · minimal menu 改用 `assets/fonts/Exo2-Regular.ttf` 與遊戲內 UI 字體一致
 - **2026-05-29** — [menu 鍵盤選關不再被靜止滑鼠 hover 拉回（small）](#2026-05-29--menu-鍵盤選關不再被靜止滑鼠-hover-拉回small) · `Phase 3` · `small` · hover 只有滑鼠移動時更新 selected，左鍵仍可點選 hovered level
@@ -1471,3 +1473,83 @@ Phase: 3
 Commit: 待 commit
 
 使用者發現滑鼠停在某個 level 上時，Up/Down 鍵切換會立刻被 hover 狀態拉回原格。AI 將 menu selected 更新規則改為：只有 `GetMouseDelta()` 顯示滑鼠真的移動時，hover 才更新 `selectedLevel`；左鍵點擊仍會直接選取 hovered level。`cmake --build build` 通過。
+
+
+## 2026-05-29 — Phase 3 issue 03-main-menu 程式碼完成（待手動驗收）
+
+Type: Implementation  
+Phase: 3  
+Feature: Issue 03-main-menu / GitHub #6  
+Commit: 待 commit
+
+### Context
+
+Issue #4 已把 New Game flow 和 minimal menu 接起來；接著實作 issue #6，目標是把主畫面 / 關卡選擇做成正式可評分的功能：沒給 argv 時進主畫面、關卡從 `assets/levels/*.txt` 動態掃、點/Enter 選關、視覺沿用 Phase 2 的 Exo 2 / 圓角 / 漸層風格。
+
+### AI Contribution
+
+- 讀 [issues/phase-3/03-main-menu.md](issues/phase-3/03-main-menu.md)，確認 #6 的 must-have / polish / test plan。
+- 檢查現有 #4 `main.cpp` menu 實作，找出需要補齊的差距：仍有 `docs/io` fallback、沒有正式 `assets/levels` 關卡、hover 與 keyboard selection 還可以更清楚分離。
+- 實作：
+  - 新增 `assets/levels/Example1.txt` ~ `Example6.txt`
+  - `findLevels()` 改為只掃 `assets/levels`
+  - 抽出 menu layout constants 與 `menuVisibleStart(...)`
+  - menu 超過 6 關時以 selected 為中心捲動顯示
+  - `menuSelectionFromMouse(...)` 回傳實際 level index，而不是 visible local index
+  - `drawMenu(...)` 新增 hover row 視覺狀態，hover 與 selected 可分開
+  - 修正文案：若關卡超過可視範圍，顯示 `Showing X-Y of N`
+- 更新 [STATUS.md](STATUS.md)、[plan.md](plan.md)、[learning-notes.md](learning-notes.md)、本 LOG entry。
+
+### Human Decision / Review
+
+- 使用者要求「開始 #6」。
+- 前一輪使用者已指出首頁字體應和遊戲內一致、滑鼠停在 level 上時不能阻止鍵盤上下切換；這些 review feedback 也整合進 #6 polish。
+
+### Details
+
+`assets/levels` 成為正式 runtime level source。這符合 #6 issue 的 Level List Behavior，也符合 demo 打包：CMake 既有 post-build rule 會把整個 `assets/` copy 到 executable 旁，所以 `build/assets/levels` 會存在。
+
+`findLevels()` 現在不再 fallback 到 `docs/io`。理由是 `docs/io` 是 repo 文件 / 測資來源，不應該成為 packaged game 的 runtime dependency。若 `assets/levels` missing 或 empty，menu 會顯示 no playable levels，不 crash。
+
+Menu selection 的修正：
+
+- hover row 可以高亮，但不一定等於 selected
+- mouse moved 時，hover 會更新 selected
+- mouse stationary 時，keyboard Up/Down 可以自由切換 selected，不會被 hover 拉回
+- left click 時直接把 selected 設成 hover 並啟動該關卡
+
+### Verification / Tests Performed
+
+- `cmake --build build`：成功，`[100%] Built target game`
+- `find assets/levels -maxdepth 1 -type f`：確認 Example1–6 都存在
+- build 後 `find build/assets/levels -maxdepth 1 -type f`：確認 CMake post-build copy 有把 Example1–6 複製到 build assets
+- `./build/game /nonexistent.txt`：維持 invalid-path 行為，輸出 `Cannot open file: /nonexistent.txt`，exit code 1
+
+尚未完成 GUI 互動手動驗收。需要使用者測：
+
+- `./build/game` 不給 argv → 主畫面顯示，關卡列表來自 `assets/levels`
+- hover 有 highlight；滑鼠停著時 Up/Down 可正常切換
+- Enter / 左鍵選關可進 InGame
+- InGame 按 `N` 回主畫面，選另一關後舊狀態清空
+- `./build/game docs/io/Example1.txt` 給 argv → 直接進關卡，不出現主畫面
+
+### Result
+
+Issue #6 程式碼完成、build 通過，但尚未把 +1% 入帳。STATUS 目前標為「程式碼完成，待手動驗收」。
+
+### Risks / Follow-ups
+
+- Menu 仍放在 `main.cpp`，目前可接受，因為 #4 / #6 都已集中在 main loop；若 Phase 5 editor 也需要複雜 menu，可以再抽 `src/ui/Menu.{h,cpp}`。
+- 若未來關卡數很多，目前只是 6-row scrolling list，沒有 scrollbar；足夠應付 rubric，Phase 7 polish 可再加。
+- Empty / missing `assets/levels` 需要手動測時暫時 rename folder；不要把 rename 狀態 commit 進去。
+
+### Other Notes
+
+這段可以在報告裡說明「開發資料」和「runtime assets」的差異：`docs/io` 給人讀、給測試參考；`assets/levels` 給遊戲執行時掃描，會跟 exe 一起出貨。
+
+
+## 2026-05-29 — Phase 3 issue 02-new-game + 03-main-menu 手動驗收通過（small）
+Phase: 3  
+Commit: 待 commit
+
+使用者手動驗收通過：`./build/game` 無 argv 進主畫面、關卡列表由 `assets/levels` 顯示、hover highlight / Up-Down / Enter / 左鍵選關正常、InGame 按 `N` 回 menu 可選新關且不殘留舊狀態；`./build/game docs/io/Example1.txt` 給 argv 仍直接進關卡。配分 +2% 入帳：新遊戲流程 1%（[scoring.md:57](scoring.md#L57)）+ 精美主畫面 / 關卡選擇 1%（[scoring.md:58](scoring.md#L58)），銀行存款 38.5 → 40.5% / 65%。STATUS.md / plan.md 同步更新。

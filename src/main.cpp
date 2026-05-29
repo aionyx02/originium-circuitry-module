@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <algorithm>
+#include <cstdio>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -53,13 +54,27 @@ bool loadGame(const std::string& path, Game& game, std::string& errorOut) {
     }
 }
 
+constexpr int kMenuPanelW = 560;
+constexpr int kMenuPanelH = 456;
+constexpr int kMenuListOffsetX = 44;
+constexpr int kMenuListOffsetY = 168;
+constexpr int kMenuRowH = 42;
+constexpr int kMenuVisibleRows = 6;
+
+int menuVisibleStart(int selected, int levelCount) {
+    if (levelCount <= kMenuVisibleRows) return 0;
+    if (selected < 0) return 0;
+    int start = selected - kMenuVisibleRows / 2;
+    start = std::max(0, start);
+    start = std::min(start, levelCount - kMenuVisibleRows);
+    return start;
+}
+
 std::vector<LevelEntry> findLevels() {
     namespace fs = std::filesystem;
 
     std::vector<LevelEntry> levels;
-    const fs::path preferred = "assets/levels";
-    const fs::path fallback = "docs/io";
-    const fs::path root = fs::exists(preferred) ? preferred : fallback;
+    const fs::path root = "assets/levels";
     if (!fs::exists(root) || !fs::is_directory(root)) return levels;
 
     for (const auto& entry : fs::directory_iterator(root)) {
@@ -75,28 +90,30 @@ std::vector<LevelEntry> findLevels() {
     return levels;
 }
 
-int menuSelectionFromMouse(const std::vector<LevelEntry>& levels, int screenW, int screenH) {
+int menuSelectionFromMouse(const std::vector<LevelEntry>& levels,
+                           int selected,
+                           int screenW,
+                           int screenH) {
     if (levels.empty()) return -1;
 
     const Vector2 m = GetMousePosition();
-    const int panelW = 560;
-    const int panelH = 456;
-    const int panelX = (screenW - panelW) / 2;
-    const int panelY = (screenH - panelH) / 2;
-    const int listX = panelX + 44;
-    const int listY = panelY + 168;
-    const int listW = panelW - 88;
-    const int rowH = 42;
-    const int maxVisible = std::min(static_cast<int>(levels.size()), 6);
+    const int panelX = (screenW - kMenuPanelW) / 2;
+    const int panelY = (screenH - kMenuPanelH) / 2;
+    const int listX = panelX + kMenuListOffsetX;
+    const int listY = panelY + kMenuListOffsetY;
+    const int listW = kMenuPanelW - 2 * kMenuListOffsetX;
+    const int maxVisible = std::min(static_cast<int>(levels.size()), kMenuVisibleRows);
 
     if (m.x < listX || m.x >= listX + listW) return -1;
-    if (m.y < listY || m.y >= listY + maxVisible * rowH) return -1;
-    const int idx = static_cast<int>(m.y - listY) / rowH;
-    return idx >= 0 && idx < maxVisible ? idx : -1;
+    if (m.y < listY || m.y >= listY + maxVisible * kMenuRowH) return -1;
+    const int localIdx = static_cast<int>(m.y - listY) / kMenuRowH;
+    const int idx = menuVisibleStart(selected, static_cast<int>(levels.size())) + localIdx;
+    return idx >= 0 && idx < static_cast<int>(levels.size()) ? idx : -1;
 }
 
 void drawMenu(const std::vector<LevelEntry>& levels,
               int selected,
+              int hover,
               const std::string& message,
               Font font,
               int screenW,
@@ -105,15 +122,13 @@ void drawMenu(const std::vector<LevelEntry>& levels,
                            Color{22, 29, 43, 255},
                            Color{9, 12, 20, 255});
 
-    const int panelW = 560;
-    const int panelH = 456;
-    const int panelX = (screenW - panelW) / 2;
-    const int panelY = (screenH - panelH) / 2;
+    const int panelX = (screenW - kMenuPanelW) / 2;
+    const int panelY = (screenH - kMenuPanelH) / 2;
     Rectangle panel = {
         static_cast<float>(panelX),
         static_cast<float>(panelY),
-        static_cast<float>(panelW),
-        static_cast<float>(panelH),
+        static_cast<float>(kMenuPanelW),
+        static_cast<float>(kMenuPanelH),
     };
     DrawRectangleRounded(panel, 0.06f, 8, Color{18, 22, 32, 230});
     DrawRectangleRoundedLinesEx(panel, 0.06f, 8, 1.0f, Color{72, 94, 112, 255});
@@ -131,44 +146,52 @@ void drawMenu(const std::vector<LevelEntry>& levels,
                    Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + 180)},
                    20.0f, 1.0f, Color{220, 120, 120, 255});
     } else {
-        const int rowH = 42;
-        const int listX = panelX + 44;
-        const int listY = panelY + 168;
-        const int listW = panelW - 88;
-        const int maxVisible = std::min(static_cast<int>(levels.size()), 6);
-        for (int i = 0; i < maxVisible; ++i) {
+        const int listX = panelX + kMenuListOffsetX;
+        const int listY = panelY + kMenuListOffsetY;
+        const int listW = kMenuPanelW - 2 * kMenuListOffsetX;
+        const int levelCount = static_cast<int>(levels.size());
+        const int start = menuVisibleStart(selected, levelCount);
+        const int maxVisible = std::min(levelCount, kMenuVisibleRows);
+        for (int localIdx = 0; localIdx < maxVisible; ++localIdx) {
+            const int i = start + localIdx;
             Rectangle row = {
                 static_cast<float>(listX),
-                static_cast<float>(listY + i * rowH),
+                static_cast<float>(listY + localIdx * kMenuRowH),
                 static_cast<float>(listW),
-                static_cast<float>(rowH - 8),
+                static_cast<float>(kMenuRowH - 8),
             };
             const bool isSelected = (i == selected);
+            const bool isHover = (i == hover);
             DrawRectangleRounded(row, 0.10f, 6,
                                  isSelected ? Color{36, 55, 61, 255}
+                                 : isHover ? Color{36, 44, 56, 245}
                                             : Color{31, 37, 48, 230});
             DrawRectangleRoundedLinesEx(row, 0.10f, 6, isSelected ? 2.0f : 1.0f,
                                         isSelected ? Color{109, 236, 218, 255}
+                                        : isHover ? Color{104, 130, 150, 245}
                                                    : Color{75, 88, 104, 255});
             DrawTextEx(font, levels[i].name.c_str(),
                        Vector2{static_cast<float>(listX + 18),
-                               static_cast<float>(listY + i * rowH + 7)},
+                               static_cast<float>(listY + localIdx * kMenuRowH + 7)},
                        20.0f, 1.0f, Color{232, 244, 245, 255});
         }
-        if (static_cast<int>(levels.size()) > maxVisible) {
-            DrawTextEx(font, "More levels available in folder; first 5 shown.",
+        if (levelCount > maxVisible) {
+            char range[64];
+            std::snprintf(range, sizeof(range), "Showing %d-%d of %d",
+                          start + 1, start + maxVisible, levelCount);
+            DrawTextEx(font, range,
                        Vector2{static_cast<float>(listX),
-                               static_cast<float>(listY + maxVisible * rowH + 6)},
+                               static_cast<float>(listY + maxVisible * kMenuRowH + 6)},
                        14.0f, 1.0f, Color{114, 128, 139, 255});
         }
     }
 
     DrawTextEx(font, "Enter / Left Click: start    Up/Down: select    N: back to menu from game",
-               Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + panelH - 58)},
+               Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + kMenuPanelH - 58)},
                15.0f, 1.0f, Color{170, 184, 196, 255});
     if (!message.empty()) {
         DrawTextEx(font, message.c_str(),
-                   Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + panelH - 30)},
+                   Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + kMenuPanelH - 30)},
                    15.0f, 1.0f, Color{220, 120, 120, 255});
     }
 }
@@ -253,7 +276,7 @@ int main(int argc, char** argv) {
 
             BeginDrawing();
             if (appState == AppState::Menu) {
-                const int hover = menuSelectionFromMouse(levels, sw, sh);
+                const int hover = menuSelectionFromMouse(levels, selectedLevel, sw, sh);
                 const Vector2 mouseDelta = GetMouseDelta();
                 const bool mouseMoved = (mouseDelta.x != 0.0f) || (mouseDelta.y != 0.0f);
                 if (hover >= 0 && mouseMoved) selectedLevel = hover;
@@ -278,7 +301,7 @@ int main(int argc, char** argv) {
                         menuMessage.clear();
                     }
                 }
-                drawMenu(levels, selectedLevel, menuMessage, menuFont, sw, sh);
+                drawMenu(levels, selectedLevel, hover, menuMessage, menuFont, sw, sh);
             } else {
                 if (IsKeyPressed(KEY_N)) {
                     appState = AppState::Menu;
@@ -288,7 +311,7 @@ int main(int argc, char** argv) {
                         selectedLevel = levels.empty() ? -1 : 0;
                     }
                     menuMessage.clear();
-                    drawMenu(levels, selectedLevel, menuMessage, menuFont, sw, sh);
+                    drawMenu(levels, selectedLevel, -1, menuMessage, menuFont, sw, sh);
                     EndDrawing();
                     continue;
                 }

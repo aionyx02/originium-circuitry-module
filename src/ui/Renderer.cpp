@@ -11,8 +11,8 @@ namespace {
 constexpr int kTrayPreviewX   = 124;  // offset within slot where preview box starts
 constexpr int kTrayPreviewW   = 98;
 constexpr int kConstraintGap  = 8;
-constexpr int kColHintHeight  = 22;
-constexpr int kRowHintWidth   = 28;
+constexpr int kColHintHeight  = 24;
+constexpr int kRowHintWidth   = 48;
 
 Color colorBadge(unsigned colorIndex) {
     static const Color colors[] = {
@@ -22,6 +22,12 @@ Color colorBadge(unsigned colorIndex) {
         {255, 193,   7, 255},
     };
     return colors[colorIndex % (sizeof(colors) / sizeof(colors[0]))];
+}
+
+Color hintStatusColor(unsigned current, unsigned need) {
+    if (current > need) return Color{220, 80, 80, 255};
+    if (current == need) return Color{80, 220, 100, 255};
+    return Color{174, 191, 203, 255};
 }
 
 } // namespace
@@ -92,6 +98,32 @@ void drawCenteredText(Font font, const char* msg, int boxX, int boxY, int boxW, 
                static_cast<float>(fontSize), 1.0f, tint);
 }
 
+void drawConstraintHint(Font font, const char* msg, int boxX, int boxY, int boxW, int boxH,
+                        int fontSize, Color status, Color colorTag, bool rowHint,
+                        bool emphasized) {
+    Color bg = status;
+    bg.a = emphasized ? 30 : 0;
+    if (bg.a > 0) {
+        DrawRectangleRounded(Rectangle{(float)boxX, (float)boxY, (float)boxW, (float)boxH},
+                             0.18f, 6, bg);
+    }
+
+    Color border = status;
+    border.a = emphasized ? 180 : 70;
+    DrawRectangleRoundedLinesEx(Rectangle{(float)boxX, (float)boxY, (float)boxW, (float)boxH},
+                                0.18f, 6, 1.0f, border);
+
+    Color tag = colorTag;
+    tag.a = 220;
+    if (rowHint) {
+        DrawRectangle(boxX + boxW - 3, boxY + 3, 2, boxH - 6, tag);
+    } else {
+        DrawRectangle(boxX + 4, boxY + boxH - 3, boxW - 8, 2, tag);
+    }
+
+    drawCenteredText(font, msg, boxX, boxY, boxW, boxH, fontSize, status);
+}
+
 void drawBoardBg(const Game& g, const Layout& L, Font font) {
     const Board& b = g.board;
     const Color emptyFill   = { 45,  50,  62, 255};
@@ -129,6 +161,7 @@ void drawConstraints(const Game& g, const Layout& L, Font font) {
     if (b.colors == 0) return;
 
     const int colorCount = static_cast<int>(b.colors);
+    const int hintFontSize = std::max(12, std::min(16, L.cellSize / 3));
     for (int color = 0; color < colorCount; ++color) {
         const Color tint = colorBadge(static_cast<unsigned>(color));
         const int stackedFromBoard = colorCount - color;
@@ -136,16 +169,24 @@ void drawConstraints(const Game& g, const Layout& L, Font font) {
         for (int c = 0; c < L.cols; ++c) {
             const int x = L.boardX + c * L.cellSize;
             const int y = L.boardY - kConstraintGap - stackedFromBoard * kColHintHeight;
+            const unsigned need = b._constraints[color][L.rows + c];
+            const unsigned current = b.currentFilledForColor(color, c, false, g.parts);
+            const Color status = hintStatusColor(current, need);
             char buf[16];
-            std::snprintf(buf, sizeof(buf), "%u", b._constraints[color][L.rows + c]);
-            drawCenteredText(font, buf, x, y, L.cellSize, kColHintHeight, 18, tint);
+            std::snprintf(buf, sizeof(buf), "%u/%u", current, need);
+            drawConstraintHint(font, buf, x, y, L.cellSize, kColHintHeight,
+                               hintFontSize, status, tint, false, current >= need);
         }
         for (int r = 0; r < L.rows; ++r) {
             const int x = L.boardX - kConstraintGap - stackedFromBoard * kRowHintWidth;
             const int y = L.boardY + r * L.cellSize;
+            const unsigned need = b._constraints[color][r];
+            const unsigned current = b.currentFilledForColor(color, r, true, g.parts);
+            const Color status = hintStatusColor(current, need);
             char buf[16];
-            std::snprintf(buf, sizeof(buf), "%u", b._constraints[color][r]);
-            drawCenteredText(font, buf, x, y, kRowHintWidth, L.cellSize, 18, tint);
+            std::snprintf(buf, sizeof(buf), "%u/%u", current, need);
+            drawConstraintHint(font, buf, x, y, kRowHintWidth, L.cellSize,
+                               hintFontSize, status, tint, true, current >= need);
         }
     }
 }

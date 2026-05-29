@@ -718,3 +718,49 @@ const int color = 0; // Phase 1: single color
 
 - 進階功能：雙色設定檔載入與遊玩 2%（[scoring.md:62](scoring.md#L62)）— 程式碼完成，待 Example5/6 手動遊玩與勝利驗收後入帳。
 - 助教 demo 雙色測資 2%（[scoring.md:63](scoring.md#L63)）— demo day 才能用助教檔案實測。
+
+---
+
+### Row/column current hints：把計數邏輯放回 Board
+
+*Phase 3 · commit `<待 commit>`*
+
+#### What & Key Concepts
+
+Issue 04 要讓每個 row / column hint 顯示 `current/need`，並依狀態變色：
+
+- `current < need`：灰色，代表還不足。
+- `current == need`：綠色，代表剛好滿足。
+- `current > need`：紅色，代表超出。
+
+關鍵不是 Renderer 怎麼排字，而是「current 怎麼算」必須和勝利判定一致。因此這次把原本藏在 `WinChecker.cpp` anonymous namespace 的 `cellCountsForColor(...)` 邏輯搬到 `Board.cpp`，並提供：
+
+```cpp
+unsigned Board::currentFilledForColor(int color, int idx, bool isRow,
+                                      const std::vector<Part>& parts) const;
+```
+
+Renderer 和 WinChecker 都呼叫這個 helper，避免兩邊計數規則分裂。
+
+#### Why This Design
+
+- **Board 是盤面狀態查詢的自然位置**：`canPlace` 已經在 Board；「這一列目前某色有幾格」也是 Board 的 query。
+- **WinChecker 和 Renderer 共用同一套計數**：如果固定格、已放零件、雙色規則未來有調整，只要改 Board helper，hint 與勝利判定一起更新。
+- **不把 hint 狀態變成 placement rule**：`current > need` 只變紅，不禁止玩家放置。這符合 issue non-goal，也避免把 UI feedback 混進 core placement validation。
+- **雙色自然支援**：helper 接 `color`，Renderer 外層已經 loop `board.colors`，所以每色各算各的 current。
+
+#### What I Should Be Able To Explain
+
+- Q：為什麼 `currentFilledForColor` 需要 `parts` 參數？
+  A：`Board::_boardInfo` 對已放零件只存 `OCCUPIED + partIndex`，真正的顏色存在 `parts[partIdx].colorIndex`。所以只看 Board cell 值不知道 occupied cell 屬於哪個 color，必須帶 parts 查回去。
+- Q：固定格怎麼算進 current？
+  A：固定格用 `CANNOT_MOVE - color` 編碼，`Board::isCannotMove(cell)` 後用 `Board::cannotMoveColor(cell)` 取回顏色。若等於要查的 color，就算一格 current。
+- Q：為什麼 WinChecker 也要改？
+  A：以前 WinChecker 自己在 anonymous namespace 算 current；Renderer 如果再寫一份就會重複邏輯。改成 WinChecker 呼叫 Board helper 後，勝利判定和 UI hint 的「目前格數」完全一致。
+- Q：為什麼超出不直接禁止放置？
+  A：issue 明確說 hint 只是提示，不改變 placement rule。玩家可能暫時超出，之後移除或重新擺；紅色提示足夠。
+
+#### Score Connection
+
+- 進階功能：某列/欄滿足或超出需求時周圍提示 1%（[scoring.md:59](scoring.md#L59)）— 程式碼完成，待手動驗收後入帳。
+- 進階功能：周圍顯示每列每欄目前填滿格數 1%（[scoring.md:60](scoring.md#L60)）— 程式碼完成，待手動驗收後入帳。

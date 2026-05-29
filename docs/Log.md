@@ -17,6 +17,7 @@
 > **新增 entry 時：(1) 把實際 entry append 到本檔最下方（時間正序），(2) 在這個索引「最上面」加一行。**  
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
+- **2026-05-29** — [Phase 3 issue 04-row-col-hints 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-04-row-col-hints-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · Board 新增 current filled query，Renderer 顯示 `current/need` 與灰/綠/紅狀態
 - **2026-05-29** — [Phase 3 issue 05-dual-color 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-05-dual-color-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · constraint hints 改為依 `board.colors` 多色顯示，零件顏色改用 `Part::colorIndex`
 - **2026-05-29** — [Phase 3 issue 02-new-game + 03-main-menu 手動驗收通過（small）](#2026-05-29--phase-3-issue-02-new-game--03-main-menu-手動驗收通過small) · `Phase 3` · `small` · new game flow + main menu 驗收通過，+2% 入帳（38.5 → 40.5%）
 - **2026-05-29** — [Phase 3 issue 03-main-menu 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-03-main-menu-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · `assets/levels` 正式關卡來源 + menu list polish + hover/keyboard selection 修正
@@ -1624,3 +1625,79 @@ Issue 05-dual-color 程式碼完成，build 與 Example5/6 啟動 smoke 通過�
 ### Other Notes
 
 口頭報告可以講這次是「用 source inspection 縮小問題範圍」：不是看到雙色就重寫 parser，而是先確認資料流，最後只改 UI 呈現層。這能展示對架構邊界的理解。
+
+
+## 2026-05-29 — Phase 3 issue 04-row-col-hints 程式碼完成（待手動驗收）
+
+Type: Implementation
+Phase: 3
+Feature: Issue 04-row-col-hints
+Commit: 待 commit
+
+### Context
+
+使用者在完成 05-dual-color commit 後要求繼續做 hint 相關功能。這張 issue 對應兩個進階功能分項：列/欄滿足或超出需求提示 1%（[scoring.md:59](scoring.md#L59)），以及周圍顯示每列每欄目前填滿格數 1%（[scoring.md:60](scoring.md#L60)）。
+
+05 已經把 constraint layout 改成多色可堆疊；04 在這個 layout 上把純需求數升級成 `current/need`，並加灰 / 綠 / 紅狀態。
+
+### AI Contribution
+
+- 讀 [issues/phase-3/04-row-col-hints.md](issues/phase-3/04-row-col-hints.md)，確認 must-have、helper 建議、測試方式。
+- 檢查 `Board`、`WinChecker`、`Renderer::drawConstraints` 的資料流，避免 Renderer 複製一份勝利判定邏輯。
+- 實作：
+  - `Board::currentFilledForColor(...)`
+  - `WinChecker` 改用 Board helper
+  - Renderer 顯示 `current/need`
+  - hints 狀態色：不足灰色、滿足綠色、超出紅色
+  - 雙色 hints 保留小色條辨識 color index
+- 更新 `STATUS.md`、`plan.md`、`learning-notes.md` 和本 LOG entry。
+
+### Human Decision / Review
+
+使用者詢問 hint 是否接著做、或是否分成兩個 commit。AI 建議先 commit 05，再做 04，理由是雙色與 current hints 對應不同配分與驗收面。使用者完成 05 commit 後要求繼續，因此本輪只處理 04 相關變更。
+
+### Details
+
+`Board::currentFilledForColor(color, idx, isRow, parts)` 會走指定 row 或 column 的每個 cell：
+
+- 固定格：`CANNOT_MOVE - color`，用 `cannotMoveColor(cell)` 判斷是否算指定色。
+- 已放零件：Board cell 只存 `OCCUPIED + partIndex`，需要用 `parts[partIdx].colorIndex` 判斷顏色。
+- 空格 / 不可放置格：不計入 current。
+
+Renderer 顯示：
+
+- 文字：`current/need`
+- 狀態色：
+  - `current < need` → 灰
+  - `current == need` → 綠
+  - `current > need` → 紅
+- 已滿足或超出時有淡色背景與較明顯 border；不足時保留較淡 border。
+- 雙色時每個 hint box 仍有小色條標示該 row / column hint 屬於哪個 color。
+
+### Verification / Tests Performed
+
+- `cmake --build build`：成功，`[100%] Built target game`。
+- `./build/game docs/io/Example1.txt`：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+- `./build/game docs/io/Example5.txt`：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+
+尚未完成手動 GUI 驗收。需要使用者測：
+
+- Example1 空盤時 row / column hints 顯示 `0/need`。
+- 放置零件後相關 row / column current 立即增加；拔除後立即減少。
+- 不足灰色、剛好滿足綠色、超出紅色。
+- Example5/6 雙色 current / need 各自獨立計算。
+- Hint 不遮盤面或 sidebar。
+
+### Result
+
+Issue 04-row-col-hints 程式碼完成，build 與 Example1/5 啟動 smoke 通過。STATUS 暫不把 +2% 入帳，等手動目視與互動驗收通過後再勾兩個 hint checklist。
+
+### Risks / Follow-ups
+
+- 我沒有在本輪用滑鼠完整擺局確認即時更新和紅/綠/灰視覺狀態；需要使用者目視驗收。
+- Row hint 寬度從雙色 commit 的 28 調到 48，目的是容納 `current/need`。若在小視窗或大盤面仍顯擠，下一輪可再做自適應字級或更寬 layout。
+- `current > need` 只提示，不禁止放置；這是 issue non-goal，不應在 `Board::canPlace` 加 constraint 限制。
+
+### Other Notes
+
+這段很適合口頭報告講「避免 duplicated logic」：Renderer 需要顯示 current，WinChecker 也需要 current；所以把 query 放在 Board，讓 UI 與勝利判定共用同一個 source of truth。

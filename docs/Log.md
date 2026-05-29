@@ -17,6 +17,9 @@
 > **新增 entry 時：(1) 把實際 entry append 到本檔最下方（時間正序），(2) 在這個索引「最上面」加一行。**  
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
+- **2026-05-24** — [Phase 3 issue 01-reset 手動驗收通過](#2026-05-24--phase-3-issue-01-reset-手動驗收通過small) · `Phase 3` · `small` · 9 條測試全綠（6 manual + 3 regression）、+1% 入帳（37.5 → 38.5%）
+- **2026-05-24** — [Phase 3 issue 01-reset 程式碼完成（must-have，待驗收）](#2026-05-24--phase-3-issue-01-reset-程式碼完成must-have待驗收) · `Phase 3` · `Implementation` · `Action::Reset` + `Game::initialBoard/Parts` 快照 + `resetToInitial()` + Backspace 改綁 Reset；build 0 warning，等手動驗收後 +1%
+- **2026-05-24** — [Phase 3/4 GitHub issue 草稿定稿 + Epic 化 + 貼上流程](#2026-05-24--phase-34-github-issue-草稿定稿--epic-化--貼上流程) · `Phase 3/4` · `Discussion + Documentation` · reset/new-game 拆分定案、01/02/04/05 套 03 template、補 Phase 3/4 Epic、issue title 改分類格式、加 hidden GitHub metadata 方便手動貼 issue
 - **2026-05-24** — [Phase 3 task 化為 GitHub Issues + issue template 4 輪迭代](#2026-05-24--phase-3-task-化為-github-issues--issue-template-4-輪迭代) · `Phase 3` · `Discussion + Implementation` · plan.md 保策略 + Issues 取代 STATUS checklist + LOG 不動；template 跑 V1→V4 四輪，使用者自寫 04 / 05 驗證 template 可獨立操作
 - **2026-05-24** — [Phase 2 UI polish：Exo 2 字體 + tray redesign](#2026-05-24--phase-2-ui-polishexo-2-字體--tray-redesign) · `Phase 2` · `Implementation + Review` · 使用者指定 Exo 2，AI 重整 sidebar/tray/status/win banner；經截圖 review 後修正 tray preview 重疊、色條與選取框
 - 05-23? docs: add README.md / update learning log
@@ -1156,3 +1159,213 @@ docs/issues/
 - **「issue ≠ LOG」**：很多人會以為 GitHub Issue 關掉就算紀錄完了；本專案明確區分 issue（task tracker）與 LOG（AI 使用紀錄），後者是 [CLAUDE.md](../CLAUDE.md) Hard Constraint #5 直接對應的 30% 評分項。這個區分本身就是口頭報告好素材
 - **「用 source code 真實狀態反推 issue」**：寫 #5 雙色之前先 grep [Renderer.cpp](../src/ui/Renderer.cpp) 找到 `const int color = 0; // Phase 1: single color` 那行，讓 issue 從「雙色 = 4% 大工程」改寫成「雙色 = Renderer hint loop + layout，核心已支援」— 避免 issue 因為對程式現況不熟而誤估工作量
 - **「使用者反向驗證 template」**：V4 template 完成後使用者直接自寫兩個 issue 套用之，這比 AI 自己宣告「template 通用」有說服力 — 是「user 是最後判官」的具體展現
+
+
+
+## 2026-05-24 — Phase 3/4 GitHub issue 草稿定稿 + Epic 化 + 貼上流程
+
+Type: Discussion + Documentation
+Phase: Phase 3 / Phase 4（規劃中）
+Feature: GitHub Issues 工作流定稿 — child issues、Epic issues、手動建立 issue metadata
+Commit: 未 commit（文件草稿整理中，待 GitHub issues 建立後一起推）
+
+### Context
+
+上一筆 LOG 仍停在「Phase 3 issue template 定稿，但 reset/new-game 是否合併、舊檔是否刪除、Phase 4 是否展開都還沒完全定案」。使用者接著重新評估 issue 邊界，決定在真的建立 GitHub Issues 前，把本地草稿整理到可以直接貼上 GitHub 的狀態。
+
+本次目標：
+- 定案 Phase 3 child issue 切法
+- 把所有 Phase 3 issue 統一成同一套 template
+- 補 Phase 3 / Phase 4 Epic issue
+- 改 issue title 命名規則，讓 GitHub issue list 更好掃
+- 補手動建立 GitHub issue 的 copy/paste metadata 與後續存取規則
+
+### AI Contribution
+
+1. **issue 邊界建議**：重新評估 reset 與 new-game，建議拆開：
+   - reset 可獨立完成、獨立拿 1%，集中在 `Game::resetToInitial()` 與 Phase 2 視覺狀態清理
+   - new-game 依賴 main menu / app flow，應與 main menu 強耦合，而不是跟 reset 綁在同一張 issue
+2. **template 套用**：依使用者已調好的 [03-main-menu.md](issues/phase-3/03-main-menu.md) 結構，重寫：
+   - [01-reset.md](issues/phase-3/01-reset.md)
+   - [02-new-game.md](issues/phase-3/02-new-game.md)
+   - [04-row-col-hints.md](issues/phase-3/04-row-col-hints.md)
+   - [05-dual-color.md](issues/phase-3/05-dual-color.md)
+3. **cross-reference 修正**：把 [03-main-menu.md](issues/phase-3/03-main-menu.md) 內舊的「Issue #1 新遊戲」引用改成 Issue #2，並同步 #4 / #5 編號
+4. **去 icon 化**：依使用者要求移除 `❗`、`✅` 等 icon / emoji 標記，保留警示內容但讓 markdown 更乾淨
+5. **Epic 草稿**：新增：
+   - [phase-3/00-epic.md](issues/phase-3/00-epic.md)：總管 Phase 3 剩餘 9%，連到 01–05 child issues
+   - [phase-4/00-epic.md](issues/phase-4/00-epic.md)：自動解題 10% 的總綱，先列 proposed child issues，等 Phase 3 後再細拆
+6. **命名規則調整**：把 title 從 `[Feature] ...` 改成分類格式：
+   - `Epic [Phase 3] ...`
+   - `Feature [Gameplay] ...`
+   - `Feature [Flow] ...`
+   - `Feature [UI] ...`
+   - `Feature [Hints] ...`
+   - `Feature [Dual-Color] ...`
+   - `Epic [Phase 4] ...`
+7. **GitHub 貼上流程**：在每份 issue draft 開頭加 hidden comment：
+   - `GitHub Title`
+   - `GitHub Milestone`
+   - `GitHub Labels`
+   - `Copy note`
+   並在 [docs/issues/README.md](issues/README.md) 補手動建立 issue 的步驟與「GitHub issue = active tracking source of truth、本地 markdown = draft/archive」原則
+
+### Human Decision / Review
+
+- 使用者拍板 reset 與 new-game 採**分開 issue**，new-game 與 main menu 強綁
+- 使用者要求以 03-main-menu.md 的格式套用到 01 / 02 / 04 / 05
+- 使用者要求移除 icon，例如 `❗`
+- 使用者決定在 GitHub 上真正建立 issues 前，先補 Phase 3 / Phase 4 Epic issue
+- 使用者指定 title 改成 `Feature [Hints] ...` / `Feature [UI] ...` 這類分類格式
+- 使用者決定先用 GitHub 網頁手動建立 issues，因此需要每份 markdown 變成可直接複製貼上的格式
+
+### Details
+
+**目前 Phase 3 issue set**：
+```
+docs/issues/phase-3/
+├── 00-epic.md              Epic [Phase 3] 進階功能 + 雙色
+├── 01-reset.md             Feature [Gameplay] 重置盤面
+├── 02-new-game.md          Feature [Flow] 新遊戲流程
+├── 03-main-menu.md         Feature [UI] 主畫面與關卡選擇流程
+├── 04-row-col-hints.md     Feature [Hints] 列/欄提示與超量提示
+└── 05-dual-color.md        Feature [Dual-Color] 雙色讀檔與顯示
+```
+
+**目前 Phase 4 issue set**：
+```
+docs/issues/phase-4/
+└── 00-epic.md              Epic [Phase 4] 自動解題 Auto Solver
+```
+
+**GitHub 建立方式**：
+- 每份 markdown 開頭都有 hidden comment，手動建立 issue 時複製 `GitHub Title` 到 title 欄
+- body 可直接貼整份 markdown；hidden comment 在 GitHub rendered issue 中不會顯示
+- labels / milestone 依 hidden comment 設定
+- 建完後把 issue number / URL 補回 [docs/issues/README.md](issues/README.md)
+
+### Verification / Tests Performed
+
+純文件與流程整理，未進行程式測試。驗證內容：
+- `rg` 檢查舊的「Issue #1 新遊戲 / 重置 + 新遊戲 / After Issue #4 雙色」引用已移除
+- `rg` 檢查 phase-3 issue docs 中 `❗` / `✅` 等 icon 已移除
+- `rg` 檢查所有 phase-3 / phase-4 issue title 已改成 `Feature [Area]` / `Epic [Phase]` 格式
+- `rg` 檢查每份 issue draft 都有 `GitHub Title` / `GitHub Milestone` / `GitHub Labels` / `Copy note`
+- `git diff --check -- docs/issues` 通過
+
+### Result
+
+- Phase 3 child issues 已定稿為 5 張，總分 9%
+- Phase 3 Epic 與 Phase 4 Epic 草稿已建立
+- docs/issues README 已成為本地 issue 草稿入口，包含手動建立 GitHub issue 的流程
+- 本地 markdown 現在可直接複製到 GitHub issue body
+- 工作流定案：**GitHub issue thread 是 active tracking source of truth；本地 markdown 保留為 draft/archive**
+
+### Risks / Follow-ups
+
+- 尚未真的在 GitHub 上建立 issues，因此 README 裡還沒有 issue number / URL
+- 本機未安裝 `gh` CLI；若要改批次建立，需先 `brew install gh` + `gh auth login`
+- 目前 Phase 4 只有 Epic，child issues 等 Phase 3 data model 穩定後再拆
+- 舊的 [01-reset-and-new-game.md](issues/phase-3/01-reset-and-new-game.md) 若仍存在，建議刪除或移到 archive，避免跟新切法混淆
+- GitHub labels / milestones 若尚未建立，需要先在 GitHub UI 建好或之後用 CLI 建
+
+### Other Notes
+
+**口頭報告素材**：
+
+- **「issue 切分不是一次決定」**：一開始 reset + new-game 曾被合併，後來使用者重新思考驗收與依賴後拆開。這能展示 AI 協作中的規劃不是僵硬產物，而是隨著人類 review 修正邊界。
+- **「Epic vs child issue」**：Phase 3 用 Epic 管總分與子任務，child issue 管實作；Phase 4 先寫 Epic、不急著拆 child issues，因為 solver 會依賴 Phase 3 後穩定的資料模型。
+- **「GitHub issue 與本地 doc 的責任分離」**：GitHub issue 作為 active tracker，本地 markdown 作為 draft/archive；這避免兩邊同步成本過高，又保留 AI 協作過程證據。
+
+
+## 2026-05-24 — Phase 3 issue 01-reset 程式碼完成（must-have，待驗收）
+
+Type: Implementation  
+Phase: 3  
+Feature: 重置盤面 Reset Board（[scoring.md:56](scoring.md#L56)，1%）  
+Commit: 待 commit
+
+### Context
+
+Phase 3 第一個 issue 落地。[docs/issues/phase-3/01-reset.md](issues/phase-3/01-reset.md) 兩天前剛定稿（見上一個 entry：Phase 3/4 GitHub issue 草稿定稿）。Rubric 要求「能夠重置盤面為一開始讀進來的狀態」（[scoring.md:56](scoring.md#L56)），1% 強制項。實作量小但容易踩到 Phase 2 視覺欄位（`visualInitialized` / `rotateCount` / `currentCenterX/Y/Angle`），所以先獨立切出來確保穩拿。
+
+### AI Contribution
+
+1. **讀 issue + 既有檔**：Game.h / Game.cpp / Input.cpp / Board.h / Part.h 全讀過，確認：
+   - `Board` / `Part` 全是 vector + POD，C++ 預設 copy 就是 deep copy
+   - `Input::poll` 目前 `KEY_BACKSPACE` 跟 `KEY_ESCAPE` 是 OR 起來都 map 到 `Action::Remove`（issue 沒提到這條 duplicate）
+   - `Game::update` 開頭 `if (won) return;` 會擋住勝利後的所有 action — Reset 必須在這之前處理
+2. **小範圍 plan**（implementation 前 ask）：列出三個檔的精確改動、設計選擇（deep copy vs re-parse）、polish 區暫不做的理由（visualInitialized trap 跟 lerp 動畫衝突）。
+3. **AskUserQuestion 提兩個問題**：(a) `statusMessage` 文案中英文選擇（issue 寫中文但 codebase 其他 message 都英文）；(b) 計畫是否 OK。
+4. **實作（三檔）**：
+   - [src/core/Game.h](../src/core/Game.h)：`enum class Action` append `Reset`；private 新成員 `Board initialBoard;` / `std::vector<Part> initialParts;`（放 private — 不對外曝露）；public 新 method `void resetToInitial();`
+   - [src/core/Game.cpp](../src/core/Game.cpp)：
+     - `init()` 在 `std::move(b/p)` 後從成員 `board` / `parts` copy 一份到 `initialBoard` / `initialParts`（此時 `Part` 視覺欄位都還是 default：`visualInitialized=false`、`rotateCount=0`、`currentAngle=0`、`currentScale=1`，剛好乾淨）
+     - `update()` 在 `statusMessage.clear()` 之後、`if (won) return;` **之前**處理 `Action::Reset → resetToInitial()` + `return`；switch 補一個 `case Action::Reset: break;` 給 `-Wswitch` 編譯器警告
+     - `resetToInitial()`：`board = initialBoard; parts = initialParts;` + `cursorRow=0, cursorCol=TRAY_COL, heldPartIdx=-1, won=false, mouseControlling=false, statusMessage="Board reset."`
+   - [src/ui/Input.cpp](../src/ui/Input.cpp)：拆原本的 OR，改成 `if (IsKeyPressed(KEY_ESCAPE)) return Action::Remove;` + `if (IsKeyPressed(KEY_BACKSPACE)) return Action::Reset;`
+5. **doc 更新**：STATUS.md / plan.md timeline / LOG.md（含本 entry）。
+
+### Human Decision / Review
+
+- **`statusMessage` 文案選英文**：使用者選 `"Board reset."` over issue 原寫的中文「已重置盤面」，理由是 codebase 其他 statusMessage 都英文（"Cannot place here..."、"Move onto the board..."），中文會破壞一致性。**這是 issue spec 與 codebase 一致性衝突時的小範圍 override，使用者拍板。**
+- **計畫獲使用者批准後才動 code**（CLAUDE.md large-change workflow）。
+
+### Details
+
+**設計選擇與背後原因**：
+
+- **deep copy snapshot vs re-parse 檔案**：issue 已寫明選 deep copy（不依賴 file system / 不需保留檔案路徑 / 記憶體成本小）。AI 注意到實作關鍵：snapshot 必須在 `std::move(b/p)` **之後**從 `board` / `parts` 成員 copy，而不是從 parameter copy — 因為 parameter 是 by-value 但已被 move 走了。順序：
+  ```cpp
+  board = std::move(b);
+  parts = std::move(p);
+  initialBoard = board;     // 從成員 copy，是 deep copy
+  initialParts = parts;
+  ```
+- **Action::Reset 在 `if (won) return;` 之前處理**：issue 沒明寫但 Acceptance Criteria 暗示（reset 後可繼續玩、可再次 reset、可勝利 → 勝利後也要能 reset）。`statusMessage.clear()` → 處理 Reset → `if (won) return` → 一般 actions。
+- **不破壞 Esc 的「取消 held / 拔起」語意**：issue 第 99 行特別寫了 `Esc 已有「取消 held / 拔起」語意`。原 Input.cpp 把 Backspace 跟 Esc OR 起來是個歷史遺留 duplicate；改動把 Backspace 解放給 Reset，Esc 保持原行為。
+- **switch 補 `case Action::Reset: break;`**：雖然 Reset 在 switch 之前 `return` 掉了，編譯器 `-Wswitch` 仍會抱怨 enum 值未涵蓋。加 case + 註解寫明「handled above; listed to satisfy -Wswitch」。
+- **不在這次處理 Polish 區的 lerp 動畫**：issue 列了「零件從目前位置 lerp 飛回 tray」當 polish，但同時又列「`visualInitialized` 一定要在 reset 時歸 `false`」當 trap。這兩條是衝突的：若保留 `currentCenterX/Y/Angle` 讓動畫從當前位置 lerp 到 tray，就不能歸 `visualInitialized=false`（否則下 frame 會 snap 而非 lerp）。Must-have 走 deep copy（含視覺欄位歸 default、含 `visualInitialized=false`），結果是 reset 時零件「瞬移」回 tray — 沒有飛回動畫，但符合 must-have AC 也沒踩 trap。lerp polish 留到驗收後評估。
+
+**改了幾行**：3 個檔、共 +25 / -3 行（不含 doc）。
+
+### Verification / Tests Performed
+
+- `cmake --build build`：0 warning、0 error、game 執行檔 build 出來。
+- **未驗證（需使用者手動互動）**：issue 的 6 條 Manual Tests + 3 條 Regression Checks。需要使用者跑 `./build/game docs/io/Example1.txt`：
+  1. 放幾個零件 → Backspace → 全部回 tray
+  2. 旋轉零件後 reset → rotate 回 CW_0
+  3. 拿著零件時 reset → held state 清掉
+  4. 放到快勝利時 reset → won=false 可繼續
+  5. 勝利後 reset → 重新可玩
+  6. reset 後再次達成 win
+  7. Regression: 鍵盤移動 / 放置 / 旋轉 / 滑鼠拖放 / Phase 2 動畫
+
+### Result
+
+程式碼三檔 + doc 三檔完成。等使用者手動驗收 → 通過後可勾 STATUS.md「重置盤面」+1%（37.5% → 38.5%）+ commit。**目前銀行存款未變動**。
+
+### Risks / Follow-ups
+
+- **手動驗收若 fail，最可能的失敗點**：
+  - 視覺欄位殘留 → 部分零件 reset 後位置 / 角度錯位（理論上不會，因為 copy initialParts 會把 visual fields 全歸 default）
+  - 同 frame Reset + Backspace 之前的 mouse hover → mouseControlling 重置時序問題（理論上也不會，resetToInitial 把 mouseControlling=false 寫死）
+- **Backspace 改綁可能讓使用者短期不適應** — 原本 Backspace = Remove，現在 Backspace = Reset。Esc 還是 Remove，所以 Remove 功能沒掉，但記憶 muscle memory 要切換。可以在 verification 時觀察。
+- **Polish lerp 動畫**：留 follow-up，須額外設計才能跟 `visualInitialized` trap 共存。可能解法：reset 時保留 `currentCenterX/Y`、不重置 `visualInitialized`，但仍重置 `rotateCount`（讓角度 lerp 到 0）+ `location`（讓位置 target = tray）。要等驗收穩定後再評估。
+- 未進入 `Game::initialBoard / initialParts` 的記憶體成本目前不大（Example1 ~10 個 parts），但若 Phase 3 後續加大關卡（雙色、大盤面），snapshot 大小會線性成長。仍遠小於重新 parse 的複雜度。
+
+### Other Notes
+
+**口頭報告素材**：
+
+- **「為什麼選 deep copy 而不是記檔案路徑 re-parse」**：4 個理由 — (1) 中途檔案被改 / 刪不影響 reset；(2) 不必把 file path 塞進 `Game` 類；(3) C++ value-copy 對 `Board` / `Part` 自動 deep copy（vector + POD，零自寫 boilerplate）；(4) 記憶體成本遠小於重走 parser 的複雜度。展現了「選方案不是只看哪個比較快寫，而是評估維護面與耦合度」。
+- **「為什麼 Reset 必須在 `if (won) return` 之前」**：勝利後玩家也要能重新開始；如果 Reset 走一般 action 流程就會被 win-gate 擋住。**這個小細節是 issue spec 沒明寫但從 AC 隱含推出的 — 展示「讀 spec 要讀到言外之意」。**
+- **「Backspace duplicate 的歷史遺留」**：Phase 1 寫 Input.cpp 時 Esc / Backspace 都當 Remove（兩個鍵都直覺）；Phase 3 引入 Reset 時剛好可以解放 Backspace。**展示「設計演進中能發現舊決定有 slack 空間」。**
+- **「Polish 跟 Trap 衝突的取捨」**：issue 自己同時列了 polish（lerp 飛回）與 trap（`visualInitialized` 要歸 false），兩條互相矛盾。AI 看出來並選擇先穩拿 must-have 1% 不踩 trap；polish 留 follow-up。**展示「rubric 寫的東西要 cross-check 內部一致性，不能照抄」。**
+
+
+## 2026-05-24 — Phase 3 issue 01-reset 手動驗收通過（small）
+Phase: 3  
+Commit: 待 commit
+
+使用者跑 `./build/game docs/io/Example1.txt`，issue [01-reset](issues/phase-3/01-reset.md#L132) 的 6 條 Manual Tests + 3 條 Regression Checks 全綠：放幾個零件 → Backspace 回 tray；旋轉後 reset → CW_0；持有零件 reset → held 清掉；快勝利時 reset → won=false 可繼續；勝利後 reset → 重新可玩；reset 後再勝一次；鍵盤 / 滑鼠 / Phase 2 動畫 / 音效零退化。配分 +1%（重置盤面 1%、[scoring.md:56](scoring.md#L56)）入帳，銀行存款 37.5 → 38.5% / 65%。STATUS.md / plan.md 同步更新。

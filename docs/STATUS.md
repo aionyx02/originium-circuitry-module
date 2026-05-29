@@ -1,6 +1,6 @@
 # STATUS.md — 進度與配分追蹤
 
-> Last updated: 2026-05-24（Day 2c 音效 + auto-select bugfix 驗收通過）  
+> Last updated: 2026-05-24（Phase 3 issue 01-reset 驗收通過 +1%）  
 > 規劃 / 策略：[plan.md](plan.md) ｜ 配分細節：[scoring.md](scoring.md) ｜ 工作規範：[CLAUDE.md](../CLAUDE.md) ｜ 協作紀錄：[LOG.md](LOG.md)
 
 > **這份檔只回答「現在到哪、勾了哪些分」**。決策原則去 CLAUDE.md，階段規劃去 plan.md。
@@ -9,7 +9,7 @@
 
 ## 銀行存款
 
-**程式實作：37.5% / 65%**  
+**程式實作：38.5% / 65%**  
 口頭報告：尚未開始評估 / 60%
 
 > 每完成一個 Phase 更新一次。「銀行存款」= 已穩穩拿到的分（demo 不會被扣回去的）。
@@ -18,9 +18,9 @@
 
 ## 目前階段
 
-**Phase 2 完成 — auto-select bugfix 待 commit + 進 Phase 3**
+**Phase 3 進行中 — issue 01-reset 驗收通過 +1%**
 
-Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）commit `6f7abcb`；Day 2b（滑鼠 hover/pixel-perfect drag/左鍵放置/右鍵 cancel）commit `59401b4`；Day 2c（音效：InitAudioDevice + 4 個 LoadSound + frame diff 觸發、CMake post-build copy assets/）commit `2ea7726`、2026-05-24 驗收通過；auto-select bugfix（Day 2c 驗收暴露的 Phase 1 殘留）驗收通過、待 commit。Phase 2 圖形分項 **15 / 15 全到位**。
+Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）commit `6f7abcb`；Day 2b（滑鼠 hover/pixel-perfect drag/左鍵放置/右鍵 cancel）commit `59401b4`；Day 2c（音效：InitAudioDevice + 4 個 LoadSound + frame diff 觸發、CMake post-build copy assets/）commit `2ea7726`、2026-05-24 驗收通過；auto-select bugfix（Day 2c 驗收暴露的 Phase 1 殘留）commit `c33d562`。Phase 2 圖形分項 **15 / 15 全到位**。Phase 3 issue [01-reset](issues/phase-3/01-reset.md) 驗收通過（`Action::Reset` + `Game::initialBoard/Parts` 快照 + `Game::resetToInitial()` + Backspace 鍵改綁 Reset），**+1% 入帳**。
 
 ---
 
@@ -47,7 +47,7 @@ Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit
 
 ### 進階功能（共 10%）
 
-- [ ] 重置盤面為初始狀態 — 1%
+- [x] 重置盤面為初始狀態 — 1%（Backspace 重來同關，driver = `Game::resetToInitial()` snapshot deep-copy；issue [01-reset](issues/phase-3/01-reset.md) 2026-05-24 驗收通過）
 - [ ] 不關程式開新遊戲 — 1%
 - [ ] 精美主畫面 / 關卡選擇 — 1%
 - [ ] 某列/欄滿足或超出需求時周圍提示 — 1%
@@ -88,12 +88,14 @@ Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit
 - **Phase 2 Day 2a**（2026-05-22，commit `6f7abcb`）：視覺 polish + 程序材質。圓角板面 / tray / win banner、背景垂直漸層、每 cell 上方高光帶（+70/ch）+ 下方 bevel（÷2），drop shadow 兩 pass（offset 4/5px）。使用者手動驗收 A–H 全綠。+4%。
 - **Phase 2 Day 2b**（2026-05-22 代碼 + 2026-05-24 驗收，commit `59401b4`）：滑鼠。Layout struct 從 Renderer.cpp anon-ns 提到 Renderer.h 公開；Game 加 `setCursor(row, col, isTray)` cursor 原語 + `bool mouseControlling` UI hint flag；Input 加 `pollMouse(Layout, Game&)` 做板面/tray hit-test + 左鍵 = Place / 右鍵 = Remove。drag follow 三輪迭代：cell-quantized（卡頓）→ pixel-perfect on board（緊跟手）→ pixel-perfect 從 tray 撿起起算（點 tray 即跟手）。視覺與 cursor 解耦：cursor 仍 cell-quantized 給紅綠框 + canPlace、視覺 = mouse pixel + snap 不 lerp。**不加分**（rubric 完整性而已）。
 - **Phase 2 Day 2c**（2026-05-24，commit `2ea7726`）：音效。CMakeLists.txt 加 post-build `copy_directory ${CMAKE_SOURCE_DIR}/assets`；main.cpp 加 `InitAudioDevice` + 4 個 `LoadSound`（assets/sfx/{pickup,place,spin,victory}.mp3）+ 每 frame snapshot `heldIdx / won / placedCount / rotateSum` 做 diff、依優先序 `win > place > pickup > spin` 最多放一個音 + `IsSoundValid` 守缺檔。core / Renderer / Input 完全不碰。+1%。
-- **auto-select bugfix**（2026-05-24，驗收通過 / 待 commit）：拔掉 Phase 1 keyboard-era 的 `Game::autoSelectNextUnplaced()` — 兩處呼叫（init 末 + handlePlace 放置成功後）+ 函式定義 + 宣告全刪。修掉滑鼠模式下「開檔零件自動跟手 + 放完自動接下一個」的 bug（Day 2c 驗收時暴露）。鍵盤路徑相容（cursor 初始在 TRAY_COL row 0，按 Enter 一樣撿第一件）。
+- **auto-select bugfix**（2026-05-24，commit `c33d562`）：拔掉 Phase 1 keyboard-era 的 `Game::autoSelectNextUnplaced()` — 兩處呼叫（init 末 + handlePlace 放置成功後）+ 函式定義 + 宣告全刪。修掉滑鼠模式下「開檔零件自動跟手 + 放完自動接下一個」的 bug（Day 2c 驗收時暴露）。鍵盤路徑相容（cursor 初始在 TRAY_COL row 0，按 Enter 一樣撿第一件）。
+- **Phase 3 issue 01-reset**（2026-05-24，驗收通過 / 待 commit）：`Action::Reset` + `Game::initialBoard / initialParts` 快照 + `Game::resetToInitial()` + Backspace 改綁 Reset（Esc 保留 Remove 語意）。`init()` 在 `std::move` 後從成員 deep-copy 一份 snapshot；`update()` 在 `if (won) return;` 之前處理 Reset 讓勝利後也能重來。Manual tests 6 條 + Regression 3 條全綠。+1%。
 - **文件結構**：CLAUDE / plan / STATUS / LOG / learning-notes / DEV_GUIDE / my-note 7 檔到位
 
 ## 進行中
 
-- Phase 2 closeout：commit 後進 Phase 3（雙色 + 進階功能 +12%，要先在 plan.md §7 展開細節）
+- Phase 3 01-reset：驗收通過、待 commit（reset feature 一批；auto-select bugfix 早已 commit 在 `c33d562`）
+- Phase 3 下一步：選 [02-new-game](issues/phase-3/02-new-game.md) 或其他 phase-3 issue 接著做（雙色 / 主畫面 / 列欄提示 / 列欄填滿格數）
 - 材質策略：純程序材質（不引入 png 資產）
 - 音效策略：使用者已用 jsfxr 生 pickup / place / spin 3 個 mp3 + 沿用 victory.mp3 當 win 音
 

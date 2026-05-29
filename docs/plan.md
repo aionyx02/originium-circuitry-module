@@ -397,4 +397,22 @@
   - Build 0 warning 0 error；post-build copy 確認 `build/assets/sfx/` 5 檔到位
   - Smoke `./build/game ../docs/io/Example1.txt` 1.5 秒、`grep -iE "audio|sound|wave"` raylib log：`AUDIO: Device initialized successfully | Backend: miniaudio | Core Audio` + 4 個音檔各自 `FILEIO: ... File loaded successfully` + `WAVE: Data loaded successfully (44100 Hz, 32 bit, 2 channels)`、無 error 無 warn
   - **手動驗收通過**（2026-05-24，6 項全綠 + 額外暴露 Phase 1 keyboard-era `autoSelectNextUnplaced` 殘留 bug — 開檔零件自動跟手、放完自動接下一個；獨立 commit 修掉、不算 Day 2c 退化）
-- 下一步：auto-select bugfix commit 後 → Phase 2 closeout → Phase 3 規劃（雙色 + 進階功能，§7 展開）
+- 下一步：~~auto-select bugfix commit 後~~（已於 `c33d562` commit）→ Phase 2 closeout → Phase 3 規劃（雙色 + 進階功能，§7 展開）
+
+
+## Phase 3 issue 01-reset done — 2026-05-24（驗收通過 / 待 commit）
+
+- 完成項目（對應 [issues/phase-3/01-reset.md](issues/phase-3/01-reset.md) must-have）：
+  - [src/core/Game.h](../src/core/Game.h)：`enum class Action` 加 `Reset`、新 private 成員 `Board initialBoard;` / `std::vector<Part> initialParts;`、新 public method `void resetToInitial();`
+  - [src/core/Game.cpp](../src/core/Game.cpp)：`init()` 在 `std::move(b/p)` 之後從成員 copy 一份到 `initialBoard / initialParts`（此時 Part 視覺欄位都還是 default，剛好乾淨）；`update()` 在 `if (won) return;` **之前**處理 `Action::Reset → resetToInitial()`，讓勝利後也能重來；`resetToInitial()` 把 `board = initialBoard; parts = initialParts;` + cursor / held / won / mouseControlling 還原 + `statusMessage = "Board reset."`；switch 補 `case Action::Reset: break;` 給 `-Wswitch`
+  - [src/ui/Input.cpp](../src/ui/Input.cpp)：拆掉原本 `KEY_ESCAPE || KEY_BACKSPACE → Remove` 的 OR；改成 `KEY_ESCAPE → Remove`、`KEY_BACKSPACE → Reset` 兩條獨立判斷
+- 設計選擇：
+  - 用 deep copy（value copy）snapshot，而非保留檔案路徑 re-parse — `Board` / `Part` 全是 vector + POD，預設 copy 就是 deep copy，零自寫 boilerplate；中途檔案被改 / 刪也不影響 reset；不需把檔案路徑塞進 `Game`
+  - 不新增 hotkey 衝突：Esc 仍是 Remove（保留「取消 held / 拔起」語意），Backspace 從 Remove 的 duplicate 解放出來當 Reset
+  - 沒做 Polish 區的「零件從當前位置 lerp 飛回 tray」 — 跟 issue 列的 trap「`visualInitialized` 要歸 false 否則下 frame 從錯的視覺位置 lerp」打架，須額外設計才不互相牴觸；must-have 先穩拿 1%
+- 拿到分數：**+1%**（重置盤面 1%、[scoring.md:56](scoring.md#L56)）
+- 銀行存款：37.5 → **38.5%** / 65%
+- 驗證：
+  - Build 0 warning 0 error（cmake --build build）
+  - **手動驗收通過**（2026-05-24）：`./build/game docs/io/Example1.txt` 跑了 6 條 Manual Tests + 3 條 Regression Checks（issue [01-reset](issues/phase-3/01-reset.md#L132)），全綠 — 放幾個零件 → Backspace → 全部回 tray；旋轉後 reset → rotate 回 CW_0；拿著零件 reset → held state 清掉；快勝利時 reset → won=false 可繼續；勝利後 reset → 重新可玩；reset 後再勝一次；鍵盤 / 滑鼠 / Phase 2 動畫 / 音效零退化
+- 下一步：commit reset feature 一批改動 → 接 issue 02-new-game 或 phase-3 其他項目（auto-select bugfix 早已在 `c33d562` 獨立 commit）

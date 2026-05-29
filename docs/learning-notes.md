@@ -576,3 +576,60 @@ void Game::init(Board b, std::vector<Part> p) {
 
 #### Score Connection
 - 進階功能：重置盤面為初始狀態 1%（[scoring.md:56](scoring.md#L56)）
+
+---
+
+### AppState state machine：同一個 process 內切換新關卡
+
+*Phase 3 · commit `<待 commit>`*
+
+#### What & Key Concepts
+
+Issue 02-new-game 的核心不是「把同一關 reset」，而是讓程式在不關閉視窗、不重啟 process 的情況下，離開當前關卡、選另一個關卡、重新 parse 並呼叫 `Game::init()`。
+
+這次在 [main.cpp](../src/main.cpp) 加了一個很小的 state machine：
+
+```cpp
+enum class AppState {
+    Menu,
+    InGame,
+};
+```
+
+主迴圈每 frame 依狀態分流：
+
+```cpp
+if (appState == AppState::Menu) {
+    // keyboard / mouse 選關，選到後 loadGame(path, game, err)
+} else {
+    // 原本的 game update / mouse / sound / render
+    // KEY_N 會切回 Menu
+}
+```
+
+`loadGame(path, game, err)` 仍是單一入口：開檔、`Parser::parse`、`game.init`。這讓「argv 啟動」、「menu 選關」、「之後 editor 匯出後試玩」都能共用同一條載入路徑。
+
+#### Why This Design
+
+- **保留 argv 直接進遊戲**：`argc > 1` 時仍先 `loadGame(argv[1])`，成功才開視窗進 InGame；壞路徑仍印錯誤並 exit 1。這保住讀檔 hard constraint。
+- **menu 只放在 main.cpp**：這輪先服務 #4，不新增 `Menu.cpp` / `Menu.h`。#6 要做完整漂亮主畫面時，可以再把 menu code 抽出去。
+- **`Game::init()` 是切關重置點**：#3 reset 已經讓 `init()` 會清 cursor / held / won / status / mouseControlling，切關不需要額外手動清 transient state。
+- **sound lifecycle 不跟關卡綁定**：`InitAudioDevice` 和 `LoadSound` 仍只在 process 啟動時跑一次。切關後只重設 `prevHeld / prevWon / prevPlacedCnt / prevRotateSum` baseline，避免新關第一 frame 誤判成事件。
+- **level 掃描 fallback**：正式設計是 `assets/levels/*.txt`，但目前 repo 的 Example1–6 在 `docs/io/`。`findLevels()` 先找 `assets/levels`，沒有就 fallback 到 `docs/io`，讓現在可以直接驗收。
+
+#### What I Should Be Able To Explain
+
+- Q：Reset 跟 New Game 差在哪？  
+  A：Reset 是同一個已載入關卡回到初始狀態，不重新 parse、不離開 InGame；New Game 是回 menu 選關，重新 `Parser::parse` 並 `Game::init`，可以換不同檔案。
+- Q：為什麼 `KEY_N` 不放進 `Action` enum？  
+  A：`Action` 是遊戲內的抽象操作（Move / Rotate / Place / Remove / Reset），New Game 是 app-level flow，會切 `AppState`，不應該塞進 core `Game::update()`。所以 `main.cpp` 直接偵測 `IsKeyPressed(KEY_N)`。
+- Q：勝利後為什麼也能按 N？  
+  A：`N` 在 main loop 的 InGame branch 先處理，沒有走 `Game::update()`，因此不會被 `if (won) return;` 擋住。
+- Q：為什麼切關後音效不會亂叫？  
+  A：切關成功後呼叫 `resetSoundBaseline()`，把上一 frame snapshot 更新成新關初始狀態。下一 frame diff 不會把「新關初始值」誤認成 pickup/place/win。
+- Q：為什麼現在 menu 是 minimal，不直接完整做 #6？  
+  A：#4 的分數重點是 flow；#6 的分數重點是「精美主畫面」。先用 minimal menu 驗證 state machine 和切關，再在穩定基底上做視覺 polish，風險比較低。
+
+#### Score Connection
+
+- 進階功能：遊戲進行中或遊戲結束後可直接開啟新遊戲 1%（[scoring.md:57](scoring.md#L57)）— 目前程式碼完成，待手動驗收後入帳。

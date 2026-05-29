@@ -400,7 +400,7 @@
 - 下一步：~~auto-select bugfix commit 後~~（已於 `c33d562` commit）→ Phase 2 closeout → Phase 3 規劃（雙色 + 進階功能，§7 展開）
 
 
-## Phase 3 issue 01-reset done — 2026-05-24（驗收通過 / 待 commit）
+## Phase 3 issue 01-reset done — 2026-05-24（驗收通過 / commit `a22ea8b`）
 
 - 完成項目（對應 [issues/phase-3/01-reset.md](issues/phase-3/01-reset.md) must-have）：
   - [src/core/Game.h](../src/core/Game.h)：`enum class Action` 加 `Reset`、新 private 成員 `Board initialBoard;` / `std::vector<Part> initialParts;`、新 public method `void resetToInitial();`
@@ -415,4 +415,23 @@
 - 驗證：
   - Build 0 warning 0 error（cmake --build build）
   - **手動驗收通過**（2026-05-24）：`./build/game docs/io/Example1.txt` 跑了 6 條 Manual Tests + 3 條 Regression Checks（issue [01-reset](issues/phase-3/01-reset.md#L132)），全綠 — 放幾個零件 → Backspace → 全部回 tray；旋轉後 reset → rotate 回 CW_0；拿著零件 reset → held state 清掉；快勝利時 reset → won=false 可繼續；勝利後 reset → 重新可玩；reset 後再勝一次；鍵盤 / 滑鼠 / Phase 2 動畫 / 音效零退化
-- 下一步：commit reset feature 一批改動 → 接 issue 02-new-game 或 phase-3 其他項目（auto-select bugfix 早已在 `c33d562` 獨立 commit）
+- 下一步：接 issue 02-new-game 或 phase-3 其他項目（auto-select bugfix 早已在 `c33d562` 獨立 commit；reset 已於 `a22ea8b` commit）
+
+## Phase 3 issue 02-new-game code done — 2026-05-29（待手動驗收）
+
+- 完成項目（對應 [issues/phase-3/02-new-game.md](issues/phase-3/02-new-game.md) must-have）：
+  - [src/main.cpp](../src/main.cpp)：新增 `AppState { Menu, InGame }`，讓同一個 process 可在遊戲與 menu 之間切換
+  - 保留 `argv[1]` 直接載入關卡進 InGame；沒給 argv 時進 minimal level menu
+  - 遊戲中或勝利後按 `N` 回 menu；menu 透過 Enter / Space / 左鍵選關後重新 `Parser::parse(...)` + `Game::init(...)`
+  - `findLevels()` 優先掃 `assets/levels/*.txt`，若不存在則 fallback 到 `docs/io/*.txt`，方便目前 repo 直接選 Example1–6
+  - 切關後重設音效 baseline，避免新關第一 frame 誤觸發 pickup/place/win 音效；音效 device / sound assets 仍維持 process-level 載入，不隨關卡重載
+- 拿到分數：**尚未入帳**（新遊戲 1%、[scoring.md:57](scoring.md#L57)），需手動驗收通過後才把銀行存款 38.5 → 39.5%
+- 已驗證：
+  - `cmake --build build` 成功
+  - `./build/game /nonexistent.txt` 維持既有 invalid-path 行為：印 `Cannot open file...`、exit 1、不開視窗
+- 待手動驗收：
+  - 不給 argv 啟動 → menu 出現 Example1–6 → 選 Example1 進 InGame
+  - InGame 放幾個零件 → 按 `N` 回 menu → 選 Example2 → 新關卡乾淨載入
+  - 勝利後按 `N` → 回 menu → 選另一關，不殘留 win banner
+  - Backspace reset 仍只重來同關，不回 menu
+- 下一步：使用者手動驗收 #4；通過後更新 STATUS / LOG 入帳並 commit，或直接接 [03-main-menu](issues/phase-3/03-main-menu.md) 做完整主畫面 polish

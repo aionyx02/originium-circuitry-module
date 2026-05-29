@@ -17,6 +17,9 @@
 > **新增 entry 時：(1) 把實際 entry append 到本檔最下方（時間正序），(2) 在這個索引「最上面」加一行。**  
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
+- **2026-05-29** — [Phase 3 issue 02-new-game 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-02-new-game-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · `AppState` + minimal menu + `N` 回 menu + 選關後重新 parse/init；build 通過，待手動驗收後 +1%
+- **2026-05-29** — [首頁 menu 字體改用 Exo 2（small）](#2026-05-29--首頁-menu-字體改用-exo-2small) · `Phase 3` · `small` · minimal menu 改用 `assets/fonts/Exo2-Regular.ttf` 與遊戲內 UI 字體一致
+- **2026-05-29** — [menu 鍵盤選關不再被靜止滑鼠 hover 拉回（small）](#2026-05-29--menu-鍵盤選關不再被靜止滑鼠-hover-拉回small) · `Phase 3` · `small` · hover 只有滑鼠移動時更新 selected，左鍵仍可點選 hovered level
 - **2026-05-24** — [Phase 3 issue 01-reset 手動驗收通過](#2026-05-24--phase-3-issue-01-reset-手動驗收通過small) · `Phase 3` · `small` · 9 條測試全綠（6 manual + 3 regression）、+1% 入帳（37.5 → 38.5%）
 - **2026-05-24** — [Phase 3 issue 01-reset 程式碼完成（must-have，待驗收）](#2026-05-24--phase-3-issue-01-reset-程式碼完成must-have待驗收) · `Phase 3` · `Implementation` · `Action::Reset` + `Game::initialBoard/Parts` 快照 + `resetToInitial()` + Backspace 改綁 Reset；build 0 warning，等手動驗收後 +1%
 - **2026-05-24** — [Phase 3/4 GitHub issue 草稿定稿 + Epic 化 + 貼上流程](#2026-05-24--phase-34-github-issue-草稿定稿--epic-化--貼上流程) · `Phase 3/4` · `Discussion + Documentation` · reset/new-game 拆分定案、01/02/04/05 套 03 template、補 Phase 3/4 Epic、issue title 改分類格式、加 hidden GitHub metadata 方便手動貼 issue
@@ -1369,3 +1372,102 @@ Phase: 3
 Commit: 待 commit
 
 使用者跑 `./build/game docs/io/Example1.txt`，issue [01-reset](issues/phase-3/01-reset.md#L132) 的 6 條 Manual Tests + 3 條 Regression Checks 全綠：放幾個零件 → Backspace 回 tray；旋轉後 reset → CW_0；持有零件 reset → held 清掉；快勝利時 reset → won=false 可繼續；勝利後 reset → 重新可玩；reset 後再勝一次；鍵盤 / 滑鼠 / Phase 2 動畫 / 音效零退化。配分 +1%（重置盤面 1%、[scoring.md:56](scoring.md#L56)）入帳，銀行存款 37.5 → 38.5% / 65%。STATUS.md / plan.md 同步更新。
+
+
+## 2026-05-29 — Phase 3 issue 02-new-game 程式碼完成（待手動驗收）
+
+Type: Implementation  
+Phase: 3  
+Feature: Issue 02-new-game / GitHub #4  
+Commit: 待 commit
+
+### Context
+
+使用者已把 Phase 3 issue 01-reset commit 出去，接著要求開始做 issue #4（新遊戲流程）。Issue #4 的分數點是 [scoring.md:57](scoring.md#L57)：遊戲進行中或遊戲結束後，可以直接開啟新遊戲，不用關程式重開。
+
+調查後確認：#4 的完整 AC 需要「回主畫面選不同關卡」，但完整精美主畫面是 #6 的範圍。因此這次採用折衷：先在 `main.cpp` 實作 app-level state machine + minimal menu，讓 #4 flow 可以驗收；#6 之後再把 menu 視覺與關卡列表 polish 成正式版。
+
+### AI Contribution
+
+- 讀 [CLAUDE.md](../CLAUDE.md)、[plan.md](plan.md)、[STATUS.md](STATUS.md)、[issues/phase-3/02-new-game.md](issues/phase-3/02-new-game.md) 與 [03-main-menu.md](issues/phase-3/03-main-menu.md)，確認 #4 / #6 的相依關係。
+- 用 GitHub CLI 確認線上 #4 issue body 與本機草稿一致。
+- 分析現有 [main.cpp](../src/main.cpp)：目前一次性 `promptPath → loadGame → run loop`；音效在 process-level 載入；`Game::init()` 因 #3 reset 已能清 transient state。
+- 實作：
+  - `enum class AppState { Menu, InGame }`
+  - `findLevels()`：優先掃 `assets/levels/*.txt`，若不存在 fallback 到 `docs/io/*.txt`
+  - minimal `drawMenu()`：顯示標題、關卡列表、選取框、基本操作提示
+  - menu keyboard / mouse selection：Up/Down、Enter/Space、Left Click
+  - InGame / Win 狀態按 `N` 回 Menu
+  - 選關後重新 `Parser::parse(...)` + `Game::init(...)`
+  - 切關後重設音效 diff baseline，避免誤觸發聲音
+- 更新 [STATUS.md](STATUS.md)、[plan.md](plan.md)、[learning-notes.md](learning-notes.md)、本 LOG entry。
+
+### Human Decision / Review
+
+- 使用者同意「#4 先做 flow + minimal menu，#6 再做完整精美主畫面」這個切法。
+- 使用者要求可參考 `CLAUDE.md` / `plan.md` / `STATUS.md`，並在開始實作前先調查「會不會有問題」；AI 回報 #4 主要問題是依賴 #6，但可用 minimal menu 解開。
+
+### Details
+
+**主要改動集中在 `src/main.cpp`**，避免現在就新增 `Menu.cpp/Menu.h` 造成 #6 後續要重抽一次。
+
+啟動流程：
+
+- `argc > 1`：保留既有硬性行為，直接 `loadGame(argv[1])`，成功後 `appState = InGame`。壞路徑仍印錯誤並 exit 1，不開視窗。
+- 沒有 argv：進 `AppState::Menu`，由 menu 掃描可用 `.txt` 關卡讓玩家 runtime 選擇。
+
+主迴圈分流：
+
+- Menu：
+  - mouse hover 更新 selected level
+  - Up/Down 鍵切 selected level
+  - Enter / Space / left click 呼叫 `loadGame(level.path, game, menuMessage)`
+  - 成功後 `appState = InGame`，並 `resetSoundBaseline()`
+- InGame：
+  - 先檢查 `KEY_N`，因此勝利後也能回 menu，不會被 `Game::update()` 的 `if (won) return;` 擋住
+  - 其它流程沿用 Phase 2：`Input::poll()`、`Input::pollMouse()`、聲音 frame diff、`renderer.draw(...)`
+
+Sound lifecycle：
+
+- `InitAudioDevice()` / `LoadSound(...)` 仍只做一次
+- 切關不 reload sound
+- `resetSoundBaseline()` 把 `prevHeld / prevWon / prevPlacedCnt / prevRotateSum` 設成新 game 初始值，避免第一 frame 誤判成事件
+
+### Verification / Tests Performed
+
+- `cmake --build build`：成功，`[100%] Built target game`
+- `./build/game /nonexistent.txt`：維持 invalid-path 行為，輸出 `Cannot open file: /nonexistent.txt`，exit code 1
+- 尚未完成互動手動驗收。需要使用者跑：
+  - `./build/game` 不給 argv → menu 出現 Example1–6 → 選 Example1 進 InGame
+  - InGame 放幾個零件 → 按 `N` → 回 menu → 選 Example2 → 新關乾淨載入
+  - 勝利後按 `N` → 回 menu → 選另一關 → 不殘留 win banner
+  - 回 menu 後重選同一關 → 可重新遊玩
+  - Backspace reset 仍只重來同關，不回 menu
+
+### Result
+
+Issue #4 程式碼完成、build 通過，但尚未把 +1% 入帳。STATUS 目前標為「程式碼完成，待手動驗收」。
+
+### Risks / Follow-ups
+
+- Minimal menu 是為了 #4 flow 驗收而做，還不是 #6 的「精美主畫面」最終版。#6 仍需要補 Exo 2 字體、hover polish、空資料夾處理、`assets/levels` 正式資料來源等細節。
+- 目前 menu 顯示最多 6 個關卡，剛好覆蓋 Example1–6；未來若關卡更多，#6 應補 scrolling 或 pagination。
+- `findLevels()` fallback 到 `docs/io` 是目前開發便利；正式打包時應讓 `assets/levels` 存在，避免 classroom exe 缺 docs folder 時 menu 沒關卡。
+
+### Other Notes
+
+口頭報告可以強調：Reset 與 New Game 分層不同。Reset 是 `Game` 內部狀態還原；New Game 是 app-level state machine，重新 parse / init，並且不把 `KEY_N` 塞進 core `Action`，保持 core/UI/app flow 邊界清楚。
+
+
+## 2026-05-29 — 首頁 menu 字體改用 Exo 2（small）
+Phase: 3  
+Commit: 待 commit
+
+使用者指出首頁字體要和目前遊戲內一致；AI 將 [src/main.cpp](../src/main.cpp) 的 minimal menu 從 raylib default `DrawText` 改為載入 `assets/fonts/Exo2-Regular.ttf` 並用 `DrawTextEx` 繪製標題、關卡列與操作提示；若字體載入失敗則 fallback 到 `GetFontDefault()`。`cmake --build build` 通過。
+
+
+## 2026-05-29 — menu 鍵盤選關不再被靜止滑鼠 hover 拉回（small）
+Phase: 3  
+Commit: 待 commit
+
+使用者發現滑鼠停在某個 level 上時，Up/Down 鍵切換會立刻被 hover 狀態拉回原格。AI 將 menu selected 更新規則改為：只有 `GetMouseDelta()` 顯示滑鼠真的移動時，hover 才更新 `selectedLevel`；左鍵點擊仍會直接選取 hovered level。`cmake --build build` 通過。

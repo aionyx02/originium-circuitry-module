@@ -479,17 +479,17 @@
 - 完成項目（對應 [issues/phase-3/04-row-col-hints.md](issues/phase-3/04-row-col-hints.md) must-have）：
   - [src/core/Board.h](../src/core/Board.h) / [Board.cpp](../src/core/Board.cpp)：新增 `currentFilledForColor(int color, int idx, bool isRow, const std::vector<Part>& parts) const`，統一計算某色在指定 row / column 的目前填滿格數。
   - [src/core/WinChecker.cpp](../src/core/WinChecker.cpp)：改用 `Board::currentFilledForColor(...)` 判斷 row / column 是否等於 constraint，避免 Renderer 與 WinChecker 各算一套。
-  - [src/ui/Renderer.cpp](../src/ui/Renderer.cpp)：constraint hint 顯示從需求數改為 `current/need`。
-  - Hint 狀態色：`current < need` 灰色、`current == need` 綠色、`current > need` 紅色；雙色仍保留小色條標示 color index。
-  - Row hint box 加寬、column hint box 微調高度，讓 `current/need` 在單色 / 雙色 layout 都有空間。
+  - [src/ui/Renderer.cpp](../src/ui/Renderer.cpp)：constraint hint 從 `current/need` 文字版 polish 成條狀 UI，需求數 = 條數，目前填滿的條亮起。
+  - Hint 狀態：不足時保留對應色描邊、剛好滿足時亮綠；超出時只有多出來的 segments 變紅，不把整組染紅。
+  - 雙色 column hints 在同一欄上方左右分 lane；雙色 row hints 在同一列左側上下分 lane，並從靠近棋盤的內側開始填。
 - 拿到分數：**待驗收**。驗收通過後可入帳「某列/欄滿足或超出需求時周圍提示」1%（[scoring.md:59](scoring.md#L59)）與「周圍顯示每列每欄目前填滿格數」1%（[scoring.md:60](scoring.md#L60)）。
 - 已驗證：
   - `cmake --build build` 成功。
   - `./build/game docs/io/Example1.txt` 啟動 smoke 通過：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
   - `./build/game docs/io/Example5.txt` 啟動 smoke 通過：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
 - 待手動驗收：
-  - Example1 空盤時 hints 顯示 `0/need`，放置後相關 row / column 立即增加，拔除後立即減少。
-  - 不足為灰色、剛好滿足為綠色、超出為紅色。
+  - Example1 空盤時 hints 顯示對應需求條數，放置後相關 row / column 條狀狀態立即增加，拔除後立即減少。
+  - 不足時保留色框、剛好滿足時亮綠、超出時只有多出的 segments 變紅。
   - Example5/6 雙色 current / need 各自獨立計算，不互相混色。
   - Hint 不遮盤面、不擠 sidebar，Phase 2 視覺與遊玩流程零退化。
 - 下一步：手動驗收 04 + 05；通過後更新 STATUS 分數，Phase 3 進階功能剩助教 demo 測資與後續大項。

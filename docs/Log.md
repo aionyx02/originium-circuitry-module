@@ -17,6 +17,7 @@
 > **新增 entry 時：(1) 把實際 entry append 到本檔最下方（時間正序），(2) 在這個索引「最上面」加一行。**  
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
+- **2026-05-29** — [constraint hint UI 改成條狀顯示（small）](#2026-05-29--constraint-hint-ui-改成條狀顯示small) · `Phase 3` · `small` · `current/need` 文字改為原遊戲風格 bar hints，超出轉紅
 - **2026-05-29** — [Phase 3 issue 04-row-col-hints 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-04-row-col-hints-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · Board 新增 current filled query，Renderer 顯示 `current/need` 與灰/綠/紅狀態
 - **2026-05-29** — [Phase 3 issue 05-dual-color 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-05-dual-color-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · constraint hints 改為依 `board.colors` 多色顯示，零件顏色改用 `Part::colorIndex`
 - **2026-05-29** — [Phase 3 issue 02-new-game + 03-main-menu 手動驗收通過（small）](#2026-05-29--phase-3-issue-02-new-game--03-main-menu-手動驗收通過small) · `Phase 3` · `small` · new game flow + main menu 驗收通過，+2% 入帳（38.5 → 40.5%）
@@ -1701,3 +1702,10 @@ Issue 04-row-col-hints 程式碼完成，build 與 Example1/5 啟動 smoke 通�
 ### Other Notes
 
 這段很適合口頭報告講「避免 duplicated logic」：Renderer 需要顯示 current，WinChecker 也需要 current；所以把 query 放在 Board，讓 UI 與勝利判定共用同一個 source of truth。
+
+
+## 2026-05-29 — constraint hint UI 改成條狀顯示（small）
+Phase: 3
+Commit: 待 commit
+
+依使用者提供的原遊戲截圖，把 [src/ui/Renderer.cpp](../src/ui/Renderer.cpp) 的 constraint hints 從 `current/need` 文字改為條狀 UI：需求數 = 條數，目前填滿的條亮起，不足時保留對應色描邊，剛好滿足時亮綠；超出時只有多出來的 segments 變紅，既有滿足部分不整組染紅。左側 row hints 改為從靠近盤面的內側開始填，雙色 row hints 改為同一列 hint 區內上下分 lane 並修正藍綠順序；column hints 保持左右分 lane。若某 row / column 只需要 2 條，就只畫 2 條，不再畫剩餘淡框。`cmake --build build` 通過，待目視驗收條距與可讀性。

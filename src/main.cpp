@@ -190,7 +190,7 @@ void drawMenu(const std::vector<LevelEntry>& levels,
         }
     }
 
-    DrawTextEx(font, "Enter/Click: play   Up/Down: select   E: create   Del: delete   (in game) N: menu",
+    DrawTextEx(font, "Enter/Click: play   Up/Down: select   Right-click: options (play/delete)   E: create",
                Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + kMenuPanelH - 58)},
                15.0f, 1.0f, Color{170, 184, 196, 255});
     if (!message.empty()) {
@@ -560,7 +560,8 @@ int main(int argc, char** argv) {
 
     std::vector<LevelEntry> levels = findLevels();
     int selectedLevel = levels.empty() ? -1 : 0;
-    int deleteArmedIdx = -1;       // two-step confirm for level deletion
+    int ctxMenuIdx = -1;           // level row whose right-click context menu is open
+    Vector2 ctxPos{};              // where to draw it
     std::string menuMessage;
 
     Editor editor;
@@ -587,75 +588,96 @@ int main(int argc, char** argv) {
 
             BeginDrawing();
             if (appState == AppState::Menu) {
+                const Vector2 mp = GetMousePosition();
+                const bool lclick = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+                const bool rclick = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
                 const int hover = menuSelectionFromMouse(levels, selectedLevel, sw, sh);
                 const Vector2 mouseDelta = GetMouseDelta();
                 const bool mouseMoved = (mouseDelta.x != 0.0f) || (mouseDelta.y != 0.0f);
-                if (hover >= 0 && mouseMoved) selectedLevel = hover;
+                const bool ctxOpen = (ctxMenuIdx >= 0 && ctxMenuIdx < static_cast<int>(levels.size()));
 
-                // Delete the selected level file (two-step confirm).
-                if (deleteArmedIdx != selectedLevel) deleteArmedIdx = -1;
-                auto tryDelete = [&]() {
-                    if (levels.empty() || selectedLevel < 0) return;
-                    if (deleteArmedIdx != selectedLevel) {
-                        deleteArmedIdx = selectedLevel;
-                        menuMessage = "Delete '" + levels[selectedLevel].name + "'? press Del / DELETE again";
-                        return;
-                    }
-                    std::error_code ec;
-                    std::filesystem::remove(levels[selectedLevel].path, ec);
-                    deleteArmedIdx = -1;
-                    levels = findLevels();
-                    if (selectedLevel >= static_cast<int>(levels.size()))
-                        selectedLevel = levels.empty() ? -1 : static_cast<int>(levels.size()) - 1;
-                    menuMessage = ec ? "Delete failed." : "Level deleted.";
-                };
-                if (IsKeyPressed(KEY_DELETE)) tryDelete();
+                if (!ctxOpen) {
+                    if (hover >= 0 && mouseMoved) selectedLevel = hover;
 
-                if (!levels.empty()) {
-                    if (IsKeyPressed(KEY_DOWN)) {
-                        selectedLevel = (selectedLevel + 1) % static_cast<int>(levels.size());
+                    if (!levels.empty()) {
+                        if (IsKeyPressed(KEY_DOWN))
+                            selectedLevel = (selectedLevel + 1) % static_cast<int>(levels.size());
+                        if (IsKeyPressed(KEY_UP))
+                            selectedLevel = (selectedLevel + static_cast<int>(levels.size()) - 1)
+                                          % static_cast<int>(levels.size());
                     }
-                    if (IsKeyPressed(KEY_UP)) {
-                        selectedLevel = (selectedLevel + static_cast<int>(levels.size()) - 1)
-                                      % static_cast<int>(levels.size());
-                    }
-                }
 
-                const bool chooseByKey = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE);
-                const bool chooseByMouse = hover >= 0 && IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-                if (chooseByMouse) selectedLevel = hover;
-                if (!levels.empty() && selectedLevel >= 0 && (chooseByKey || chooseByMouse)) {
-                    if (loadGame(levels[selectedLevel].path.string(), game, menuMessage)) {
-                        appState = AppState::InGame;
-                        resetSoundBaseline();
-                        menuMessage.clear();
+                    // Right-click a level row → open its context menu.
+                    if (rclick && hover >= 0) {
+                        ctxMenuIdx = hover;
+                        selectedLevel = hover;
+                        ctxPos = mp;
+                    }
+
+                    const bool chooseByKey = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE);
+                    const bool chooseByMouse = hover >= 0 && lclick;
+                    if (chooseByMouse) selectedLevel = hover;
+                    if (!levels.empty() && selectedLevel >= 0 && (chooseByKey || chooseByMouse)) {
+                        if (loadGame(levels[selectedLevel].path.string(), game, menuMessage)) {
+                            appState = AppState::InGame;
+                            resetSoundBaseline();
+                            menuMessage.clear();
+                        }
+                    }
+                    if (IsKeyPressed(KEY_E)) {
+                        editor = Editor();
+                        editorTool = 0;
+                        editorSelPiece = -1;
+                        editorMessage.clear();
+                        clearPaint();
+                        appState = AppState::Editor;
                     }
                 }
-                if (IsKeyPressed(KEY_E)) {
-                    editor = Editor();
-                    editorTool = 0;
-                    editorSelPiece = -1;
-                    editorMessage.clear();
-                    clearPaint();
-                    appState = AppState::Editor;
-                }
-                drawMenu(levels, selectedLevel, hover, menuMessage, menuFont, sw, sh);
 
-                // DELETE-level button below the panel.
-                if (!levels.empty() && selectedLevel >= 0) {
-                    const int panelY = (sh - kMenuPanelH) / 2;
-                    Rectangle delBtn = {static_cast<float>(sw / 2 - 90),
-                                        static_cast<float>(panelY + kMenuPanelH + 10), 180, 30};
-                    const bool over = CheckCollisionPointRec(GetMousePosition(), delBtn);
-                    const bool armed = (deleteArmedIdx == selectedLevel);
-                    DrawRectangleRounded(delBtn, 0.3f, 6, over ? Color{64, 32, 34, 255}
-                                                              : Color{30, 24, 28, 235});
-                    DrawRectangleRoundedLinesEx(delBtn, 0.3f, 6, armed ? 2.5f : 1.5f,
-                                                Color{220, 120, 120, 230});
-                    editorCenteredText(menuFont, armed ? "CONFIRM DELETE" : "DELETE LEVEL",
-                                       delBtn.x + delBtn.width / 2, delBtn.y + delBtn.height / 2,
-                                       15.0f, Color{240, 210, 210, 255});
-                    if (over && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) tryDelete();
+                drawMenu(levels, selectedLevel, ctxOpen ? -1 : hover, menuMessage, menuFont, sw, sh);
+
+                // Right-click context menu (Play / Delete) overlay.
+                if (ctxOpen) {
+                    const char* items[] = {"Play", "Delete"};
+                    const int n = 2;
+                    const float iw = 152.0f, ih = 34.0f;
+                    float px = ctxPos.x, py = ctxPos.y;
+                    if (px + iw > sw) px = sw - iw - 4;
+                    if (py + ih * n > sh) py = sh - ih * n - 4;
+                    Rectangle bg = {px, py, iw, ih * n};
+                    DrawRectangleRounded(bg, 0.12f, 6, Color{24, 29, 39, 248});
+                    DrawRectangleRoundedLinesEx(bg, 0.12f, 6, 1.5f, Color{109, 236, 218, 210});
+                    DrawTextEx(menuFont, levels[ctxMenuIdx].name.c_str(), Vector2{px + 12, py - 22},
+                               14.0f, 1.0f, Color{174, 191, 203, 255});
+
+                    bool consumed = false;
+                    for (int i = 0; i < n; ++i) {
+                        Rectangle it = {px, py + i * ih, iw, ih};
+                        const bool over = CheckCollisionPointRec(mp, it);
+                        if (over) DrawRectangleRounded(it, 0.12f, 6, Color{40, 48, 60, 255});
+                        editorCenteredText(menuFont, items[i], it.x + iw / 2, it.y + ih / 2, 17.0f,
+                                           i == 1 ? Color{235, 140, 140, 255} : Color{232, 244, 245, 255});
+                        if (over && lclick) {
+                            consumed = true;
+                            if (i == 0) {
+                                if (loadGame(levels[ctxMenuIdx].path.string(), game, menuMessage)) {
+                                    appState = AppState::InGame;
+                                    resetSoundBaseline();
+                                    menuMessage.clear();
+                                }
+                            } else {
+                                std::error_code ec;
+                                std::filesystem::remove(levels[ctxMenuIdx].path, ec);
+                                levels = findLevels();
+                                if (selectedLevel >= static_cast<int>(levels.size()))
+                                    selectedLevel = levels.empty() ? -1 : static_cast<int>(levels.size()) - 1;
+                                menuMessage = ec ? "Delete failed." : "Level deleted.";
+                            }
+                            ctxMenuIdx = -1;
+                        }
+                    }
+                    if (!consumed && ((lclick && !CheckCollisionPointRec(mp, bg)) || IsKeyPressed(KEY_ESCAPE)))
+                        ctxMenuIdx = -1;
                 }
             } else if (appState == AppState::Editor) {
                 const EditorResult res =

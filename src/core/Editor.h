@@ -30,6 +30,12 @@ public:
     void adjustConstraint(unsigned color, int idx, bool isRow, int delta);
 
     unsigned constraintAt(unsigned color, int idx, bool isRow) const;
+
+    // Add a part from a painted mask: trimmed to its bounding box, given the
+    // color, and appended to parts (partIndex = index in the vector). No-op if
+    // the mask is empty.
+    void addPart(const std::vector<std::vector<bool>>& mask, unsigned color);
+    void removeLastPart();
 };
 
 #endif

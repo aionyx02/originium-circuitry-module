@@ -885,14 +885,21 @@ Solver **沒有自己重寫任何遊戲規則**：能不能放用 `Board::canPla
 
 `LevelWriter`、`Editor` 都不碰 raylib，所以能 headless 編譯測試（round-trip、編輯後序列化值正確），也讓這塊成為乾淨的**夥伴接手點**——UI 之後接，核心已驗。
 
+### 零件設計器（任意形狀）
+
+`Editor::addPart(mask, color)`：使用者在固定的 5×5 paint 網格上點出形狀，加入時把遮罩**裁切到最小包圍盒**再存成 `Part::shape`。好處是「畫布大小」與「零件實際大小」解耦——在角落隨便畫一格就是 1×1、畫一橫排就是 1×2，存出來都是緊湊形狀。空遮罩 no-op。零件顏色用目前編輯顏色（與 constraint 編輯共用 `currentColor`）。
+
+口試重點：為什麼裁切包圍盒（畫布/零件解耦）、為什麼零件設計用滑鼠點格（直覺、與遊戲一致）、加入的零件如何直接進 `parts` 而能被 `LevelWriter` 匯出與 `Game` 試玩（同一套 `Part`，零轉換）。
+
 ### 口試我要能講出什麼
 
 - 「設定檔格式」與 `Parser`/`LevelWriter` 互為反函數，round-trip 測試怎麼保固兩邊一致。
 - 為什麼編輯器不另立資料結構、直接用 `Board`/`Part`（匯出/試玩零轉換）。
 - `setSize` 重建時怎麼保留既有內容（overlap 複製）、`adjustConstraint` 為何夾在 0..軸長。
+- `addPart` 為何裁切到 bounding box（畫布大小與零件大小解耦）。
 
 ### Score Connection
 
 - 關卡設計器：匯出純文字 2.5%（[scoring.md:85](scoring.md#L85)）— `LevelWriter` 寫 `assets/levels/custom-N.txt`，round-trip 全綠，待 GUI 驗收。
-- 關卡設計器：直接遊玩 2.5%（[scoring.md:86](scoring.md#L86)）— `P` → `Game::init`，plumbing 完成；完整體驗待增量 2 補零件。
-- 關卡設計器：編輯 5%（[scoring.md:75](scoring.md#L75)）— 增量 1 完成大小/顏色數/列欄數字 3 項，其餘 3 項（任意零件/不可放置/固定零件）增量 2。
+- 關卡設計器：直接遊玩 2.5%（[scoring.md:86](scoring.md#L86)）— `P` → `Game::init`（含設計的零件）；headless 驗設計關可解，待 GUI 驗收。
+- 關卡設計器：編輯 5%（[scoring.md:75](scoring.md#L75)）— 已做 4/6（大小/顏色數/列欄數字/**任意形狀零件**）；其餘 2 項（不可放置格/固定零件）增量 2。

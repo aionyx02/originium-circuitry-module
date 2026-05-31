@@ -70,6 +70,34 @@ void Editor::adjustConstraint(unsigned color, int idx, bool isRow, int delta) {
         static_cast<unsigned>(std::max(0, std::min(cur + delta, limit)));
 }
 
+void Editor::addPart(const std::vector<std::vector<bool>>& mask, unsigned color) {
+    int minR = -1, minC = -1, maxR = -1, maxC = -1;
+    for (int r = 0; r < static_cast<int>(mask.size()); ++r) {
+        for (int c = 0; c < static_cast<int>(mask[r].size()); ++c) {
+            if (!mask[r][c]) continue;
+            if (minR < 0 || r < minR) minR = r;
+            if (minC < 0 || c < minC) minC = c;
+            if (r > maxR) maxR = r;
+            if (c > maxC) maxC = c;
+        }
+    }
+    if (maxR < 0) return;  // empty mask
+
+    Part p;
+    p.colorIndex = std::min(color, board.colors > 0 ? board.colors - 1 : 0u);
+    p.partIndex  = static_cast<unsigned>(parts.size());
+    p.shape.assign(maxR - minR + 1, std::vector<bool>(maxC - minC + 1, false));
+    for (int r = minR; r <= maxR; ++r)
+        for (int c = minC; c <= maxC; ++c)
+            p.shape[r - minR][c - minC] = mask[r][c];
+    p.computeCenterCell();
+    parts.push_back(std::move(p));
+}
+
+void Editor::removeLastPart() {
+    if (!parts.empty()) parts.pop_back();
+}
+
 unsigned Editor::constraintAt(unsigned color, int idx, bool isRow) const {
     if (color >= board.colors) return 0;
     const int M = static_cast<int>(board.rows);

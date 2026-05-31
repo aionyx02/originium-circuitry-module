@@ -215,7 +215,13 @@ int sumRotateCount(const Game& g) {
     return s;
 }
 
-// --- Level editor (Phase 5 increment 1) ---
+// --- Level editor (Phase 5) ---
+
+// Part-designer paint grid (sidebar, lower-left). Shared by draw + hit-test.
+constexpr int kPaintN    = 5;
+constexpr int kPaintCell = 30;
+constexpr int kPaintX    = 60;
+constexpr int kPaintY    = 396;
 
 Color editorColorBadge(unsigned i) {
     static const Color cs[] = {
@@ -248,7 +254,8 @@ std::string exportEditorLevel(const Editor& ed) {
     return path.string();
 }
 
-void drawEditor(const Editor& ed, int selIdx, const std::string& msg, Font font, int sw, int sh) {
+void drawEditor(const Editor& ed, int selIdx, const std::vector<std::vector<bool>>& paint,
+                const std::string& msg, Font font, int sw, int sh) {
     DrawRectangleGradientV(0, 0, sw, sh, Color{22, 29, 43, 255}, Color{9, 12, 20, 255});
 
     const int M = static_cast<int>(ed.board.rows);
@@ -289,8 +296,8 @@ void drawEditor(const Editor& ed, int selIdx, const std::string& msg, Font font,
                  ed.constraintAt(ed.currentColor, c, false), selIdx == M + c);
     }
 
-    // Sidebar.
-    Rectangle panel = {24.0f, 20.0f, 300.0f, 460.0f};
+    // Sidebar — params + key legend.
+    Rectangle panel = {24.0f, 20.0f, 300.0f, 300.0f};
     DrawRectangleRounded(panel, 0.06f, 8, Color{18, 22, 32, 230});
     DrawRectangleRoundedLinesEx(panel, 0.06f, 8, 1.0f, Color{72, 94, 112, 255});
     DrawTextEx(font, "LEVEL EDITOR", Vector2{44, 36}, 26.0f, 1.2f, Color{232, 244, 245, 255});
@@ -303,16 +310,12 @@ void drawEditor(const Editor& ed, int selIdx, const std::string& msg, Font font,
     DrawRectangleRounded(Rectangle{196, 118, 40, 18}, 0.6f, 6, cur);
 
     const char* help[] = {
-        "Z / X    rows  - / +",
-        "C / V    cols  - / +",
-        "K / L    colors - / +",
-        "Tab      switch color",
-        "Up/Down  pick row/col slot",
-        "Left/Rt  value  - / +",
-        "",
-        "E   export to assets/levels/",
-        "P   play this level",
-        "Esc back to menu",
+        "Z/X rows   C/V cols",
+        "K/L colors   Tab color",
+        "Up/Down pick slot",
+        "Left/Right value -/+",
+        "A add part   D del last",
+        "E export   P play   Esc menu",
     };
     float y = 156;
     for (const char* h : help) {
@@ -320,8 +323,35 @@ void drawEditor(const Editor& ed, int selIdx, const std::string& msg, Font font,
         y += 26;
     }
 
+    // Part-designer panel — paint a shape, A adds it as a part of the current color.
+    Rectangle dpanel = {24.0f, 332.0f, 300.0f, 368.0f};
+    DrawRectangleRounded(dpanel, 0.06f, 8, Color{18, 22, 32, 230});
+    DrawRectangleRoundedLinesEx(dpanel, 0.06f, 8, 1.0f, Color{72, 94, 112, 255});
+    DrawTextEx(font, "PART DESIGNER", Vector2{44, 346}, 18.0f, 1.2f, Color{174, 191, 203, 255});
+    DrawRectangleRounded(Rectangle{210, 348, 40, 16}, 0.6f, 6, cur);
+
+    for (int r = 0; r < kPaintN; ++r) {
+        for (int c = 0; c < kPaintN; ++c) {
+            Rectangle pc = {(float)(kPaintX + c * kPaintCell), (float)(kPaintY + r * kPaintCell),
+                            (float)(kPaintCell - 3), (float)(kPaintCell - 3)};
+            const bool on = r < (int)paint.size() && c < (int)paint[r].size() && paint[r][c];
+            DrawRectangleRounded(pc, 0.18f, 4, on ? cur : Color{30, 36, 46, 255});
+            DrawRectangleRoundedLinesEx(pc, 0.18f, 4, 1.0f, on ? cyan : Color{70, 82, 98, 255});
+        }
+    }
+
+    char pcount[64];
+    std::snprintf(pcount, sizeof(pcount), "PARTS: %d", (int)ed.parts.size());
+    DrawTextEx(font, pcount, Vector2{44, (float)(kPaintY + kPaintN * kPaintCell + 8)}, 16.0f, 1.0f,
+               Color{232, 244, 245, 255});
+    for (int i = 0; i < (int)ed.parts.size() && i < 14; ++i) {
+        DrawRectangleRounded(Rectangle{140.0f + i * 13, (float)(kPaintY + kPaintN * kPaintCell + 8),
+                                       11, 14}, 0.5f, 4, editorColorBadge(ed.parts[i].colorIndex));
+    }
+
     if (!msg.empty()) {
-        DrawTextEx(font, msg.c_str(), Vector2{44, (float)sh - 48}, 16.0f, 1.0f,
+        DrawTextEx(font, msg.c_str(),
+                   Vector2{(float)boardX, (float)(boardY + M * cell + 18)}, 16.0f, 1.0f,
                    Color{255, 203, 126, 255});
     }
 }
@@ -381,6 +411,10 @@ int main(int argc, char** argv) {
     Editor editor;
     int editorSel = 0;            // 0..M-1 = row slot, M..M+N-1 = col slot
     std::string editorMessage;
+    std::vector<std::vector<bool>> paintGrid(kPaintN, std::vector<bool>(kPaintN, false));
+    auto clearPaint = [&]() {
+        for (auto& row : paintGrid) std::fill(row.begin(), row.end(), false);
+    };
 
     {
         Font menuFont = LoadFontEx("assets/fonts/Exo2-Regular.ttf", 64, nullptr, 0);
@@ -426,6 +460,7 @@ int main(int argc, char** argv) {
                     editor = Editor();
                     editorSel = 0;
                     editorMessage.clear();
+                    clearPaint();
                     appState = AppState::Editor;
                 }
                 drawMenu(levels, selectedLevel, hover, menuMessage, menuFont, sw, sh);
@@ -454,6 +489,31 @@ int main(int argc, char** argv) {
                 if (IsKeyPressed(KEY_RIGHT)) editor.adjustConstraint(editor.currentColor, idx, isRow, +1);
                 if (IsKeyPressed(KEY_LEFT))  editor.adjustConstraint(editor.currentColor, idx, isRow, -1);
 
+                // Part designer: click paints a cell; A adds the shape as a part, D deletes last.
+                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                    const Vector2 mp = GetMousePosition();
+                    const int pcc = (static_cast<int>(mp.x) - kPaintX) / kPaintCell;
+                    const int prr = (static_cast<int>(mp.y) - kPaintY) / kPaintCell;
+                    if (mp.x >= kPaintX && mp.y >= kPaintY &&
+                        prr >= 0 && prr < kPaintN && pcc >= 0 && pcc < kPaintN) {
+                        paintGrid[prr][pcc] = !paintGrid[prr][pcc];
+                    }
+                }
+                if (IsKeyPressed(KEY_A)) {
+                    const std::size_t before = editor.parts.size();
+                    editor.addPart(paintGrid, editor.currentColor);
+                    if (editor.parts.size() > before) {
+                        clearPaint();
+                        editorMessage = "Part added.";
+                    } else {
+                        editorMessage = "Paint a shape in the designer first.";
+                    }
+                }
+                if (IsKeyPressed(KEY_D)) {
+                    editor.removeLastPart();
+                    editorMessage = "Removed last part.";
+                }
+
                 if (IsKeyPressed(KEY_E)) {
                     const std::string path = exportEditorLevel(editor);
                     editorMessage = path.empty() ? "Export failed." : ("Exported: " + path);
@@ -474,7 +534,7 @@ int main(int argc, char** argv) {
                     continue;
                 }
 
-                drawEditor(editor, editorSel, editorMessage, menuFont, sw, sh);
+                drawEditor(editor, editorSel, paintGrid, editorMessage, menuFont, sw, sh);
             } else {
                 if (IsKeyPressed(KEY_N)) {
                     appState = AppState::Menu;

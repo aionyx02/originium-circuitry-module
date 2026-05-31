@@ -300,7 +300,7 @@
 ### 增量切分
 
 - **增量 1（已完成代碼，待 GUI 驗收）**：核心 Solver + `Action::Solve` + `Game::solveAndApply()`（從 initial 快照解、套回 live board）+ Input 綁 `F` + CMake。鎖 1%，並讓 demo 能解 TA 測資（+2%/+2%）。headless 已驗 Example1–6 全解。
-- **增量 2（未開工）**：半透明提示 overlay（依 Solver 解標出待放格，2.5%）+ 30 秒 idle 計時才顯示提示（2.5%）。主要動 Renderer + main loop 計時，重用同一 Solver。
+- **增量 2（已完成代碼，待 GUI 驗收）**：半透明提示 overlay（`Game` 快取整盤解、`hintCells()` 回傳「解答要填但還空」的格、Renderer 畫半透明綠）+ 30 秒 idle 計時（main loop 累加 `dt`，放置/拔除即重置）才 `setHintsVisible`。重用同一 `Solver`，解答 lazy 快取。headless 驗 `hintCells` 幾何 Example1–6 全綠。
 
 ### 增量 1 驗收清單
 
@@ -309,10 +309,18 @@
 - [ ] 解完按 Backspace（reset）/ `N`（新遊戲）行為正常、零退化
 - [ ] 通過後在 [STATUS.md](STATUS.md) 勾「自動解題並顯示一個解 1%」
 
-### 不在增量 1 做
+### 增量 2 驗收清單
 
-- 半透明 hint overlay、30 秒計時 → 增量 2
-- solver 動畫（逐步演示解題過程）→ 不做（非配分項）
+- [ ] 進遊戲後**不要動**約 30 秒 → 盤面空格浮現半透明綠提示（標出解答要填的格）
+- [ ] 放置或拔除任一零件 → 提示立即消失、30 秒重新計時
+- [ ] 跟著提示擺放 → 綠格隨已填而減少；全部擺對跳 You Win
+- [ ] 雙色 Example5/6：提示格正確（解答的占據格），不遮固定格/不可放置格
+- [ ] 通過後在 [STATUS.md](STATUS.md) 勾「半透明提示 2.5%」「30 秒才顯示 2.5%」
+
+### 不做
+
+- solver 動畫（逐步演示解題過程）→ 非配分項
+- 提示依顏色 tint → 本版用統一半透明綠（scoring 範例即綠色區塊）
 
 ---
 
@@ -334,7 +342,8 @@
 | 2026-05-29 | Phase 3 / 03-main-menu | （待 commit） | +1% → 40.5% | `assets/levels` 掃關卡 + Exo 2 / 圓角漸層 / hover / 鍵盤選關 |
 | 2026-05-31 | Phase 3 / 05-dual-color | — | +2% → 42.5% | 雙色 Example5/6 可開可玩可勝利，零件/固定格/hints 顏色對齊 |
 | 2026-05-31 | Phase 3 / 04-row-col-hints | — | +2% → 44.5% | 條狀 row/column hints：不足色框 / 滿足亮綠 / 超出多出段變紅，即時更新 |
-| 2026-05-31 | Phase 4 / 增量1 solver | （待 commit） | (+1% 待 GUI 驗收) | 核心 backtracking Solver + F 鍵一鍵自動解填盤；headless 驗證 Example1–6 全解 |
+| 2026-05-31 | Phase 4 / 增量1 solver | `75cf3fb` | (+1% 待 GUI 驗收) | 核心 backtracking Solver + F 鍵一鍵自動解填盤；headless 驗證 Example1–6 全解 |
+| 2026-05-31 | Phase 4 / 增量2 hints | （待 commit） | (+5% 待 GUI 驗收) | 半透明提示 overlay + 30 秒卡關才顯示（有進度重置）；headless 驗 hintCells 幾何全綠 |
 
 > 各里程碑的完整過程、設計演進與驗收細節：見 [docs/log/](log/) 與封存的 [Log.md](Log.md)；現況分數見 [STATUS.md](STATUS.md)。
 

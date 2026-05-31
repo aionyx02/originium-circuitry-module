@@ -19,6 +19,11 @@ void Game::init(Board b, std::vector<Part> p) {
     won = false;
     statusMessage.clear();
     mouseControlling = false;
+    // New level — drop any cached solution and hide hints.
+    solutionComputed_ = false;
+    solutionExists_   = false;
+    solution_.clear();
+    hintsVisible = false;
 }
 
 void Game::resetToInitial() {
@@ -29,6 +34,7 @@ void Game::resetToInitial() {
     heldPartIdx = -1;
     won = false;
     mouseControlling = false;
+    hintsVisible = false;  // solution cache stays valid (same initial level)
     statusMessage = "Board reset.";
 }
 
@@ -169,11 +175,49 @@ void Game::handleRemove() {
     }
 }
 
-void Game::solveAndApply() {
+void Game::ensureSolution() {
+    if (solutionComputed_) return;
+    solutionComputed_ = true;
     // Always solve from the clean initial snapshot (fixed cells only, no movable
     // part placed) so a half-finished board can't confuse the search.
     auto solution = Solver::solve(initialBoard, initialParts);
-    if (!solution) {
+    if (solution) {
+        solution_ = std::move(*solution);
+        solutionExists_ = true;
+    } else {
+        solutionExists_ = false;
+    }
+}
+
+void Game::setHintsVisible(bool visible) {
+    if (visible) {
+        ensureSolution();
+        hintsVisible = solutionExists_;
+    } else {
+        hintsVisible = false;
+    }
+}
+
+std::vector<std::pair<int, int>> Game::hintCells() const {
+    std::vector<std::pair<int, int>> cells;
+    if (!hintsVisible || !solutionExists_) return cells;
+
+    for (std::size_t i = 0; i < parts.size() && i < solution_.size(); ++i) {
+        Part probe = parts[i];          // shape is fixed; override placement
+        probe.location = solution_[i];
+        for (auto [dr, dc] : probe.rotatedCells()) {
+            const int rr = solution_[i].row + dr;
+            const int cc = solution_[i].col + dc;
+            if (!board.inBounds(rr, cc)) continue;
+            if (board._boardInfo[rr][cc] == Board::EMPTY) cells.emplace_back(rr, cc);
+        }
+    }
+    return cells;
+}
+
+void Game::solveAndApply() {
+    ensureSolution();
+    if (!solutionExists_) {
         statusMessage = "No solution found.";
         return;
     }
@@ -184,13 +228,14 @@ void Game::solveAndApply() {
     heldPartIdx = -1;
     cursorRow = 0;
     cursorCol = TRAY_COL;
+    hintsVisible = false;
     for (std::size_t i = 0; i < parts.size(); ++i) {
         Part& p = parts[i];
-        p.location.rotate = (*solution)[i].rotate;
+        p.location.rotate = solution_[i].rotate;
         // Keep the visual orientation in sync with the logical rotation: the
         // renderer lerps currentAngle toward rotateCount * 90°.
-        p.rotateCount = static_cast<unsigned>((*solution)[i].rotate);
-        board.place(p, (*solution)[i].row, (*solution)[i].col);
+        p.rotateCount = static_cast<unsigned>(solution_[i].rotate);
+        board.place(p, solution_[i].row, solution_[i].col);
     }
     statusMessage = "Solved!";
 }

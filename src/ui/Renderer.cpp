@@ -229,6 +229,20 @@ void drawConstraints(const Game& g, const Layout& L, Font font) {
     }
 }
 
+void drawHints(const Game& g, const Layout& L) {
+    if (!g.hintsVisible) return;
+    const Color fill   = Color{ 80, 220, 100,  70 };
+    const Color border = Color{ 80, 220, 100, 150 };
+    for (auto [r, c] : g.hintCells()) {
+        if (r < 0 || c < 0 || r >= L.rows || c >= L.cols) continue;
+        const int x = L.boardX + c * L.cellSize;
+        const int y = L.boardY + r * L.cellSize;
+        Rectangle rec = { (float)x, (float)y, (float)L.cellSize, (float)L.cellSize };
+        DrawRectangleRounded(rec, 0.18f, 6, fill);
+        DrawRectangleRoundedLinesEx(rec, 0.18f, 6, 1.5f, border);
+    }
+}
+
 void drawPlacementHighlight(const Game& g, const Layout& L) {
     if (g.heldPartIdx < 0) return;
     if (g.cursorCol < 0) return;
@@ -613,6 +627,7 @@ void Renderer::draw(Game& g, int screenW, int screenH, float dt) {
     drawSidebar(g, L, font);
     drawConstraints(g, L, font);
     drawBoardBg(g, L, font);
+    drawHints(g, L);
     drawPlacementHighlight(g, L);
     drawCursor(g, L);
     drawTrayBg(g, L, font);

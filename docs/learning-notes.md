@@ -15,6 +15,11 @@
 > 連結若無法直接點開，用 Cmd+F 搜 Feature 名稱。  
 > 用「Phase X · commit `<short>`」標注每個 entry 在哪段 code 改動產生，方便對照原始 commit 學習。
 
+### Phase 4 增量 2 — `<待 commit>` (2026-05-31)
+解答提示 overlay + 30 秒卡關才顯示
+
+- [提示 overlay：lazy 解答快取 + 30 秒 idle 計時](#提示-overlaylazy-解答快取--30-秒-idle-計時)
+
 ### Phase 4 增量 1 — `<待 commit>` (2026-05-31)
 自動解題 Solver（backtracking + 剪枝）— 一鍵解出並填盤
 
@@ -818,3 +823,36 @@ Solver **沒有自己重寫任何遊戲規則**：能不能放用 `Board::canPla
 
 - 自動解題：自動解題並顯示一個解 1%（[scoring.md:67](scoring.md#L67)）— 代碼完成、headless 驗 Example1–6 全解，待 GUI 目視驗收後入帳。
 - 自動解題：解開單色 +2%（[scoring.md:68](scoring.md#L68)）/ 雙色 +2%（[scoring.md:69](scoring.md#L69)）— demo day 用 TA 測資實測。
+
+---
+
+## 提示 overlay：lazy 解答快取 + 30 秒 idle 計時
+
+*Phase 4 增量 2 · commit `<待 commit>`*
+
+### 它在做什麼
+
+兩個配分綁在一起：**(1) 依解答顯示半透明提示**——把「解答要填、但目前還空著」的格子畫成半透明綠；**(2) 卡關約 30 秒才顯示**——玩家一直沒進度才浮現提示，不是一開始就給。
+
+### 三塊怎麼分工（狀態/歷史/繪圖分離）
+
+- **`Game`（core，算與存）**：`ensureSolution()` 第一次需要時呼叫 `Solver::solve(initialBoard, initialParts)` 把整盤解**快取**起來（`solutionComputed_` 守著只算一次）。`hintCells()` 回傳「解答占據格 ∩ 目前還 EMPTY 的格」——用每個零件的 `shape` 配上解答的 `rotate/row/col` 算 `rotatedCells()`，再濾掉已經被填的格。
+- **`main` loop（計時）**：`idleTimer` 每 frame 加 `GetFrameTime()`；只要 `placedCnt` 變了（放置或拔除＝有進度）或已勝利就歸零；`idleTimer >= 30s && !won` 才 `game.setHintsVisible(true)`。
+- **`Renderer`（只畫）**：`drawHints` 讀 `g.hintsVisible` + `g.hintCells()`，畫半透明綠圓角格，畫在盤面底之後、零件之前。Renderer 不算任何邏輯。
+
+### 幾個設計選擇
+
+- **lazy 解答**：只有玩家真的卡 30 秒才付出一次 solve 成本；按 `F` 自動解也共用同一份快取（不重算）。`init()`（換關）清快取，`resetToInitial()` 只關提示（同一關解答仍有效）。
+- **提示 = 解答 ∩ 仍空**：玩家照提示擺對一格，那格就不再是 EMPTY、綠色自動消失，回饋很直覺。
+- **「有進度重置」而非「固定 30 秒」**：更貼合「太久沒解開」的語意——一直在動就不打擾，真的卡住才幫。
+
+### 口試我要能講出什麼
+
+- 為什麼把「算解 / 計時 / 繪圖」拆三塊：core 不依賴 raylib（可 headless 測 `hintCells`）、計時屬於 UI loop、Renderer 無狀態。
+- lazy 快取與 `solveAndApply` 共用的好處（不重算、換關失效）。
+- 30 秒計時的重置條件與它對應的配分要求（「太久沒解開才顯示」）。
+
+### Score Connection
+
+- 自動解題：依解答顯示半透明提示 2.5%（[scoring.md:70](scoring.md#L70)）— 代碼完成、headless 驗 `hintCells` 幾何全綠，待 GUI 目視驗收後入帳。
+- 自動解題：30 秒沒解開才顯示提示 2.5%（[scoring.md:71](scoring.md#L71)）— `kHintDelaySec=30`、有進度重置，待 GUI 目視驗收後入帳。

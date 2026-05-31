@@ -18,13 +18,13 @@
 
 ## 目前階段
 
-**Phase 4 進行中 — Solver 增量 1 代碼完成（待 GUI 驗收）**
+**Phase 4 進行中 — Solver 增量 1+2 代碼完成（待 GUI 驗收）**
 
-Phase 0–3 完成（圖形分項 **15/15**；進階功能皆已入帳）。Phase 4 自動解題增量 1：核心 `Solver`（backtracking + 剪枝）+ `F` 鍵一鍵自動解填盤，headless 驗證 Example1–6 全解（SOLVED+VERIFIED 6/6），**待 GUI 目視驗收後勾 1%**。詳見 [plan.md §9](plan.md)。
+Phase 0–3 完成（圖形分項 **15/15**；進階功能皆已入帳）。Phase 4 自動解題：增量 1 核心 `Solver`（backtracking + 剪枝）+ `F` 鍵一鍵自動解；增量 2 半透明提示 overlay + 30 秒卡關才顯示（有進度即重置計時）。Headless 驗證 Solver 解 Example1–6 全綠（6/6）、`hintCells` 幾何正確（6/6）。**待 GUI 目視驗收後勾分**。詳見 [plan.md §9](plan.md)。
 
 各里程碑 commit 與一句話：[plan.md 進度時間軸](plan.md#進度時間軸)。完整過程與設計演進：[docs/log/](log/) + 封存的 [Log.md](Log.md)。
 
-**下一步**：GUI 驗收 Solver（按 F 解 Example1–6）→ Phase 4 增量 2（半透明提示 + 30 秒計時）；Phase 3/4 助教 demo 測資（demo day 實測）。
+**下一步**：GUI 驗收 Solver + 提示（按 F 解；卡 30 秒看綠色提示）→ Phase 3/4 助教 demo 測資（demo day 實測）→ Phase 5 Editor。
 
 ---
 
@@ -65,8 +65,8 @@ Phase 0–3 完成（圖形分項 **15/15**；進階功能皆已入帳）。Phas
 - [ ] 自動解題並顯示一個解 — 1%（`F` 鍵一鍵自動解填盤；headless 驗證 Example1–6 全解，**待 GUI 目視驗收**）
 - [ ] 解開單色測資 — (+2%)
 - [ ] 解開雙色測資 — (+2%)
-- [ ] 依解答在盤面上顯示半透明提示 — 2.5%
-- [ ] 30 秒沒解開才顯示提示 — 2.5%
+- [ ] 依解答在盤面上顯示半透明提示 — 2.5%（剩餘解答格畫半透明綠 overlay；headless 驗 hintCells 幾何正確，**待 GUI 目視驗收**）
+- [ ] 30 秒沒解開才顯示提示 — 2.5%（main loop idle 計時 ≥30s 才 `setHintsVisible`，放置/拔除即重置；**待 GUI 目視驗收**）
 
 ### 關卡設計器（共 10%）
 

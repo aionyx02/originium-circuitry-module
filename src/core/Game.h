@@ -2,6 +2,7 @@
 #define ORIGINIUM_CORE_GAME_H
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "Board.h"
@@ -36,6 +37,11 @@ public:
     // mouse pixel (pixel-perfect drag). Cleared on any keyboard Move*.
     bool mouseControlling = false;
 
+    // Phase 4 increment 2 — solution hint overlay. The 30s idle timer lives in
+    // the main loop; it toggles this via setHintsVisible(). When true, Renderer
+    // tints the still-empty cells that the solution fills.
+    bool hintsVisible = false;
+
     void init(Board b, std::vector<Part> p);
     void update(Action a);
 
@@ -49,6 +55,15 @@ public:
     // through Action::Move* in update().
     void setCursor(int row, int col, bool isTray);
 
+    // Show/hide the solution hint overlay. Showing lazily computes (and caches)
+    // the solution the first time; if the level is unsolvable, stays hidden.
+    void setHintsVisible(bool visible);
+
+    // Cells the cached solution fills that are still EMPTY on the live board —
+    // i.e. where the player still needs to place parts. Empty unless hints are
+    // visible. Recomputed cheaply each call from the cached solution.
+    std::vector<std::pair<int, int>> hintCells() const;
+
     static constexpr int TRAY_COL = -1;
 
 private:
@@ -56,6 +71,13 @@ private:
     // resetToInitial() — copied (not moved) so reset can run repeatedly.
     Board initialBoard;
     std::vector<Part> initialParts;
+
+    // Cached full solution (from initialBoard/initialParts), computed lazily on
+    // first hint/solve request. solutionComputed_ guards recomputation.
+    bool solutionComputed_ = false;
+    bool solutionExists_   = false;
+    std::vector<PartLocation> solution_;
+    void ensureSolution();
 
     void handlePlace();
     void handleRemove();

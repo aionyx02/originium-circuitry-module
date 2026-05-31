@@ -233,6 +233,7 @@ int main(int argc, char** argv) {
 
     constexpr int kScreenW = 960;
     constexpr int kScreenH = 720;
+    constexpr float kHintDelaySec = 30.0f;  // Phase 4: hint appears only after ~30s stuck
 
     SetConfigFlags(FLAG_MSAA_4X_HINT | FLAG_WINDOW_HIGHDPI);
     InitWindow(kScreenW, kScreenH, "Originium Circuit Repair");
@@ -249,11 +250,13 @@ int main(int argc, char** argv) {
     bool prevWon        = false;
     int  prevPlacedCnt  = 0;
     int  prevRotateSum  = 0;
+    float idleTimer     = 0.0f;
     auto resetSoundBaseline = [&]() {
         prevHeld      = game.heldPartIdx;
         prevWon       = game.won;
         prevPlacedCnt = countPlaced(game);
         prevRotateSum = sumRotateCount(game);
+        idleTimer     = 0.0f;
     };
     resetSoundBaseline();
 
@@ -336,6 +339,13 @@ int main(int argc, char** argv) {
                 } else if (rotateSumNow > prevRotateSum) {
                     if (IsSoundValid(sndSpin)) PlaySound(sndSpin);
                 }
+
+                // Phase 4: reveal the solution hint only after ~30s with no
+                // placement change. Any progress (place/remove) or a win resets
+                // the timer and hides the hint again.
+                if (placedCntNow != prevPlacedCnt || wonNow) idleTimer = 0.0f;
+                else idleTimer += GetFrameTime();
+                game.setHintsVisible(!wonNow && idleTimer >= kHintDelaySec);
 
                 prevHeld      = heldNow;
                 prevWon       = wonNow;

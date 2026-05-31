@@ -259,7 +259,7 @@ enum class EditorResult { Stay, Play, Menu };
 // boxes around the board to adjust that color's row/column requirement
 // (left = +1, right = -1); paint a shape in the designer and ADD it as a part.
 EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& tool,
-                       std::string& msg, Font font, int sw, int sh) {
+                       int& selPiece, std::string& msg, Font font, int sw, int sh) {
     const Vector2 mp = GetMousePosition();
     const bool lc = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     const bool rc = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
@@ -315,28 +315,63 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
     }
     y += 34;
 
-    // Cell tool — paints directly onto the board on the right.
-    DrawTextEx(font, "BOARD TOOL  (click cells on the right)", Vector2{44, y}, 14.0f, 1.2f,
-               Color{150, 166, 180, 255});
-    y += 22;
-    if (button({44, y, 84, 30}, "ERASE", tool == 0)) tool = 0;
-    if (button({134, y, 84, 30}, "BLOCK", tool == 1)) tool = 1;
-    if (button({224, y, 84, 30}, "FIX",   tool == 2)) tool = 2;
-    y += 36;
-    const char* toolHelp = tool == 0 ? "ERASE: click a board cell to clear it"
-                         : tool == 1 ? "BLOCK: marks a cell as no-placement (X)"
-                                     : "FIX: locks a cell as a fixed piece (color)";
+    // Board tool: PLACE pieces, or paint BLOCK / FIX / ERASE cells.
+    DrawTextEx(font, "BOARD TOOL", Vector2{44, y}, 14.0f, 1.2f, Color{150, 166, 180, 255});
+    y += 20;
+    if (button({44, y, 70, 28},  "PLACE", tool == 0)) tool = 0;
+    if (button({118, y, 70, 28}, "BLOCK", tool == 1)) tool = 1;
+    if (button({192, y, 70, 28}, "FIX",   tool == 2)) tool = 2;
+    if (button({266, y, 70, 28}, "ERASE", tool == 3)) tool = 3;
+    y += 32;
+    const char* toolHelp = tool == 0 ? "PLACE: pick a piece below, click board to lay it"
+                         : tool == 1 ? "BLOCK: click a cell = no-placement (X)"
+                         : tool == 2 ? "FIX: click a cell = fixed piece (current color)"
+                                     : "ERASE: click a cell to clear it";
     DrawTextEx(font, toolHelp, Vector2{44, y}, 13.0f, 1.0f, Color{130, 146, 160, 255});
-    y += 30;
+    y += 26;
 
-    // Part designer — draw a piece shape, then ADD it to the tray.
-    DrawTextEx(font, "MAKE A PIECE", Vector2{44, y}, 15.0f, 1.2f, Color{174, 191, 203, 255});
-    DrawRectangleRounded(Rectangle{186, y, 34, 16}, 0.6f, 6, cur);
+    // Piece palette — every piece you've made; click one to select for PLACE.
+    if (selPiece >= (int)ed.parts.size()) selPiece = (int)ed.parts.size() - 1;
+    DrawTextEx(font, "PIECES", Vector2{44, y}, 14.0f, 1.2f, Color{150, 166, 180, 255});
+    if (button({200, y - 4, 64, 22}, "ROTATE", false)) ed.rotatePart(selPiece);
+    if (button({270, y - 4, 66, 22}, "DELETE", false)) {
+        if (selPiece >= 0 && selPiece == (int)ed.parts.size() - 1) ed.removeLastPart();
+        selPiece = (int)ed.parts.size() - 1;
+    }
     y += 22;
-    DrawTextEx(font, "click squares to draw its shape", Vector2{44, y}, 13.0f, 1.0f,
-               Color{130, 146, 160, 255});
-    y += 22;
-    const int pcs = 26, pgx = 60, pgy = (int)y;
+    const int tile = 42;
+    const int perRow = 6;
+    for (int i = 0; i < (int)ed.parts.size(); ++i) {
+        const int tx = 44 + (i % perRow) * (tile + 4);
+        const int ty = (int)y + (i / perRow) * (tile + 4);
+        Rectangle box = {(float)tx, (float)ty, (float)tile, (float)tile};
+        const bool sel = (i == selPiece);
+        DrawRectangleRounded(box, 0.14f, 4, Color{26, 31, 41, 255});
+        DrawRectangleRoundedLinesEx(box, 0.14f, 4, sel ? 2.5f : 1.0f,
+                                    sel ? cyan : Color{72, 94, 112, 255});
+        // mini shape preview (current rotation), dimmed if already placed.
+        const auto cells = ed.parts[i].rotatedCells();
+        int mx = 0, my = 0;
+        for (auto [dr, dc] : cells) { mx = std::max(mx, dc); my = std::max(my, dr); }
+        const int span = std::max(1, std::max(mx, my) + 1);
+        const float cs = (tile - 10.0f) / span;
+        Color pcCol = editorColorBadge(ed.parts[i].colorIndex);
+        if (ed.parts[i].location.placed) pcCol = Color{(unsigned char)(pcCol.r/2),(unsigned char)(pcCol.g/2),(unsigned char)(pcCol.b/2),255};
+        for (auto [dr, dc] : cells)
+            DrawRectangleRounded(Rectangle{tx + 5 + dc * cs, (float)ty + 5 + dr * cs, cs - 1, cs - 1}, 0.2f, 3, pcCol);
+        if (hit(box) && lc) selPiece = i;
+    }
+    const int rows_ = (ed.parts.empty() ? 1 : (int)((ed.parts.size() + perRow - 1) / perRow));
+    y += rows_ * (tile + 4) + 6;
+    if (ed.parts.empty())
+        DrawTextEx(font, "(make a piece below)", Vector2{44, y - tile + 6}, 14.0f, 1.0f,
+                   Color{120, 134, 148, 255});
+
+    // Make a piece — draw a shape, ADD it to the palette.
+    DrawTextEx(font, "MAKE A PIECE", Vector2{44, y}, 14.0f, 1.2f, Color{174, 191, 203, 255});
+    DrawRectangleRounded(Rectangle{186, y, 30, 15}, 0.6f, 6, cur);
+    y += 20;
+    const int pcs = 20, pgx = 56, pgy = (int)y;
     for (int r = 0; r < kPaintN; ++r) {
         for (int c = 0; c < kPaintN; ++c) {
             Rectangle pc = {(float)(pgx + c * pcs), (float)(pgy + r * pcs), (float)(pcs - 3), (float)(pcs - 3)};
@@ -346,20 +381,18 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
             if (hit(pc) && lc) paint[r][c] = !paint[r][c];
         }
     }
-    float py = pgy + kPaintN * pcs + 8;
-    if (button({60, py, 110, 30}, "ADD PIECE", false)) {
+    if (button({(float)(pgx + kPaintN * pcs + 12), (float)pgy + 8, 92, 30}, "ADD", false)) {
         const std::size_t before = ed.parts.size();
         ed.addPart(paint, ed.currentColor);
-        if (ed.parts.size() > before) { for (auto& row : paint) std::fill(row.begin(), row.end(), false); msg = "Piece added to tray."; }
-        else msg = "Draw a shape above first.";
+        if (ed.parts.size() > before) {
+            for (auto& row : paint) std::fill(row.begin(), row.end(), false);
+            selPiece = (int)ed.parts.size() - 1;
+            msg = "Piece added — pick PLACE and click the board.";
+        } else {
+            msg = "Draw a shape in the grid first.";
+        }
     }
-    if (button({178, py, 90, 30}, "DELETE", false)) { ed.removeLastPart(); msg = "Removed last piece."; }
-    char pcount[64];
-    std::snprintf(pcount, sizeof(pcount), "PIECES IN TRAY: %d", (int)ed.parts.size());
-    DrawTextEx(font, pcount, Vector2{60, py + 38}, 15.0f, 1.0f, text);
-    for (int i = 0; i < (int)ed.parts.size() && i < 12; ++i)
-        DrawRectangleRounded(Rectangle{210.0f + i * 14, py + 38, 12, 15}, 0.5f, 4,
-                             editorColorBadge(ed.parts[i].colorIndex));
+    y = pgy + kPaintN * pcs + 8;
 
     // Action buttons (bottom of sidebar).
     const float ay = panel.y + panel.height - 44;
@@ -385,21 +418,26 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
 
     // Board header + how-to.
     DrawTextEx(font, "BOARD", Vector2{(float)(boardX - nb - 6), 46.0f}, 22.0f, 1.2f, text);
-    DrawTextEx(font, "Numbers around the board = filled cells needed per row/column.",
+    DrawTextEx(font, "Lay your pieces out to form a solution — the row/column",
                Vector2{(float)(boardX - nb - 6), 74.0f}, 14.0f, 1.0f, Color{150, 166, 180, 255});
-    DrawTextEx(font, "Click a number: +1   ·   right-click: -1   ·   click cells to use the board tool.",
+    DrawTextEx(font, "numbers fill in automatically. Right-click a cell to clear it.",
                Vector2{(float)(boardX - nb - 6), 94.0f}, 14.0f, 1.0f, Color{150, 166, 180, 255});
 
+    // Hovered board cell.
+    int hovR = -1, hovC = -1;
+    if (mp.x >= boardX && mp.y >= boardY) {
+        const int c = (static_cast<int>(mp.x) - boardX) / cell;
+        const int r = (static_cast<int>(mp.y) - boardY) / cell;
+        if (r >= 0 && r < M && c >= 0 && c < N) { hovR = r; hovC = c; }
+    }
+
+    // Auto-derived row/column numbers (read-only).
     auto numberBox = [&](int x, int yy, int idx, bool isRow) {
         Rectangle r = {(float)x, (float)yy, (float)nb, (float)nb};
         DrawRectangleRounded(r, 0.25f, 5, Color{26, 31, 41, 255});
         DrawRectangleRoundedLinesEx(r, 0.25f, 5, 1.0f, cur);
         char b[8]; std::snprintf(b, sizeof(b), "%u", ed.constraintAt(ed.currentColor, idx, isRow));
         editorCenteredText(font, b, x + nb / 2.0f, yy + nb / 2.0f, 17.0f, text);
-        if (hit(r)) {
-            if (lc) ed.adjustConstraint(ed.currentColor, idx, isRow, +1);
-            if (rc) ed.adjustConstraint(ed.currentColor, idx, isRow, -1);
-        }
     };
     for (int r = 0; r < M; ++r)
         numberBox(boardX - nb - 6, boardY + r * cell + (cell - nb) / 2, r, true);
@@ -423,20 +461,46 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
                 DrawRectangleRoundedLinesEx(cellRect, 0.15f, 6, 1.5f, cc);
                 editorCenteredText(font, "=", cellRect.x + cellRect.width / 2,
                                    cellRect.y + cellRect.height / 2, 22.0f, cc);
+            } else if (Board::isOccupied(v)) {
+                const int pi = Board::occupiedPartIndex(v);
+                const Color cc = (pi >= 0 && pi < (int)ed.parts.size())
+                               ? editorColorBadge(ed.parts[pi].colorIndex) : Color{120,120,120,255};
+                DrawRectangleRounded(cellRect, 0.15f, 6, cc);
+                DrawRectangleRoundedLinesEx(cellRect, 0.15f, 6, 1.0f, Color{240,248,250,160});
             } else {
                 DrawRectangleRounded(cellRect, 0.15f, 6, Color{45, 50, 62, 255});
                 DrawRectangleRoundedLinesEx(cellRect, 0.15f, 6, 1.0f, Color{80, 90, 110, 255});
             }
-            if (hit(cellRect)) {
-                DrawRectangleRoundedLinesEx(cellRect, 0.15f, 6, 2.0f, cyan);
-                if (lc) {
-                    if (tool == 0) ed.clearCell(r, c);
-                    else if (tool == 1) ed.setBlocked(r, c);
-                    else ed.setFixed(r, c, ed.currentColor);
-                }
-                if (rc) ed.clearCell(r, c);
-            }
         }
+    }
+
+    // Ghost preview of the selected piece under the cursor (PLACE tool).
+    if (tool == 0 && hovR >= 0 && selPiece >= 0 && selPiece < (int)ed.parts.size()
+        && !ed.parts[selPiece].location.placed) {
+        const bool ok = ed.board.canPlace(ed.parts[selPiece], hovR, hovC);
+        const Color g = ok ? Color{80, 220, 100, 110} : Color{220, 80, 80, 110};
+        for (auto [dr, dc] : ed.parts[selPiece].rotatedCells()) {
+            const int rr = hovR + dr, ccol = hovC + dc;
+            if (rr < 0 || ccol < 0 || rr >= M || ccol >= N) continue;
+            DrawRectangleRounded(Rectangle{(float)(boardX + ccol * cell), (float)(boardY + rr * cell),
+                                           (float)(cell - 4), (float)(cell - 4)}, 0.15f, 6, g);
+        }
+    } else if (hovR >= 0) {
+        DrawRectangleRoundedLinesEx(Rectangle{(float)(boardX + hovC * cell), (float)(boardY + hovR * cell),
+                                              (float)(cell - 4), (float)(cell - 4)}, 0.15f, 6, 2.0f, cyan);
+    }
+
+    // Clicks on the board.
+    if (hovR >= 0) {
+        if (lc) {
+            if (tool == 0) {
+                if (selPiece < 0 || selPiece >= (int)ed.parts.size()) msg = "Make/select a piece first.";
+                else if (!ed.placePart(selPiece, hovR, hovC)) msg = "Can't place there.";
+            } else if (tool == 1) ed.setBlocked(hovR, hovC);
+            else if (tool == 2) ed.setFixed(hovR, hovC, ed.currentColor);
+            else ed.clearCell(hovR, hovC);
+        }
+        if (rc) ed.clearCell(hovR, hovC);
     }
 
     if (!msg.empty())
@@ -499,7 +563,8 @@ int main(int argc, char** argv) {
     std::string menuMessage;
 
     Editor editor;
-    int editorTool = 1;           // 0=erase, 1=block, 2=fix
+    int editorTool = 0;           // 0=place, 1=block, 2=fix, 3=erase
+    int editorSelPiece = -1;      // selected piece in the palette
     std::string editorMessage;
     std::vector<std::vector<bool>> paintGrid(kPaintN, std::vector<bool>(kPaintN, false));
     auto clearPaint = [&]() {
@@ -548,7 +613,8 @@ int main(int argc, char** argv) {
                 }
                 if (IsKeyPressed(KEY_E)) {
                     editor = Editor();
-                    editorTool = 1;
+                    editorTool = 0;
+                    editorSelPiece = -1;
                     editorMessage.clear();
                     clearPaint();
                     appState = AppState::Editor;
@@ -556,7 +622,7 @@ int main(int argc, char** argv) {
                 drawMenu(levels, selectedLevel, hover, menuMessage, menuFont, sw, sh);
             } else if (appState == AppState::Editor) {
                 const EditorResult res =
-                    runEditor(editor, paintGrid, editorTool, editorMessage, menuFont, sw, sh);
+                    runEditor(editor, paintGrid, editorTool, editorSelPiece, editorMessage, menuFont, sw, sh);
                 if (res == EditorResult::Play) {
                     game.init(editor.board, editor.parts);
                     appState = AppState::InGame;

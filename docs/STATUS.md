@@ -20,7 +20,7 @@
 
 **Phase 5 進行中 — 關卡編輯器代碼完成（滑鼠版，待 GUI 驗收）**
 
-Phase 0–3 完成；Phase 4（Solver + 提示 + 30 秒計時）代碼完成、headless 全綠、待 GUI 驗收。Phase 5 關卡編輯器：`LevelWriter`（反向 Parser）+ `Editor` 模型 + **immediate-mode 滑鼠編輯器**——點盤面套用工具（BLOCK/FIX/ERASE）、點四周數字 ±、PART DESIGNER 畫任意形狀、EXPORT/PLAY/MENU 按鈕。**編輯 6 子項全到位** + 匯出 + 試玩。Headless 驗 round-trip、Editor edits、blocked/fixed、設計關可解全綠。詳見 [plan.md §9](plan.md)/[§10](plan.md)。
+Phase 0–3 完成；Phase 4（Solver + 提示 + 30 秒計時）代碼完成、headless 全綠、待 GUI 驗收。Phase 5 關卡編輯器：`LevelWriter`（反向 Parser）+ `Editor` 模型 + **滑鼠 immediate-mode 編輯器**，採「**擺零件排解答→列/欄數字自動生成**」（`deriveConstraints`）；PIECES 清單顯示零件、PLACE+ghost 預覽、BLOCK/FIX/ERASE 點格、EXPORT/PLAY/MENU。**編輯 6 子項全到位** + 匯出 + 試玩。Headless 驗 place→derive→export→solve、blocked/fixed、resize-unplace 全綠。詳見 [plan.md §10](plan.md)。
 
 各里程碑 commit 與一句話：[plan.md 進度時間軸](plan.md#進度時間軸)。完整過程：[docs/log/](log/) + 封存的 [Log.md](Log.md)。
 

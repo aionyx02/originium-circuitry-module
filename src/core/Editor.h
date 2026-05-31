@@ -41,6 +41,13 @@ public:
     void setBlocked(int row, int col);            // -> CANNOT_PLACE
     void setFixed(int row, int col, unsigned color);  // -> fixed cell of color
     void clearCell(int row, int col);             // -> EMPTY
+
+    // Design-the-solution editing: place/lift pieces on the board; row/column
+    // requirements are auto-derived from the placed layout (deriveConstraints).
+    bool placePart(int idx, int row, int col);    // place piece idx; false if illegal
+    void removePartAt(int row, int col);          // lift whatever piece covers the cell
+    void rotatePart(int idx);                      // rotate an un-placed piece
+    void deriveConstraints();                      // recompute row/col numbers from layout
 };
 
 #endif

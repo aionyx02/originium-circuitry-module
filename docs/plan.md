@@ -345,7 +345,7 @@
 ### 增量切分
 
 - **增量 1（已完成代碼）**：LevelWriter（round-trip 驗證）+ Editor 資料模型 + 鍵盤版最小編輯 + PART DESIGNER + 匯出 + 試玩。（已被增量 2 的滑鼠版取代操作方式）
-- **增量 2 — 編輯器重做為滑鼠直接操作（已完成代碼，待 GUI 驗收）**：immediate-mode UI。側欄 `-`/`+` 改大小/顏色數、點色塊切色、CELL TOOL（ERASE/BLOCK/FIX）+ **直接點盤面格子套用工具**（不可放置格 / 固定零件）、**點盤面四周數字格左/右鍵 +1/−1**、PART DESIGNER 點格畫任意形狀 + ADD/DEL、EXPORT/PLAY/MENU 按鈕。**編輯 6 子項全到位**。`Editor` 加 `setBlocked/setFixed/clearCell`（headless round-trip 驗證）。
+- **增量 2 — 滑鼠 immediate-mode 編輯器 + 「排解答自動生成數字」（已完成代碼，待 GUI 驗收）**：核心交互改成**把零件擺上盤面排出解答 → 列/欄數字自動推導**（`Editor::deriveConstraints` 從擺放佈局算 `currentFilledForColor`），不再手動填數字。PIECES 清單顯示已建立零件（可選取/旋轉/刪除）；MAKE A PIECE 畫任意形狀加入；PLACE 工具 + ghost 預覽擺零件；BLOCK/FIX/ERASE 點格設不可放置/固定/清除；右鍵清除。匯出時零件回 tray、數字=解答 → 保證可解。`Editor` 加 `placePart/removePartAt/rotatePart/deriveConstraints/setBlocked/setFixed/clearCell`；resize/換色會清擺放保持一致。**編輯 6 子項全到位**。headless 驗 place→derive→export→solve、resize-unplace 全綠。
 
 ### 驗收清單（滑鼠版編輯器）
 
@@ -385,7 +385,8 @@
 | 2026-05-31 | Phase 4 / 增量2 hints | `5096ff9` | (+5% 待 GUI 驗收) | 半透明提示 overlay + 30 秒卡關才顯示（有進度重置）；headless 驗 hintCells 幾何全綠 |
 | 2026-05-31 | Phase 5 / 增量1 editor | `ef473c0` | (待 GUI 驗收) | LevelWriter（反向 Parser）+ Editor 模型 + 編輯 + 匯出 assets/levels + 試玩；round-trip 全綠 |
 | 2026-05-31 | Phase 5 / part designer | `5cc28e5` | (待 GUI 驗收) | 編輯器加 PART DESIGNER：滑鼠畫任意形狀 + A 加入/D 刪除；headless 驗設計關可解 |
-| 2026-05-31 | Phase 5 / 編輯器重做 | （待 commit） | (待 GUI 驗收) | immediate-mode 滑鼠直接操作：點盤面套用工具(BLOCK/FIX/ERASE)+點數字±+按鈕匯出/試玩；編輯 6/6 |
+| 2026-05-31 | Phase 5 / 編輯器重做 | `bdaeaef` | (待 GUI 驗收) | immediate-mode 滑鼠操作 + crash 修復（縮盤面越界） |
+| 2026-05-31 | Phase 5 / 排解答編輯器 | （待 commit） | (待 GUI 驗收) | 擺零件排解答→列欄數字自動生成 + PIECES 清單/ghost 預覽；headless place→derive→solve 全綠 |
 
 > 各里程碑的完整過程、設計演進與驗收細節：見 [docs/log/](log/) 與封存的 [Log.md](Log.md)；現況分數見 [STATUS.md](STATUS.md)。
 

@@ -18,13 +18,13 @@
 
 ## 目前階段
 
-**Phase 4 進行中 — Solver 增量 1+2 代碼完成（待 GUI 驗收）**
+**Phase 5 進行中 — Editor 增量 1 代碼完成（待 GUI 驗收）**
 
-Phase 0–3 完成（圖形分項 **15/15**；進階功能皆已入帳）。Phase 4 自動解題：增量 1 核心 `Solver`（backtracking + 剪枝）+ `F` 鍵一鍵自動解；增量 2 半透明提示 overlay + 30 秒卡關才顯示（有進度即重置計時）。Headless 驗證 Solver 解 Example1–6 全綠（6/6）、`hintCells` 幾何正確（6/6）。**待 GUI 目視驗收後勾分**。詳見 [plan.md §9](plan.md)。
+Phase 0–3 完成；Phase 4（自動解題 Solver + 提示 overlay + 30 秒計時）代碼完成、headless 全綠、待 GUI 驗收。Phase 5 關卡編輯器增量 1：`LevelWriter`（反向 Parser）+ `Editor` 資料模型 + 最小編輯（大小/顏色數/列欄數字）+ 匯出 `assets/levels/custom-N.txt` + `P` 直接試玩。Headless round-trip 驗 Example1–6 + Editor edits 全綠。畫格/固定格/零件設計器留增量 2。詳見 [plan.md §9](plan.md)/[§10](plan.md)。
 
-各里程碑 commit 與一句話：[plan.md 進度時間軸](plan.md#進度時間軸)。完整過程與設計演進：[docs/log/](log/) + 封存的 [Log.md](Log.md)。
+各里程碑 commit 與一句話：[plan.md 進度時間軸](plan.md#進度時間軸)。完整過程：[docs/log/](log/) + 封存的 [Log.md](Log.md)。
 
-**下一步**：GUI 驗收 Solver + 提示（按 F 解；卡 30 秒看綠色提示）→ Phase 3/4 助教 demo 測資（demo day 實測）→ Phase 5 Editor。
+**下一步**：GUI 驗收 Phase 4（F 解 / 30 秒提示）+ Phase 5 編輯器（E 進入 / 匯出 / P 試玩）→ Phase 5 增量 2（點格畫不可放置/固定格 + 零件設計器）。
 
 ---
 
@@ -70,9 +70,9 @@ Phase 0–3 完成（圖形分項 **15/15**；進階功能皆已入帳）。Phas
 
 ### 關卡設計器（共 10%）
 
-- [ ] 編輯功能：盤面大小、顏色數、新增任意零件、不可放置格、固定零件、列/欄數字 — **5%（六項合計）**
-- [ ] 匯出設定檔（純文字格式） — 2.5%
-- [ ] 直接遊玩設計好的關卡 — 2.5%
+- [ ] 編輯功能：盤面大小、顏色數、新增任意零件、不可放置格、固定零件、列/欄數字 — **5%（六項合計）**（增量1：大小/顏色數/列欄數字 OK；不可放置/固定/任意零件留增量2，**待 GUI 驗收**）
+- [ ] 匯出設定檔（純文字格式） — 2.5%（`LevelWriter` 寫 `assets/levels/custom-N.txt`；headless round-trip Example1–6 + Editor edits 全綠，**待 GUI 驗收**）
+- [ ] 直接遊玩設計好的關卡 — 2.5%（`P` → `Game::init`；plumbing OK，完整體驗待增量2 補零件，**待 GUI 驗收**）
 
 ### 圖形介面（共 15%）
 

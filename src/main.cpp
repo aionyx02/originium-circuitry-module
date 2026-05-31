@@ -8,7 +8,9 @@
 
 #include "raylib.h"
 
+#include "core/Editor.h"
 #include "core/Game.h"
+#include "core/LevelWriter.h"
 #include "core/Parser.h"
 #include "ui/Input.h"
 #include "ui/Renderer.h"
@@ -23,6 +25,7 @@ struct LevelEntry {
 enum class AppState {
     Menu,
     InGame,
+    Editor,
 };
 
 std::string promptPath(int argc, char** argv) {
@@ -186,7 +189,7 @@ void drawMenu(const std::vector<LevelEntry>& levels,
         }
     }
 
-    DrawTextEx(font, "Enter / Left Click: start    Up/Down: select    N: back to menu from game",
+    DrawTextEx(font, "Enter / Click: start    Up/Down: select    E: create level    N: menu (in game)",
                Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + kMenuPanelH - 58)},
                15.0f, 1.0f, Color{170, 184, 196, 255});
     if (!message.empty()) {
@@ -210,6 +213,117 @@ int sumRotateCount(const Game& g) {
     int s = 0;
     for (const auto& p : g.parts) s += p.rotateCount;
     return s;
+}
+
+// --- Level editor (Phase 5 increment 1) ---
+
+Color editorColorBadge(unsigned i) {
+    static const Color cs[] = {
+        { 76, 175,  80, 255}, { 33, 150, 243, 255},
+        {244,  67,  54, 255}, {255, 193,   7, 255},
+    };
+    return cs[i % 4];
+}
+
+void editorCenteredText(Font font, const char* s, float cx, float cy, float fs, Color col) {
+    const Vector2 sz = MeasureTextEx(font, s, fs, 1.0f);
+    DrawTextEx(font, s, Vector2{cx - sz.x / 2.0f, cy - sz.y / 2.0f}, fs, 1.0f, col);
+}
+
+// Write the level to assets/levels/custom-N.txt (next free N). Returns the
+// path written, or "" on failure.
+std::string exportEditorLevel(const Editor& ed) {
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    fs::create_directories("assets/levels", ec);
+    fs::path path;
+    for (int n = 1; n < 10000; ++n) {
+        path = fs::path("assets/levels") / ("custom-" + std::to_string(n) + ".txt");
+        if (!fs::exists(path)) break;
+    }
+    std::ofstream out(path);
+    if (!out) return {};
+    out << LevelWriter::write(ed.board, ed.parts);
+    if (!out) return {};
+    return path.string();
+}
+
+void drawEditor(const Editor& ed, int selIdx, const std::string& msg, Font font, int sw, int sh) {
+    DrawRectangleGradientV(0, 0, sw, sh, Color{22, 29, 43, 255}, Color{9, 12, 20, 255});
+
+    const int M = static_cast<int>(ed.board.rows);
+    const int N = static_cast<int>(ed.board.cols);
+    const int cell = 56;
+    const int boardX = (sw - N * cell) / 2 + 90;
+    const int boardY = (sh - M * cell) / 2 + 10;
+    const Color cur = editorColorBadge(ed.currentColor);
+    const Color cyan = Color{109, 236, 218, 255};
+
+    // Board cells.
+    for (int r = 0; r < M; ++r) {
+        for (int c = 0; c < N; ++c) {
+            Rectangle rc = {(float)(boardX + c * cell), (float)(boardY + r * cell),
+                            (float)(cell - 4), (float)(cell - 4)};
+            DrawRectangleRounded(rc, 0.15f, 6, Color{45, 50, 62, 255});
+            DrawRectangleRoundedLinesEx(rc, 0.15f, 6, 1.0f, Color{80, 90, 110, 255});
+        }
+    }
+
+    // Constraint slots for the current color: row reqs (left), col reqs (top).
+    const int box = 38;
+    auto drawSlot = [&](int x, int y, unsigned val, bool sel) {
+        Rectangle r = {(float)x, (float)y, (float)box, (float)box};
+        DrawRectangleRounded(r, 0.2f, 5, sel ? Color{36, 55, 61, 255} : Color{26, 31, 41, 255});
+        DrawRectangleRoundedLinesEx(r, 0.2f, 5, sel ? 2.0f : 1.0f, sel ? cyan : cur);
+        char buf[16];
+        std::snprintf(buf, sizeof(buf), "%u", val);
+        editorCenteredText(font, buf, x + box / 2.0f, y + box / 2.0f, 20.0f,
+                           Color{232, 244, 245, 255});
+    };
+    for (int r = 0; r < M; ++r) {
+        drawSlot(boardX - box - 8, boardY + r * cell + (cell - box) / 2,
+                 ed.constraintAt(ed.currentColor, r, true), selIdx == r);
+    }
+    for (int c = 0; c < N; ++c) {
+        drawSlot(boardX + c * cell + (cell - box) / 2, boardY - box - 8,
+                 ed.constraintAt(ed.currentColor, c, false), selIdx == M + c);
+    }
+
+    // Sidebar.
+    Rectangle panel = {24.0f, 20.0f, 300.0f, 460.0f};
+    DrawRectangleRounded(panel, 0.06f, 8, Color{18, 22, 32, 230});
+    DrawRectangleRoundedLinesEx(panel, 0.06f, 8, 1.0f, Color{72, 94, 112, 255});
+    DrawTextEx(font, "LEVEL EDITOR", Vector2{44, 36}, 26.0f, 1.2f, Color{232, 244, 245, 255});
+
+    char line[96];
+    std::snprintf(line, sizeof(line), "Size: %d x %d     Colors: %u", M, N, ed.board.colors);
+    DrawTextEx(font, line, Vector2{44, 86}, 18.0f, 1.0f, Color{174, 191, 203, 255});
+
+    DrawTextEx(font, "Editing color:", Vector2{44, 116}, 18.0f, 1.0f, Color{174, 191, 203, 255});
+    DrawRectangleRounded(Rectangle{196, 118, 40, 18}, 0.6f, 6, cur);
+
+    const char* help[] = {
+        "Z / X    rows  - / +",
+        "C / V    cols  - / +",
+        "K / L    colors - / +",
+        "Tab      switch color",
+        "Up/Down  pick row/col slot",
+        "Left/Rt  value  - / +",
+        "",
+        "E   export to assets/levels/",
+        "P   play this level",
+        "Esc back to menu",
+    };
+    float y = 156;
+    for (const char* h : help) {
+        DrawTextEx(font, h, Vector2{44, y}, 16.0f, 1.0f, Color{150, 166, 180, 255});
+        y += 26;
+    }
+
+    if (!msg.empty()) {
+        DrawTextEx(font, msg.c_str(), Vector2{44, (float)sh - 48}, 16.0f, 1.0f,
+                   Color{255, 203, 126, 255});
+    }
 }
 
 } // namespace
@@ -264,6 +378,10 @@ int main(int argc, char** argv) {
     int selectedLevel = levels.empty() ? -1 : 0;
     std::string menuMessage;
 
+    Editor editor;
+    int editorSel = 0;            // 0..M-1 = row slot, M..M+N-1 = col slot
+    std::string editorMessage;
+
     {
         Font menuFont = LoadFontEx("assets/fonts/Exo2-Regular.ttf", 64, nullptr, 0);
         const bool hasMenuFont = IsFontValid(menuFont);
@@ -304,7 +422,59 @@ int main(int argc, char** argv) {
                         menuMessage.clear();
                     }
                 }
+                if (IsKeyPressed(KEY_E)) {
+                    editor = Editor();
+                    editorSel = 0;
+                    editorMessage.clear();
+                    appState = AppState::Editor;
+                }
                 drawMenu(levels, selectedLevel, hover, menuMessage, menuFont, sw, sh);
+            } else if (appState == AppState::Editor) {
+                const int M = static_cast<int>(editor.board.rows);
+                const int N = static_cast<int>(editor.board.cols);
+                const int slotCount = M + N;
+
+                if (IsKeyPressed(KEY_Z)) editor.setSize(M - 1, N);
+                if (IsKeyPressed(KEY_X)) editor.setSize(M + 1, N);
+                if (IsKeyPressed(KEY_C)) editor.setSize(M, N - 1);
+                if (IsKeyPressed(KEY_V)) editor.setSize(M, N + 1);
+                if (IsKeyPressed(KEY_K)) editor.setColorCount(static_cast<int>(editor.board.colors) - 1);
+                if (IsKeyPressed(KEY_L)) editor.setColorCount(static_cast<int>(editor.board.colors) + 1);
+                if (IsKeyPressed(KEY_TAB) && editor.board.colors > 1) {
+                    editor.currentColor = (editor.currentColor + 1) % editor.board.colors;
+                }
+
+                // Re-clamp selection (size may have changed this frame).
+                if (editorSel >= slotCount) editorSel = std::max(0, slotCount - 1);
+                if (IsKeyPressed(KEY_DOWN)) editorSel = (editorSel + 1) % std::max(1, slotCount);
+                if (IsKeyPressed(KEY_UP))   editorSel = (editorSel + slotCount - 1) % std::max(1, slotCount);
+
+                const bool isRow = editorSel < M;
+                const int  idx   = isRow ? editorSel : editorSel - M;
+                if (IsKeyPressed(KEY_RIGHT)) editor.adjustConstraint(editor.currentColor, idx, isRow, +1);
+                if (IsKeyPressed(KEY_LEFT))  editor.adjustConstraint(editor.currentColor, idx, isRow, -1);
+
+                if (IsKeyPressed(KEY_E)) {
+                    const std::string path = exportEditorLevel(editor);
+                    editorMessage = path.empty() ? "Export failed." : ("Exported: " + path);
+                }
+                if (IsKeyPressed(KEY_P)) {
+                    game.init(editor.board, editor.parts);
+                    appState = AppState::InGame;
+                    resetSoundBaseline();
+                    editorMessage.clear();
+                }
+                if (IsKeyPressed(KEY_ESCAPE)) {
+                    appState = AppState::Menu;
+                    levels = findLevels();   // surface any just-exported level
+                    if (selectedLevel < 0 && !levels.empty()) selectedLevel = 0;
+                    editorMessage.clear();
+                    drawMenu(levels, selectedLevel, -1, menuMessage, menuFont, sw, sh);
+                    EndDrawing();
+                    continue;
+                }
+
+                drawEditor(editor, editorSel, editorMessage, menuFont, sw, sh);
             } else {
                 if (IsKeyPressed(KEY_N)) {
                     appState = AppState::Menu;

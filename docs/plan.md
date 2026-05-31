@@ -1,6 +1,6 @@
 # 開發計劃（Plan）
 
-> 唯一的進度與決策來源。**Phase 1（§5）、Phase 2（§6）、Phase 4（§9）是詳細版**，其餘階段先列大綱，等做到再展開。
+> 唯一的進度與決策來源。**Phase 1（§5）、Phase 2（§6）、Phase 4（§9）、Phase 5（§10）是詳細版**，其餘階段先列大綱，等做到再展開。
 
 ---
 
@@ -324,6 +324,44 @@
 
 ---
 
+## 10. Phase 5 詳細計劃（關卡編輯器，進行中）
+
+### 目標與配分（共 10%）
+
+| 項 | 配分 | 增量 |
+|---|---:|---|
+| 編輯功能（大小/顏色數/任意零件/不可放置/固定零件/列欄數字）6 項合計 | 5%（[scoring.md:75](scoring.md#L75)） | 1（部分）+ 2 |
+| 匯出純文字設定檔 | 2.5%（:85） | 1 |
+| 直接遊玩設計好的關卡 | 2.5%（:86） | 1（plumbing）|
+
+### 設計
+
+- **`core/LevelWriter.{h,cpp}`（純 core）**：`Board + parts → 文字`，`Parser::parse` 的反向。round-trip 與 Parser 等價。
+- **`core/Editor.{h,cpp}`（純 core）**：持有 `Board` + `parts` + `currentColor`，編輯操作 `setSize` / `setColorCount` / `adjustConstraint`（重建/保留 overlap、夾範圍）。重用 `Board`/`Part`，不另立平行結構。
+- **`AppState::Editor`**（main 第三態）：主選單按 `E` 進入；`Esc` 回選單。
+- **匯出**：寫 `assets/levels/custom-N.txt`（下個空號），畫面顯示路徑；回選單會重掃，匯出的關卡直接出現在選單可玩。
+- **直接遊玩**：`Game::init(editor.board, editor.parts)` 切 InGame，完全重用既有遊戲。
+
+### 增量切分
+
+- **增量 1（已完成代碼，待 GUI 驗收）**：LevelWriter（round-trip 驗證）+ Editor 資料模型 + 最小編輯（盤面大小 `Z/X`/`C/V`、顏色數 `K/L`、列/欄數字 `Up/Down` 選 + `Left/Right` 增減、`Tab` 切色）+ 匯出 `E` + 試玩 `P`。
+- **增量 2（未開工）**：盤面上點格 toggle 不可放置格、cycle 固定零件顏色；零件設計器（在小網格畫任意形狀、選色加入）。補齊編輯 5% 的其餘子項與「有零件可玩」的完整體驗。
+
+### 增量 1 驗收清單
+
+- [ ] 選單按 `E` → 進編輯器；改大小/顏色數/列欄數字即時反映
+- [ ] 按 `E` 匯出 → `assets/levels/custom-1.txt` 生成、畫面顯示路徑；回選單可看到並載入
+- [ ] 按 `P` → 用目前設定直接進遊戲（雖無零件，盤面/constraint 正確；constraint 全 0 時即勝利）
+- [ ] 匯出檔用 `Parser` 載入無誤（round-trip headless 已驗 Example1–6 + Editor edits 全綠）
+- [ ] 通過後 STATUS 勾「匯出 2.5%」；編輯 5% / 試玩 2.5% 等增量 2 補齊零件後一起驗收
+
+### 不在增量 1 做
+
+- 點格畫不可放置/固定格、零件形狀設計器 → 增量 2
+- 編輯器美術 polish → 之後
+
+---
+
 ## 進度時間軸
 
 <!-- 完成一個里程碑就加一列。每列只放：日期 / commit / 分數 / 一句話。詳細過程去 docs/log/（或封存的 Log.md）。 -->
@@ -343,7 +381,8 @@
 | 2026-05-31 | Phase 3 / 05-dual-color | — | +2% → 42.5% | 雙色 Example5/6 可開可玩可勝利，零件/固定格/hints 顏色對齊 |
 | 2026-05-31 | Phase 3 / 04-row-col-hints | — | +2% → 44.5% | 條狀 row/column hints：不足色框 / 滿足亮綠 / 超出多出段變紅，即時更新 |
 | 2026-05-31 | Phase 4 / 增量1 solver | `75cf3fb` | (+1% 待 GUI 驗收) | 核心 backtracking Solver + F 鍵一鍵自動解填盤；headless 驗證 Example1–6 全解 |
-| 2026-05-31 | Phase 4 / 增量2 hints | （待 commit） | (+5% 待 GUI 驗收) | 半透明提示 overlay + 30 秒卡關才顯示（有進度重置）；headless 驗 hintCells 幾何全綠 |
+| 2026-05-31 | Phase 4 / 增量2 hints | `5096ff9` | (+5% 待 GUI 驗收) | 半透明提示 overlay + 30 秒卡關才顯示（有進度重置）；headless 驗 hintCells 幾何全綠 |
+| 2026-05-31 | Phase 5 / 增量1 editor | （待 commit） | (+2.5%~ 待 GUI 驗收) | LevelWriter（反向 Parser）+ Editor 模型 + 最小編輯 + 匯出 assets/levels + 試玩；round-trip 全綠 |
 
 > 各里程碑的完整過程、設計演進與驗收細節：見 [docs/log/](log/) 與封存的 [Log.md](Log.md)；現況分數見 [STATUS.md](STATUS.md)。
 

@@ -15,6 +15,11 @@
 > 連結若無法直接點開，用 Cmd+F 搜 Feature 名稱。  
 > 用「Phase X · commit `<short>`」標注每個 entry 在哪段 code 改動產生，方便對照原始 commit 學習。
 
+### Phase 5 增量 1 — `<待 commit>` (2026-05-31)
+關卡編輯器地基：LevelWriter（反向 Parser）+ Editor 模型 + 匯出/試玩
+
+- [LevelWriter / Editor：序列化反函數 + 純 core 編輯模型](#levelwriter--editor序列化反函數--純-core-編輯模型)
+
 ### Phase 4 增量 2 — `<待 commit>` (2026-05-31)
 解答提示 overlay + 30 秒卡關才顯示
 
@@ -856,3 +861,38 @@ Solver **沒有自己重寫任何遊戲規則**：能不能放用 `Board::canPla
 
 - 自動解題：依解答顯示半透明提示 2.5%（[scoring.md:70](scoring.md#L70)）— 代碼完成、headless 驗 `hintCells` 幾何全綠，待 GUI 目視驗收後入帳。
 - 自動解題：30 秒沒解開才顯示提示 2.5%（[scoring.md:71](scoring.md#L71)）— `kHintDelaySec=30`、有進度重置，待 GUI 目視驗收後入帳。
+
+---
+
+## LevelWriter / Editor：序列化反函數 + 純 core 編輯模型
+
+*Phase 5 增量 1 · commit `<待 commit>`*
+
+### 它在做什麼
+
+關卡編輯器讓玩家自己設計關卡，再**匯出成設定檔**或**直接遊玩**。增量 1 做地基：
+
+- **`core/LevelWriter`**：把 `Board + parts` 寫回純文字設定檔格式——就是 `Parser::parse` 的**反函數**。
+- **`core/Editor`**：純 core 的編輯資料模型，持有 `Board`+`parts`+`currentColor`，提供改盤面大小、顏色數、列/欄數字的操作。
+- main 的 `AppState::Editor`：把上面兩者接成可操作的編輯畫面，能匯出（寫 `assets/levels/`）與試玩（丟進既有 `Game`）。
+
+### 兩個關鍵設計
+
+- **序列化與反序列化互為反函數**：`Parser`（讀）和 `LevelWriter`（寫）對同一格式，一個解析一個產生。我用 round-trip 測試 `parse → write → parse` 對 6 個官方範例**完全相等**來保證——任何一邊對格式理解錯了，round-trip 就會抓到。這比各寫各的安全得多。
+- **編輯資料直接重用 `Board`/`Part`，不另立平行結構**：編輯器改的就是一個 `Board` + 一串 `Part`；要匯出就丟 `LevelWriter`，要試玩就丟 `Game::init`。沒有「編輯用一套、遊玩用另一套」的轉換層，少一整類同步 bug。`Editor` 只是包一層方便的編輯操作（`setSize` 重建格子與 constraint 並保留重疊區、`adjustConstraint` 夾在合理範圍）。
+
+### 為什麼純 core / 無 raylib
+
+`LevelWriter`、`Editor` 都不碰 raylib，所以能 headless 編譯測試（round-trip、編輯後序列化值正確），也讓這塊成為乾淨的**夥伴接手點**——UI 之後接，核心已驗。
+
+### 口試我要能講出什麼
+
+- 「設定檔格式」與 `Parser`/`LevelWriter` 互為反函數，round-trip 測試怎麼保固兩邊一致。
+- 為什麼編輯器不另立資料結構、直接用 `Board`/`Part`（匯出/試玩零轉換）。
+- `setSize` 重建時怎麼保留既有內容（overlap 複製）、`adjustConstraint` 為何夾在 0..軸長。
+
+### Score Connection
+
+- 關卡設計器：匯出純文字 2.5%（[scoring.md:85](scoring.md#L85)）— `LevelWriter` 寫 `assets/levels/custom-N.txt`，round-trip 全綠，待 GUI 驗收。
+- 關卡設計器：直接遊玩 2.5%（[scoring.md:86](scoring.md#L86)）— `P` → `Game::init`，plumbing 完成；完整體驗待增量 2 補零件。
+- 關卡設計器：編輯 5%（[scoring.md:75](scoring.md#L75)）— 增量 1 完成大小/顏色數/列欄數字 3 項，其餘 3 項（任意零件/不可放置/固定零件）增量 2。

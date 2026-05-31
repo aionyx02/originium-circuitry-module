@@ -29,6 +29,8 @@ add_executable(game
     src/core/Parser.cpp
     src/core/WinChecker.cpp
     src/core/Solver.cpp
+    src/core/Editor.cpp
+    src/core/LevelWriter.cpp
     src/core/Game.cpp
     src/ui/Input.cpp
     src/ui/Renderer.cpp

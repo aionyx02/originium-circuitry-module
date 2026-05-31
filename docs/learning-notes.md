@@ -15,6 +15,11 @@
 > 連結若無法直接點開，用 Cmd+F 搜 Feature 名稱。  
 > 用「Phase X · commit `<short>`」標注每個 entry 在哪段 code 改動產生，方便對照原始 commit 學習。
 
+### Phase 3 issue 01-reset — `<待 commit>` (2026-05-24)
+重置盤面（Reset Board）— 重來同關不必關程式
+
+- [Game 狀態 snapshot：value-type deep copy 還原初始盤面](#game-狀態-snapshotvalue-type-deep-copy-還原初始盤面)
+
 ### Phase 2 Day 2b — `<待 commit>` (2026-05-22)
 滑鼠 hover / drag / 左鍵放置 / 右鍵 cancel
 
@@ -523,3 +528,239 @@ demo / 口頭報告會被問到時，要能講出來什麼？
 
 #### Score Connection
 - 遊戲流程：wasd/滑鼠移動 5%（[scoring.md:47](scoring.md#L47)）+ Enter/左鍵放置 1%（[scoring.md:50](scoring.md#L50)） — 不增加分數，但補上「或滑鼠拖移 / 左鍵放置」的 rubric 完整性與 demo 體驗
+
+
+### Game 狀態 snapshot：value-type deep copy 還原初始盤面
+
+*Phase 3 · commit `<待 commit>`*
+
+#### What & Key Concepts
+
+`Game::resetToInitial()` 要把整盤遊戲狀態回到 `init()` 剛讀完檔的樣子。實作上不靠記檔案路徑、不靠 re-parse：而是 `init()` 末尾就把 `board` 與 `parts` 各 copy 一份到 private 成員 `initialBoard` / `initialParts`，reset 時 `board = initialBoard; parts = initialParts;` 一行還原。
+
+**關鍵在 C++ 的 value semantics**：`Board` 跟 `Part` 全是 value-type 成員（`std::vector<std::vector<...>>`、`int`、`enum`、`float`），整個物件 `operator=` 預設就是 deep copy — 不必自己寫 copy constructor 或 deep-copy helper。`std::vector` 的 `operator=` 會配新記憶體並逐 element copy，巢狀 vector 同理遞迴下去。
+
+**Snapshot 的時序很關鍵**：`init(Board b, std::vector<Part> p)` 的 parameter 是 by-value（已經是 caller 給的 copy），主體用 `std::move(b/p)` 把資料搬到成員。搬完 `b` / `p` 就空了，要從**成員** copy 而不是從 parameter copy：
+
+```cpp
+void Game::init(Board b, std::vector<Part> p) {
+    board = std::move(b);       // b 變空殼
+    parts = std::move(p);       // p 變空殼
+    initialBoard = board;       // 從成員 copy，是 deep copy
+    initialParts = parts;       // 同理
+    // ... reset cursor / held / won ...
+}
+```
+
+「reset 時要不要重置 Part 視覺欄位（`currentCenterX/Y/Angle`、`visualInitialized`、`rotateCount`）」直接被 snapshot 解掉了：snapshot 是在 `init()` 末尾、玩家還沒互動之前拍的，那時所有 Part 視覺欄位都是 default 值（`visualInitialized=false`、`rotateCount=0`、`currentAngle=0`、`currentScale=1`）。reset 時整個 copy 過去，視覺欄位自動歸 default — 不必逐欄位手動重置。
+
+#### Why This Design
+
+- **不依賴 file system**：若改用「reset = 把檔案路徑塞進 Game、reset 時 re-parse」，檔案中途被改 / 刪 / mv → reset 失敗。snapshot 在記憶體裡，不受外界影響。
+- **不必擴 Game 的 public API**：不用把 `std::string levelPath` 變成 Game 的成員、不用把 Parser 變成 Game 的依賴。reset 只看自己擁有的兩個成員。
+- **記憶體成本可接受**：Example1 約 10 個 part、6×6 board，snapshot 大概幾 KB，遠小於 re-parse 帶來的 parser code path 複雜度。
+- **避免逐欄位手動重置的 bug**：手寫「reset 時要清哪些欄位」會跟 Phase 2 視覺欄位賽跑 — 每加一個視覺欄位就要記得來 reset 補一筆，很容易漏。整盤 copy initial 是天然防呆。
+
+#### What I Should Be Able To Explain
+
+- Q：為什麼 deep copy 不必自己寫？  
+  A：`Board` / `Part` 的所有成員都是 value-type（`std::vector`、enum、POD），C++ 預設的 `operator=` 對 class 做 member-wise copy；對 `std::vector` 來說 member-wise copy 就是配新記憶體 + 逐 element copy（深層）。所以 `initialBoard = board;` 一行就完成整盤拷貝。如果欄位裡有 raw pointer，就必須自己寫 copy constructor 處理；本專案剛好沒有 raw pointer。
+- Q：為什麼從成員 copy 而不是從 parameter copy？  
+  A：parameter `b` / `p` 已經被 `std::move` 搬空了，再 copy 過去只能拿到 valid-but-unspecified 的空殼。從成員 copy（已經是搬完的目的地）才是完整資料。
+- Q：為什麼不用 re-parse 檔案的方式 reset？  
+  A：(1) 不依賴外部檔案 — 中途檔案被改 / 刪不影響；(2) 不必把 file path / Parser 塞進 `Game` 的依賴；(3) 記憶體成本小於 parser code path；(4) reset 速度比 re-parse 快（一個 memcpy vs 一段 parsing 邏輯）。
+- Q：reset 為什麼要在 `if (won) return` 之前處理？  
+  A：勝利後玩家也要能重新開始；如果 Reset 走一般 action 流程就會被 win-gate 擋住，所以必須早早攔截。
+- Q：Phase 2 視覺欄位（`currentCenterX/Y/Angle/Scale`、`visualInitialized`、`rotateCount`）reset 時要怎麼處理？  
+  A：snapshot 是 `init()` 末尾拍的、玩家還沒互動前 — 那時視覺欄位都是 default 值。reset 時整個 copy 過去就自然回到 default，不必逐欄位手動重置，也不會漏掉新加的視覺欄位。
+
+#### Score Connection
+- 進階功能：重置盤面為初始狀態 1%（[scoring.md:56](scoring.md#L56)）
+
+---
+
+### AppState state machine：同一個 process 內切換新關卡
+
+*Phase 3 · commit `<待 commit>`*
+
+#### What & Key Concepts
+
+Issue 02-new-game 的核心不是「把同一關 reset」，而是讓程式在不關閉視窗、不重啟 process 的情況下，離開當前關卡、選另一個關卡、重新 parse 並呼叫 `Game::init()`。
+
+這次在 [main.cpp](../src/main.cpp) 加了一個很小的 state machine：
+
+```cpp
+enum class AppState {
+    Menu,
+    InGame,
+};
+```
+
+主迴圈每 frame 依狀態分流：
+
+```cpp
+if (appState == AppState::Menu) {
+    // keyboard / mouse 選關，選到後 loadGame(path, game, err)
+} else {
+    // 原本的 game update / mouse / sound / render
+    // KEY_N 會切回 Menu
+}
+```
+
+`loadGame(path, game, err)` 仍是單一入口：開檔、`Parser::parse`、`game.init`。這讓「argv 啟動」、「menu 選關」、「之後 editor 匯出後試玩」都能共用同一條載入路徑。
+
+#### Why This Design
+
+- **保留 argv 直接進遊戲**：`argc > 1` 時仍先 `loadGame(argv[1])`，成功才開視窗進 InGame；壞路徑仍印錯誤並 exit 1。這保住讀檔 hard constraint。
+- **menu 只放在 main.cpp**：這輪先服務 #4，不新增 `Menu.cpp` / `Menu.h`。#6 要做完整漂亮主畫面時，可以再把 menu code 抽出去。
+- **`Game::init()` 是切關重置點**：#3 reset 已經讓 `init()` 會清 cursor / held / won / status / mouseControlling，切關不需要額外手動清 transient state。
+- **sound lifecycle 不跟關卡綁定**：`InitAudioDevice` 和 `LoadSound` 仍只在 process 啟動時跑一次。切關後只重設 `prevHeld / prevWon / prevPlacedCnt / prevRotateSum` baseline，避免新關第一 frame 誤判成事件。
+- **level 掃描 fallback**：正式設計是 `assets/levels/*.txt`，但目前 repo 的 Example1–6 在 `docs/io/`。`findLevels()` 先找 `assets/levels`，沒有就 fallback 到 `docs/io`，讓現在可以直接驗收。
+
+#### What I Should Be Able To Explain
+
+- Q：Reset 跟 New Game 差在哪？  
+  A：Reset 是同一個已載入關卡回到初始狀態，不重新 parse、不離開 InGame；New Game 是回 menu 選關，重新 `Parser::parse` 並 `Game::init`，可以換不同檔案。
+- Q：為什麼 `KEY_N` 不放進 `Action` enum？  
+  A：`Action` 是遊戲內的抽象操作（Move / Rotate / Place / Remove / Reset），New Game 是 app-level flow，會切 `AppState`，不應該塞進 core `Game::update()`。所以 `main.cpp` 直接偵測 `IsKeyPressed(KEY_N)`。
+- Q：勝利後為什麼也能按 N？  
+  A：`N` 在 main loop 的 InGame branch 先處理，沒有走 `Game::update()`，因此不會被 `if (won) return;` 擋住。
+- Q：為什麼切關後音效不會亂叫？  
+  A：切關成功後呼叫 `resetSoundBaseline()`，把上一 frame snapshot 更新成新關初始狀態。下一 frame diff 不會把「新關初始值」誤認成 pickup/place/win。
+- Q：為什麼現在 menu 是 minimal，不直接完整做 #6？  
+  A：#4 的分數重點是 flow；#6 的分數重點是「精美主畫面」。先用 minimal menu 驗證 state machine 和切關，再在穩定基底上做視覺 polish，風險比較低。
+
+#### Score Connection
+
+- 進階功能：遊戲進行中或遊戲結束後可直接開啟新遊戲 1%（[scoring.md:57](scoring.md#L57)）— 目前程式碼完成，待手動驗收後入帳。
+
+---
+
+### Menu level source：assets/levels 作為打包後關卡入口
+
+*Phase 3 · commit `<待 commit>`*
+
+#### What & Key Concepts
+
+主畫面選關不能依賴 `docs/io`，因為 demo 打包時要出貨的是 exe + `assets/` folder，而不是整個 repo 文件目錄。因此 #6 把 Example1–6 複製到 `assets/levels/`，並讓 `findLevels()` 只掃：
+
+```cpp
+const fs::path root = "assets/levels";
+```
+
+這件事把「開發測資」和「遊戲可選關卡」分開：
+
+- `docs/io`：保留為格式文件與助教範例來源，方便閱讀與比對
+- `assets/levels`：runtime menu 的正式關卡來源，會被 CMake post-build copy 到 `build/assets/levels`
+
+#### Why This Design
+
+- **打包一致性**：CMake 已經會 copy `assets/` 到 executable 旁。menu 掃 `assets/levels`，Windows demo 時只要帶 exe + assets 就能選關。
+- **符合 issue 行為**：#6 指定主畫面要從 `assets/levels/*.txt` 動態掃，而且顯示 filename only、按 filename 排序。
+- **missing / empty graceful**：若 `assets/levels` 不存在或沒有 txt，`findLevels()` 回空 vector；menu 顯示 no playable levels，不 crash。
+- **hover 與 keyboard 解耦**：滑鼠 hover 可以有高亮，但只有滑鼠真的移動時才更新 selected；這避免滑鼠停在某格時，Up/Down 每 frame 被拉回 hover 格。
+
+#### What I Should Be Able To Explain
+
+- Q：為什麼不繼續 fallback 到 `docs/io`？  
+  A：`docs/io` 是開發/文件資料，不是 runtime asset。正式 demo 打包不保證有 docs folder；menu 應依賴會跟 exe 一起出貨的 `assets/levels`。
+- Q：為什麼 assets/levels 裡要複製 Example1–6，而不是移動？  
+  A：`docs/io` 仍是輸入格式文件與測資參考位置；`assets/levels` 是遊戲可選關卡清單。兩者用途不同，複製可以避免文件連結與既有測試路徑失效。
+- Q：如果關卡超過 6 個怎麼辦？  
+  A：menu 每次顯示 6 列，`menuVisibleStart(selected, levelCount)` 讓列表圍繞目前 selected 捲動；Up/Down 可以走完整清單。
+- Q：hover 跟鍵盤選取如何避免衝突？  
+  A：hover row 仍可視覺高亮；但 selected 只有在 mouse delta 非 0 時才被 hover 更新。滑鼠靜止時，鍵盤 Up/Down 可以自由切換；左鍵點擊會直接選 hover 的關卡。
+
+#### Score Connection
+
+- 進階功能：精美主畫面 / 關卡選擇 1%（[scoring.md:58](scoring.md#L58)）— 目前程式碼完成，待手動驗收後入帳。
+
+---
+
+### Dual-color renderer：constraints 從單色 hardcode 改成 C 色 layout
+
+*Phase 3 · commit `<待 commit>`*
+
+#### What & Key Concepts
+
+雙色關卡的 core 其實早就大致準備好：`Parser` 會依 `C` 讀每色 constraints，`WinChecker` 也會依 `board.colors` 逐色檢查。真正卡住的是 Renderer 仍有 Phase 1 留下的單色假設：
+
+```cpp
+const int color = 0; // Phase 1: single color
+```
+
+這次把 constraint hints 改成 loop over `board.colors`：
+
+- column hint：每個顏色一排，往 board 上方堆疊。
+- row hint：每個顏色一欄，往 board 左側堆疊。
+- `computeLayout` 依色數增加 top / left reserve，避免雙色 hints 壓到 sidebar。
+- tray 色條與零件本體改用 `Part::colorIndex`，讓零件顏色、固定格顏色、hint 顏色使用同一套 `colorBadge(...)`。
+
+#### Why This Design
+
+- **不動 core**：多色資料已經在 `Board::_constraints[color][...]`、`Part::colorIndex`、`Board::cannotMoveColor(...)` 裡；UI 只需要正確呈現，不應重寫 parser 或 win rules。
+- **每色一排/一欄最直觀**：比把兩個數字塞同一格更容易看懂，也方便下一張 issue 04-row-col-hints 加 `current/need` 和 overfilled 狀態。
+- **單色不退化**：`board.colors == 1` 時 offset 算出來接近原本 `boardY - 30` / `boardX - 30` 的位置，不會突然多出雙色空白。
+- **顏色語意一致**：原本 `partColor(partIndex)` 讓每個零件用不同顏色，雙色時會和 constraints 的 color index 斷開。改成 `colorBadge(colorIndex)` 後，同色零件會和同色 hint / fixed cells 對應。
+
+#### What I Should Be Able To Explain
+
+- Q：為什麼雙色不需要大改 Parser？
+  A：Parser 從 Phase 1 就用 `for (int color = 0; color < C; ++color)` 讀 constraints 和 fixed cells，part 也有 `colorIndex`。雙色缺的是 Renderer 把這些資料畫出來。
+- Q：row / column constraints 的 index 怎麼存？
+  A：`_constraints[color][0..rows-1]` 是每列需求，`_constraints[color][rows..rows+cols-1]` 是每欄需求。所以 column hint 取 `b._constraints[color][L.rows + c]`，row hint 取 `b._constraints[color][r]`。
+- Q：為什麼零件本體要用 `colorIndex`，不是 `partIndex`？
+  A：`partIndex` 是「第幾個零件」，只適合當 unique id；`colorIndex` 才是 puzzle 規則裡的顏色。WinChecker 也用 `parts[partIdx].colorIndex` 計數，所以 UI 應跟規則一致。
+- Q：助教 demo 雙色測資怎麼拿分？
+  A：保持 runtime path 載入：`./build/game path/to/ta-dual-color.txt`。只要格式符合純文字規格，Parser 讀 `C=2`，Renderer 依 `board.colors` 畫兩色 hints，WinChecker 依兩色 constraints 判勝。
+
+#### Score Connection
+
+- 進階功能：雙色設定檔載入與遊玩 2%（[scoring.md:62](scoring.md#L62)）— 程式碼完成，待 Example5/6 手動遊玩與勝利驗收後入帳。
+- 助教 demo 雙色測資 2%（[scoring.md:63](scoring.md#L63)）— demo day 才能用助教檔案實測。
+
+---
+
+### Row/column current hints：把計數邏輯放回 Board
+
+*Phase 3 · commit `<待 commit>`*
+
+#### What & Key Concepts
+
+Issue 04 要讓每個 row / column hint 顯示 `current/need`，並依狀態變色：
+
+- `current < need`：灰色，代表還不足。
+- `current == need`：綠色，代表剛好滿足。
+- `current > need`：紅色，代表超出。
+
+關鍵不是 Renderer 怎麼排字，而是「current 怎麼算」必須和勝利判定一致。因此這次把原本藏在 `WinChecker.cpp` anonymous namespace 的 `cellCountsForColor(...)` 邏輯搬到 `Board.cpp`，並提供：
+
+```cpp
+unsigned Board::currentFilledForColor(int color, int idx, bool isRow,
+                                      const std::vector<Part>& parts) const;
+```
+
+Renderer 和 WinChecker 都呼叫這個 helper，避免兩邊計數規則分裂。
+
+#### Why This Design
+
+- **Board 是盤面狀態查詢的自然位置**：`canPlace` 已經在 Board；「這一列目前某色有幾格」也是 Board 的 query。
+- **WinChecker 和 Renderer 共用同一套計數**：如果固定格、已放零件、雙色規則未來有調整，只要改 Board helper，hint 與勝利判定一起更新。
+- **不把 hint 狀態變成 placement rule**：`current > need` 只變紅，不禁止玩家放置。這符合 issue non-goal，也避免把 UI feedback 混進 core placement validation。
+- **雙色自然支援**：helper 接 `color`，Renderer 外層已經 loop `board.colors`，所以每色各算各的 current。
+
+#### What I Should Be Able To Explain
+
+- Q：為什麼 `currentFilledForColor` 需要 `parts` 參數？
+  A：`Board::_boardInfo` 對已放零件只存 `OCCUPIED + partIndex`，真正的顏色存在 `parts[partIdx].colorIndex`。所以只看 Board cell 值不知道 occupied cell 屬於哪個 color，必須帶 parts 查回去。
+- Q：固定格怎麼算進 current？
+  A：固定格用 `CANNOT_MOVE - color` 編碼，`Board::isCannotMove(cell)` 後用 `Board::cannotMoveColor(cell)` 取回顏色。若等於要查的 color，就算一格 current。
+- Q：為什麼 WinChecker 也要改？
+  A：以前 WinChecker 自己在 anonymous namespace 算 current；Renderer 如果再寫一份就會重複邏輯。改成 WinChecker 呼叫 Board helper 後，勝利判定和 UI hint 的「目前格數」完全一致。
+- Q：為什麼超出不直接禁止放置？
+  A：issue 明確說 hint 只是提示，不改變 placement rule。玩家可能暫時超出，之後移除或重新擺；紅色提示足夠。
+
+#### Score Connection
+
+- 進階功能：某列/欄滿足或超出需求時周圍提示 1%（[scoring.md:59](scoring.md#L59)）— 程式碼完成，待手動驗收後入帳。
+- 進階功能：周圍顯示每列每欄目前填滿格數 1%（[scoring.md:60](scoring.md#L60)）— 程式碼完成，待手動驗收後入帳。

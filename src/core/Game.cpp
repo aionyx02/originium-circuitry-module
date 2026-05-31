@@ -7,6 +7,11 @@
 void Game::init(Board b, std::vector<Part> p) {
     board = std::move(b);
     parts = std::move(p);
+    // Snapshot for resetToInitial(). Taken after move so initialParts mirrors
+    // current parts exactly, with all Part visual fields still at defaults
+    // (visualInitialized=false, rotateCount=0, currentAngle=0, currentScale=1).
+    initialBoard = board;
+    initialParts = parts;
     cursorRow = 0;
     cursorCol = TRAY_COL;
     heldPartIdx = -1;
@@ -15,8 +20,24 @@ void Game::init(Board b, std::vector<Part> p) {
     mouseControlling = false;
 }
 
+void Game::resetToInitial() {
+    board = initialBoard;
+    parts = initialParts;
+    cursorRow = 0;
+    cursorCol = TRAY_COL;
+    heldPartIdx = -1;
+    won = false;
+    mouseControlling = false;
+    statusMessage = "Board reset.";
+}
+
 void Game::update(Action a) {
     statusMessage.clear();
+    // Reset must work even after winning (player wants to replay the same level).
+    if (a == Action::Reset) {
+        resetToInitial();
+        return;
+    }
     if (won) return;
 
     switch (a) {
@@ -35,6 +56,7 @@ void Game::update(Action a) {
         }
         case Action::Place:  handlePlace();  break;
         case Action::Remove: handleRemove(); break;
+        case Action::Reset:  break;  // handled above; listed to satisfy -Wswitch
         case Action::None: break;
     }
 

@@ -23,6 +23,8 @@ public:
 
     bool inBounds(int row, int col) const;
     bool canPlace(const Part& p, int row, int col) const;
+    unsigned currentFilledForColor(int color, int idx, bool isRow,
+                                   const std::vector<Part>& parts) const;
     void place(Part& p, int row, int col);
     void remove(Part& p);
 

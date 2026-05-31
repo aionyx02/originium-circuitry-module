@@ -17,6 +17,18 @@
 > **新增 entry 時：(1) 把實際 entry append 到本檔最下方（時間正序），(2) 在這個索引「最上面」加一行。**  
 > 標注格式：`日期` · `Phase` · `Type` · 一句話描述。連結若無法直接點開，用 Cmd+F 搜日期或標題。
 
+- **2026-05-29** — [constraint hint UI 改成條狀顯示（small）](#2026-05-29--constraint-hint-ui-改成條狀顯示small) · `Phase 3` · `small` · `current/need` 文字改為原遊戲風格 bar hints，超出轉紅
+- **2026-05-29** — [Phase 3 issue 04-row-col-hints 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-04-row-col-hints-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · Board 新增 current filled query，Renderer 顯示 `current/need` 與灰/綠/紅狀態
+- **2026-05-29** — [Phase 3 issue 05-dual-color 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-05-dual-color-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · constraint hints 改為依 `board.colors` 多色顯示，零件顏色改用 `Part::colorIndex`
+- **2026-05-29** — [Phase 3 issue 02-new-game + 03-main-menu 手動驗收通過（small）](#2026-05-29--phase-3-issue-02-new-game--03-main-menu-手動驗收通過small) · `Phase 3` · `small` · new game flow + main menu 驗收通過，+2% 入帳（38.5 → 40.5%）
+- **2026-05-29** — [Phase 3 issue 03-main-menu 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-03-main-menu-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · `assets/levels` 正式關卡來源 + menu list polish + hover/keyboard selection 修正
+- **2026-05-29** — [Phase 3 issue 02-new-game 程式碼完成（待手動驗收）](#2026-05-29--phase-3-issue-02-new-game-程式碼完成待手動驗收) · `Phase 3` · `Implementation` · `AppState` + minimal menu + `N` 回 menu + 選關後重新 parse/init；build 通過，待手動驗收後 +1%
+- **2026-05-29** — [首頁 menu 字體改用 Exo 2（small）](#2026-05-29--首頁-menu-字體改用-exo-2small) · `Phase 3` · `small` · minimal menu 改用 `assets/fonts/Exo2-Regular.ttf` 與遊戲內 UI 字體一致
+- **2026-05-29** — [menu 鍵盤選關不再被靜止滑鼠 hover 拉回（small）](#2026-05-29--menu-鍵盤選關不再被靜止滑鼠-hover-拉回small) · `Phase 3` · `small` · hover 只有滑鼠移動時更新 selected，左鍵仍可點選 hovered level
+- **2026-05-24** — [Phase 3 issue 01-reset 手動驗收通過](#2026-05-24--phase-3-issue-01-reset-手動驗收通過small) · `Phase 3` · `small` · 9 條測試全綠（6 manual + 3 regression）、+1% 入帳（37.5 → 38.5%）
+- **2026-05-24** — [Phase 3 issue 01-reset 程式碼完成（must-have，待驗收）](#2026-05-24--phase-3-issue-01-reset-程式碼完成must-have待驗收) · `Phase 3` · `Implementation` · `Action::Reset` + `Game::initialBoard/Parts` 快照 + `resetToInitial()` + Backspace 改綁 Reset；build 0 warning，等手動驗收後 +1%
+- **2026-05-24** — [Phase 3/4 GitHub issue 草稿定稿 + Epic 化 + 貼上流程](#2026-05-24--phase-34-github-issue-草稿定稿--epic-化--貼上流程) · `Phase 3/4` · `Discussion + Documentation` · reset/new-game 拆分定案、01/02/04/05 套 03 template、補 Phase 3/4 Epic、issue title 改分類格式、加 hidden GitHub metadata 方便手動貼 issue
+- **2026-05-24** — [Phase 3 task 化為 GitHub Issues + issue template 4 輪迭代](#2026-05-24--phase-3-task-化為-github-issues--issue-template-4-輪迭代) · `Phase 3` · `Discussion + Implementation` · plan.md 保策略 + Issues 取代 STATUS checklist + LOG 不動；template 跑 V1→V4 四輪，使用者自寫 04 / 05 驗證 template 可獨立操作
 - **2026-05-24** — [Phase 2 UI polish：Exo 2 字體 + tray redesign](#2026-05-24--phase-2-ui-polishexo-2-字體--tray-redesign) · `Phase 2` · `Implementation + Review` · 使用者指定 Exo 2，AI 重整 sidebar/tray/status/win banner；經截圖 review 後修正 tray preview 重疊、色條與選取框
 - 05-23? docs: add README.md / update learning log
 - **2026-05-24** — [移除 autoSelectNextUnplaced（滑鼠模式下零件無故跟手 bug）](#2026-05-24--移除-autoselectnextunplaced滑鼠模式零件無故跟手-bugsmall) · `Phase 2` · `small` · Day 2c 驗收暴露的 Phase 1 keyboard-era 殘留、兩處 call + 函式 + 宣告全拔掉
@@ -368,7 +380,7 @@ Feature: Parser + Part/Board/WinChecker + Game + Input + Renderer + main 互動�
 Commit: 
 
 ### Context
-Phase 1 目標：MVP 可跑單色關卡。對應 [plan.md](plan.md) §5 詳細計劃，預期銀行存款 +20%（基本 5% + 流程 15%）。
+Phase 1 目標：MVP 可跑單色關卡。對應 [plan.md](plan.md) §5 詳細計劃，預期可新增 20% 分數（基本 5% + 流程 15%）。
 
 ### AI Contribution
 1. **讀規格**：把 [docs/io/input-file-format.md](io/input-file-format.md)、[docs/io/sample-input-output.md](io/sample-input-output.md)、[docs/io/Example1.txt](io/Example1.txt) 全讀過，確認：
@@ -434,7 +446,7 @@ Feature: 文件結構、CLAUDE.md、STATUS.md、learning-notes.md、LOG.md、pla
 對應 [scoring.md](scoring.md)：口頭報告 30%（AI 使用紀錄）+ 15%（程式熟悉度）兩個大頭的素材，都來自這次整理出來的 doc 結構。
 
 ### AI Contribution
-1. **Phase 規劃**：讀完 [scoring.md](scoring.md)、[structure-design.md](structure-design.md)、[game-rule.md](game-rule.md)、[io/](io/) 範例、[Framework/](../Framework/) skeleton、[demo/main.cpp](../demo/main.cpp)、舊 LOG.md，提出 Phase 0–7 拿分策略（MVP-first → 銀行存款分數 → 美化），寫進 [plan.md](plan.md)。
+1. **Phase 規劃**：讀完 [scoring.md](scoring.md)、[structure-design.md](structure-design.md)、[game-rule.md](game-rule.md)、[io/](io/) 範例、[Framework/](../Framework/) skeleton、[demo/main.cpp](../demo/main.cpp)、舊 LOG.md，提出 Phase 0–7 拿分策略（MVP-first → 目前分數 → 美化），寫進 [plan.md](plan.md)。
 2. **發現重大矛盾並 flag**：舊 LOG.md 寫「關卡檔用 JSON」但教師格式是純文字 → 用 JSON = 失去助教 demo 測資 4%。標為推翻決策。
 3. **CLAUDE.md 升級**（從舊版重寫成新版 [x.md](../x.md)）：
    - 加 5 條 **Hard Constraints**（runtime path / plain text / clean Windows / Part/Board 命名 / AI 紀錄 30%）
@@ -442,7 +454,7 @@ Feature: 文件結構、CLAUDE.md、STATUS.md、learning-notes.md、LOG.md、pla
    - **Source of Truth** 指向 plan.md
    - Tech Stack 寫到版本（C++17 / raylib 5.5 / MinGW static）
 4. **CLAUDE.md 瘦身**：~150 行 → ~115 行，砍 Project Goal 重複段、Coding Rules generic baseline、Refactoring Rule 跟 large trigger 重疊段。
-5. **STATUS.md 重寫**：英文 → 中文、每項加配分、修正分數誤導（Load+Display 是同一個 2%、編輯器 6 子項合計 5%）、加 `Last updated` 戳記、加銀行存款累積區、刪掉重複 plan.md 的 Decisions / Next Priorities 段。
+5. **STATUS.md 重寫**：英文 → 中文、每項加配分、修正分數誤導（Load+Display 是同一個 2%、編輯器 6 子項合計 5%）、加 `Last updated` 戳記、加目前分數累積區、刪掉重複 plan.md 的 Decisions / Next Priorities 段。
 6. **learning-notes.md 重寫**：合併冗餘欄位、刪首篇 AI-meta entry、加「寫/不寫」規則（後續修正為「以非平凡概念為判準，跟事件大小無關」）、語言彈性（中英文皆可）。
 7. **LOG.md 加大事/小事分流**：完整 10 欄 template 給大事、one-liner 給小事。
 8. **LOG.md 加完整索引**：最新在上、annotated（`Phase` · `Type` · 一句話）、附維護規則（append 在最下、索引在最上加一行）。
@@ -500,7 +512,7 @@ Feature: 文件結構、CLAUDE.md、STATUS.md、learning-notes.md、LOG.md、pla
 - **7 個 canonical doc 結構就緒**，每個 single purpose、不互相重複。
 - plan.md 有 Phase 0–7 規劃 + Phase 1 詳細計劃 + 已勾掉 Phase 0/1（在另一個 session 完成）。
 - CLAUDE.md 草稿（x.md）stable：5 條 Hard Constraints、大/小事 workflow、AI 紀錄方式、Tech Stack 版本明確。
-- STATUS.md 把 scoring.md 全項目對齊配分 checklist，加銀行存款累積區。
+- STATUS.md 把 scoring.md 全項目對齊配分 checklist，加目前分數累積區。
 - LOG.md 有完整索引（最新在上）+ template + 3 個 entry（流程奠基、Phase 0、Phase 1）+ 本 entry。
 - 後續 Phase 紀錄直接套既有結構，不會再有「該寫哪裡」的猶豫。
 
@@ -619,7 +631,7 @@ Phase 2 開頭三大配分項要拿：旋轉動畫 5%（[scoring.md:93](scoring.
 ### Result
 - 動畫骨架 + 旋轉 pivot 全部 land，commit `0fcfcd4`。
 - 拿到分數：旋轉動畫 5% + 跟游標移動 5% + 進階中心 1% = **+11%**。
-- 銀行存款：21.5 → **32.5%** / 65%。
+- 目前分數：21.5 → **32.5%** / 65%。
 
 ### Risks / Follow-ups
 - Day 2a 視覺 polish 代碼已寫（圓角 + 漸層 + 高光帶 + bevel + drop shadow），**uncommitted、待使用者目視驗收**。LOG entry 將在 commit 後補。
@@ -709,7 +721,7 @@ Phase 2 Day 1 動畫骨架 land 後（commit `0fcfcd4`），盤面的基本動�
 ### Result
 - 視覺 polish + 程序材質完成。
 - 拿到分數：實作 GUI 2.5% + 圖片/材質 1.5% = **+4%**。
-- 銀行存款：32.5 → **36.5%** / 65%。
+- 目前分數：32.5 → **36.5%** / 65%。
 
 ### Risks / Follow-ups
 - 高光帶 / bevel 顏色與透明度都是 hardcoded `+70 / ÷2 / alpha 170 / alpha 220`，未來想調可能要實驗
@@ -792,7 +804,7 @@ Phase 2 Day 2a（commit `6f7abcb`）把視覺與材質補完後，剩下兩個 D
 ### Result
 - 滑鼠輸入完成（代碼層面）。
 - 拿到分數：**+0%**（不直接加分；補 rubric 完整性與 demo 體驗）。
-- 銀行存款：36.5% / 65%（不變）。
+- 目前分數：36.5% / 65%（不變）。
 - 新增公開 API：`Game::setCursor`、`Input::pollMouse`、`Layout` struct（+ `computeLayout`、`kTraySlotHeight/Width`）— 之後 Phase 5 editor 可重用 setCursor。
 
 ### Risks / Follow-ups
@@ -926,7 +938,7 @@ add_custom_command(TARGET game POST_BUILD
 ### Result
 
 - **拿到分數：+1%**（音效 1%、[scoring.md:91](scoring.md#L91)）
-- **銀行存款：36.5 → 37.5%** / 65%
+- **目前分數：36.5 → 37.5%** / 65%
 - **Phase 2 收尾完成**：圖形介面分項 15% / 15% 全拿（GUI 2.5 + 音效 1 + 材質 1.5 + 旋轉動畫 5 + 跟游標 5）
 - **新增公開介面：無**（純 main.cpp + CMake、API 表面零增長）
 
@@ -1045,3 +1057,667 @@ AI 先閱讀 `Renderer.cpp/.h`、`Input.cpp`、`main.cpp` 與進度文件，指�
 - **「AI 不是一次生成最終 UI，而是 human review 後迭代」**：第一版完成後使用者截圖指出實際觀感問題，AI 再根據截圖分析並做第二輪修改。這能展示 AI 協作中人類 review 的必要性。
 - **「固定常數 vs layout-driven」**：第一版固定 tray scale，遇到不同形狀就跨格；第二版改用 bounding box 算 scale，從「調常數」進化成「根據資料排版」。
 - **「功能完成後仍要 polish」**：Phase 2 配分已拿滿，但 demo 觀感仍會影響口頭報告與老師印象，所以在進 Phase 3 前做小範圍 UI polish 是合理投資。
+
+
+
+## 2026-05-24 — Phase 3 task 化為 GitHub Issues + issue template 4 輪迭代
+
+Type: Discussion + Implementation
+Phase: Phase 3（規劃中）
+Feature: 開發流程改革 — 從 STATUS.md checkbox 轉成 GitHub Issues + 訂出 issue template
+Commit: 未 commit（純文件草稿，待全套定稿一次推）
+
+### Context
+
+Phase 2 結束、Phase 3 即將開工，且 partner 即將加入（[plan.md §2](plan.md) 列 Phase 3 為 partner 可接點）。原本 task 用 plan.md 詳細計劃 + [STATUS.md](STATUS.md) checkbox 追蹤；solo 階段這套省事，但要分工給 partner 時：
+- checkbox 沒辦法 assign / 留討論串 / 跟 PR 連結
+- 沒辦法獨立關閉、留歷史紀錄
+- partner 不熟專案脈絡時，啃 plan.md 整段比讀單條 issue 慢
+
+使用者提出評估「issue 化分工」。本次的目標：把 Phase 3 規劃從 plan.md 的「列大綱」展開成「可分工的 issue 集」，並訂出統一 issue template 供後續 Phase 4–7 沿用。
+
+### AI Contribution
+
+1. **方案分析**：對比「issue vs 純 plan.md checkbox」優缺，提出混合制（plan.md 保策略 / Issues 取代 STATUS checklist / LOG.md 不動），給 3 個待用戶拍板的決策題
+2. **scope 拆分**：對照 [scoring.md §進階功能 / §自動解題](scoring.md) 反推 Phase 3 的 7 個子項（扣 Phase 2 Day 1 已銀行的「中心不為空 1%」），建議合併規則（列/欄 hint 1+1=2%、雙色 parser+demo 測資 2+2=4%）後初版 5 個 issue
+3. **source code 取證**：寫 issue 前讀 [Game.h](../src/core/Game.h) / [Board.h](../src/core/Board.h) / [Part.h](../src/core/Part.h) / [Parser.cpp](../src/core/Parser.cpp) / [WinChecker.cpp](../src/core/WinChecker.cpp) / [Renderer.cpp](../src/ui/Renderer.cpp)，挖到 [Renderer.cpp:141](../src/ui/Renderer.cpp#L141) 有 `const int color = 0; // Phase 1: single color` 這條關鍵 hardcode — 寫進 #5 雙色 issue 當「真實工作量入口點」（避免把雙色當作大工程而錯估時程）
+4. **template 4 輪迭代**：依使用者每輪 feedback 重寫 03-main-menu.md
+   - **V1 簡版**：為什麼做 / AC / 設計筆記 / LOG 提醒
+   - **V2 厚 context**：補背景 / 玩家視角 / 當前狀態 / 語意差異（回應「context 補足一點」）
+   - **V3 工業級結構**：Title `[Feature]` + 雙語 / Labels / Goal / Scope / Context（Why this / Why partner-friendly / Current state）/ AC（Must-have / Polish / Optional Polish）/ Non-goals + Future Work / Implementation Notes / Process Notes / Dependencies / Test Plan / LOG Notes（回應 7 點 feedback）
+   - **V4 scope 微調**：補 Labels 5 個字段 / Goal→Scope 拆 / 加 Level List Behavior 子段 / Non-goals 改成 Not in scope + Future Work 軟化語氣 / `Game::init` 改成「需驗證可重複呼叫」/ 補 State isolation trap / build 改「no new warnings」/ Example5 移到 Optional / Process + LOG Notes 合併成 Closing Checklist（回應 10 點 feedback）
+
+### Human Decision / Review
+
+**結構決策**
+- issue 平台：GitHub remote 已存在（[github.com/aionyx02/originium-circuitry-module](https://github.com/aionyx02/originium-circuitry-module)，private repo），但採「本地 markdown 草稿 → `gh issue create` 批次推」流程，留人工 review 一道
+- Phase 3 / 4 詳細計劃寫在 [plan.md §7](plan.md)（不外移到獨立檔），對稱 §5 §6 既有結構
+- 先寫 Phase 3 當 template、過了才寫 Phase 4
+- 兩個合併：列/欄 hint 兩個 1% 合成 #4、雙色 parser + demo 測資合成 #5
+- 三個合併：reset + 新遊戲 合成單一 issue（共享 90% state-reset code path、避免 PR 重複動 Game.h）
+
+**template feedback**
+- V1 → V2：「context 補足一點」（issue 太單薄，partner 看不出脈絡）
+- V2 → V3 七點：Title 改 `[Feature]` 雙語格式 / 補 Labels / Goal 拆 Scope / Why partner-friendly 不要寫「不碰 core」改寫成「不改 puzzle core data structures」/ AC 三層 / Process Notes 獨立 / Dependencies 三段 / Non-goals 加 / Test Plan 加
+- V3 → V4 十點：Title 加「流程 Flow」/ Labels 五個明定 / 加 Level List Behavior / Non-goals 軟化語氣 / `Game::init` 標「需驗證」/ 加 State isolation trap / build 改「no new warnings」/ Example5 移到 Optional / 合併 Process+LOG 成 Closing Checklist 等
+
+**自驗收**
+- 使用者於對話過程**直接用 V4 template 自寫** [04-row-col-hints.md](issues/phase-3/04-row-col-hints.md) 與 [05-dual-color.md](issues/phase-3/05-dual-color.md)，證明 template 已足夠清晰、可獨立操作、不需 AI 在場
+- 使用者編輯時順手把 03-main-menu.md 內 "Issue #1" → "Issue #2" 改了，暗示後續會調整 issue 順序（main menu 可能升 #1、reset+new game 變 #2）
+
+### Details
+
+**最終 issue template 結構**（套用於 03 / 04 / 05；後續 Phase 4–7 沿用）：
+1. Title + meta + Labels
+2. Goal（一段話）
+3. Scope（含可選 sub-section 如 Level List Behavior）
+4. Context（Why this issue / Why partner-friendly / Current state）
+5. Acceptance Criteria（Must-have / Polish / Optional Polish）
+6. Non-goals / Future Work（Not in scope / Future Work 兩段）
+7. Implementation Notes（既有檔 / 新檔 / 設計選擇 / 已知 trap）
+8. Dependencies / Related Issues（Depends on / Related / Blocks / Coordination Needed）
+9. Test Plan（Build / Manual / Regression；可選 Optional / After Issue #N）
+10. Closing Checklist（merge 自 Process Notes + LOG.md Notes）
+
+**目前檔案狀態**：
+```
+docs/issues/
+├── README.md                       ← 索引 + 批次 gh CLI 指令（待重編號後同步）
+└── phase-3/
+    ├── 01-reset.md                 ← 舊檔，待刪
+    ├── 02-new-game.md              ← 舊檔，待刪
+    ├── 01-reset-and-new-game.md    ← 合併版（2%），V2 厚 context 版，尚未套 V4 template
+    ├── 03-main-menu.md             ← (1%) V4 template 範本
+    ├── 04-row-col-hints.md         ← (2%) 使用者自寫套用 V4
+    └── 05-dual-color.md            ← (4%) 使用者自寫套用 V4
+```
+
+**plan.md §7 草稿**：已準備好新 §7 內容（含 issue 連結與 day 切分），會話中已展示給使用者，但**尚未 edit plan.md**。等所有 issue 定稿後一次 edit + 配合舊 §7 / §8 順移。
+
+### Verification / Tests Performed
+
+純規劃與文件草稿，**尚未進行程式測試**。review 方式：
+- 使用者目視 review 每版 template
+- 使用者自寫 04 / 05 套用 V4 template — 驗證 template 可獨立操作
+- AI 對照 [scoring.md](scoring.md) 反推 issue 配分總和 = 9%（扣除已銀行的 1%），與 [plan.md §2](plan.md) 預期一致
+
+### Result
+
+- 開發流程升級為三軸：**plan.md 保策略 + GitHub Issues 追 task + LOG.md 記 AI 使用**
+- Phase 3 五份 issue 草稿就緒（其中 03 / 04 / 05 已套 V4 template）
+- 共識 V4 template structure 固定，後續 Phase 4 / 5 / 6 / 7 都會沿用
+- 仍未 commit、未推 GitHub、未 edit plan.md / [STATUS.md](STATUS.md)，留作下一輪 review 後一次推
+
+### Risks / Follow-ups
+
+- **未確認的編號**：03-main-menu.md 已把內部 "Issue #1" 引用改為 "Issue #2"，暗示順序會變（main menu 升 #1、reset+new game 變 #2？），但 01-reset-and-new-game.md 還沒同步調整。需用戶定案最終順序與檔名再批次重命名
+- **舊檔未刪**：`01-reset.md` 與 `02-new-game.md` 仍在 phase-3/，需在合併版定稿後刪除
+- **01-reset-and-new-game.md 還沒套 V4**：仍是 V2 厚 context 版，需用 V4 template 重寫
+- **plan.md §7 未更新**：草稿在會話中，未進檔
+- **README.md / 批次 gh 指令未更新**：仍列 5 個 issue，重編號後需同步
+- **Phase 4 issues 未寫**：等 Phase 3 完全定稿才寫
+- **gh CLI 未實際跑過**：repo 已存在，但 `gh label create` / `gh api repos/.../milestones` 未實測，第一次推可能撞到 label / milestone 命名衝突
+
+### Other Notes
+
+**口頭報告素材**：
+
+- **「issue 化的時機」**：solo 階段用 checkbox 就好、要 partner 加入時才升級到 issue — 這個「不過早 over-engineer」的判斷是 AI 主動提的（"Partner 加入 (Phase 3) 之前不用急著切。現在 solo 把 STATUS.md 的 checkbox 改成 issue 反而是純 overhead；等到要分工 Solver / Editor 給 partner 那刻才開 Issues，效益最大"）
+- **「template 4 輪迭代」**：V1 簡版 → V2 補 context → V3 工業級結構 → V4 scope 微調，每輪都由使用者明確列點 feedback 推動。可以展示「AI 不是一次寫到位，而是 user review 後逼出更好版本」
+- **「issue ≠ LOG」**：很多人會以為 GitHub Issue 關掉就算紀錄完了；本專案明確區分 issue（task tracker）與 LOG（AI 使用紀錄），後者是 [CLAUDE.md](../CLAUDE.md) Hard Constraint #5 直接對應的 30% 評分項。這個區分本身就是口頭報告好素材
+- **「用 source code 真實狀態反推 issue」**：寫 #5 雙色之前先 grep [Renderer.cpp](../src/ui/Renderer.cpp) 找到 `const int color = 0; // Phase 1: single color` 那行，讓 issue 從「雙色 = 4% 大工程」改寫成「雙色 = Renderer hint loop + layout，核心已支援」— 避免 issue 因為對程式現況不熟而誤估工作量
+- **「使用者反向驗證 template」**：V4 template 完成後使用者直接自寫兩個 issue 套用之，這比 AI 自己宣告「template 通用」有說服力 — 是「user 是最後判官」的具體展現
+
+
+
+## 2026-05-24 — Phase 3/4 GitHub issue 草稿定稿 + Epic 化 + 貼上流程
+
+Type: Discussion + Documentation
+Phase: Phase 3 / Phase 4（規劃中）
+Feature: GitHub Issues 工作流定稿 — child issues、Epic issues、手動建立 issue metadata
+Commit: 未 commit（文件草稿整理中，待 GitHub issues 建立後一起推）
+
+### Context
+
+上一筆 LOG 仍停在「Phase 3 issue template 定稿，但 reset/new-game 是否合併、舊檔是否刪除、Phase 4 是否展開都還沒完全定案」。使用者接著重新評估 issue 邊界，決定在真的建立 GitHub Issues 前，把本地草稿整理到可以直接貼上 GitHub 的狀態。
+
+本次目標：
+- 定案 Phase 3 child issue 切法
+- 把所有 Phase 3 issue 統一成同一套 template
+- 補 Phase 3 / Phase 4 Epic issue
+- 改 issue title 命名規則，讓 GitHub issue list 更好掃
+- 補手動建立 GitHub issue 的 copy/paste metadata 與後續存取規則
+
+### AI Contribution
+
+1. **issue 邊界建議**：重新評估 reset 與 new-game，建議拆開：
+   - reset 可獨立完成、獨立拿 1%，集中在 `Game::resetToInitial()` 與 Phase 2 視覺狀態清理
+   - new-game 依賴 main menu / app flow，應與 main menu 強耦合，而不是跟 reset 綁在同一張 issue
+2. **template 套用**：依使用者已調好的 [03-main-menu.md](issues/phase-3/03-main-menu.md) 結構，重寫：
+   - [01-reset.md](issues/phase-3/01-reset.md)
+   - [02-new-game.md](issues/phase-3/02-new-game.md)
+   - [04-row-col-hints.md](issues/phase-3/04-row-col-hints.md)
+   - [05-dual-color.md](issues/phase-3/05-dual-color.md)
+3. **cross-reference 修正**：把 [03-main-menu.md](issues/phase-3/03-main-menu.md) 內舊的「Issue #1 新遊戲」引用改成 Issue #2，並同步 #4 / #5 編號
+4. **去 icon 化**：依使用者要求移除 `❗`、`✅` 等 icon / emoji 標記，保留警示內容但讓 markdown 更乾淨
+5. **Epic 草稿**：新增：
+   - [phase-3/00-epic.md](issues/phase-3/00-epic.md)：總管 Phase 3 剩餘 9%，連到 01–05 child issues
+   - [phase-4/00-epic.md](issues/phase-4/00-epic.md)：自動解題 10% 的總綱，先列 proposed child issues，等 Phase 3 後再細拆
+6. **命名規則調整**：把 title 從 `[Feature] ...` 改成分類格式：
+   - `Epic [Phase 3] ...`
+   - `Feature [Gameplay] ...`
+   - `Feature [Flow] ...`
+   - `Feature [UI] ...`
+   - `Feature [Hints] ...`
+   - `Feature [Dual-Color] ...`
+   - `Epic [Phase 4] ...`
+7. **GitHub 貼上流程**：在每份 issue draft 開頭加 hidden comment：
+   - `GitHub Title`
+   - `GitHub Milestone`
+   - `GitHub Labels`
+   - `Copy note`
+   並在 [docs/issues/README.md](issues/README.md) 補手動建立 issue 的步驟與「GitHub issue = active tracking source of truth、本地 markdown = draft/archive」原則
+
+### Human Decision / Review
+
+- 使用者拍板 reset 與 new-game 採**分開 issue**，new-game 與 main menu 強綁
+- 使用者要求以 03-main-menu.md 的格式套用到 01 / 02 / 04 / 05
+- 使用者要求移除 icon，例如 `❗`
+- 使用者決定在 GitHub 上真正建立 issues 前，先補 Phase 3 / Phase 4 Epic issue
+- 使用者指定 title 改成 `Feature [Hints] ...` / `Feature [UI] ...` 這類分類格式
+- 使用者決定先用 GitHub 網頁手動建立 issues，因此需要每份 markdown 變成可直接複製貼上的格式
+
+### Details
+
+**目前 Phase 3 issue set**：
+```
+docs/issues/phase-3/
+├── 00-epic.md              Epic [Phase 3] 進階功能 + 雙色
+├── 01-reset.md             Feature [Gameplay] 重置盤面
+├── 02-new-game.md          Feature [Flow] 新遊戲流程
+├── 03-main-menu.md         Feature [UI] 主畫面與關卡選擇流程
+├── 04-row-col-hints.md     Feature [Hints] 列/欄提示與超量提示
+└── 05-dual-color.md        Feature [Dual-Color] 雙色讀檔與顯示
+```
+
+**目前 Phase 4 issue set**：
+```
+docs/issues/phase-4/
+└── 00-epic.md              Epic [Phase 4] 自動解題 Auto Solver
+```
+
+**GitHub 建立方式**：
+- 每份 markdown 開頭都有 hidden comment，手動建立 issue 時複製 `GitHub Title` 到 title 欄
+- body 可直接貼整份 markdown；hidden comment 在 GitHub rendered issue 中不會顯示
+- labels / milestone 依 hidden comment 設定
+- 建完後把 issue number / URL 補回 [docs/issues/README.md](issues/README.md)
+
+### Verification / Tests Performed
+
+純文件與流程整理，未進行程式測試。驗證內容：
+- `rg` 檢查舊的「Issue #1 新遊戲 / 重置 + 新遊戲 / After Issue #4 雙色」引用已移除
+- `rg` 檢查 phase-3 issue docs 中 `❗` / `✅` 等 icon 已移除
+- `rg` 檢查所有 phase-3 / phase-4 issue title 已改成 `Feature [Area]` / `Epic [Phase]` 格式
+- `rg` 檢查每份 issue draft 都有 `GitHub Title` / `GitHub Milestone` / `GitHub Labels` / `Copy note`
+- `git diff --check -- docs/issues` 通過
+
+### Result
+
+- Phase 3 child issues 已定稿為 5 張，總分 9%
+- Phase 3 Epic 與 Phase 4 Epic 草稿已建立
+- docs/issues README 已成為本地 issue 草稿入口，包含手動建立 GitHub issue 的流程
+- 本地 markdown 現在可直接複製到 GitHub issue body
+- 工作流定案：**GitHub issue thread 是 active tracking source of truth；本地 markdown 保留為 draft/archive**
+
+### Risks / Follow-ups
+
+- 尚未真的在 GitHub 上建立 issues，因此 README 裡還沒有 issue number / URL
+- 本機未安裝 `gh` CLI；若要改批次建立，需先 `brew install gh` + `gh auth login`
+- 目前 Phase 4 只有 Epic，child issues 等 Phase 3 data model 穩定後再拆
+- 舊的 [01-reset-and-new-game.md](issues/phase-3/01-reset-and-new-game.md) 若仍存在，建議刪除或移到 archive，避免跟新切法混淆
+- GitHub labels / milestones 若尚未建立，需要先在 GitHub UI 建好或之後用 CLI 建
+
+### Other Notes
+
+**口頭報告素材**：
+
+- **「issue 切分不是一次決定」**：一開始 reset + new-game 曾被合併，後來使用者重新思考驗收與依賴後拆開。這能展示 AI 協作中的規劃不是僵硬產物，而是隨著人類 review 修正邊界。
+- **「Epic vs child issue」**：Phase 3 用 Epic 管總分與子任務，child issue 管實作；Phase 4 先寫 Epic、不急著拆 child issues，因為 solver 會依賴 Phase 3 後穩定的資料模型。
+- **「GitHub issue 與本地 doc 的責任分離」**：GitHub issue 作為 active tracker，本地 markdown 作為 draft/archive；這避免兩邊同步成本過高，又保留 AI 協作過程證據。
+
+
+## 2026-05-24 — Phase 3 issue 01-reset 程式碼完成（must-have，待驗收）
+
+Type: Implementation  
+Phase: 3  
+Feature: 重置盤面 Reset Board（[scoring.md:56](scoring.md#L56)，1%）  
+Commit: 待 commit
+
+### Context
+
+Phase 3 第一個 issue 落地。[docs/issues/phase-3/01-reset.md](issues/phase-3/01-reset.md) 兩天前剛定稿（見上一個 entry：Phase 3/4 GitHub issue 草稿定稿）。Rubric 要求「能夠重置盤面為一開始讀進來的狀態」（[scoring.md:56](scoring.md#L56)），1% 強制項。實作量小但容易踩到 Phase 2 視覺欄位（`visualInitialized` / `rotateCount` / `currentCenterX/Y/Angle`），所以先獨立切出來確保穩拿。
+
+### AI Contribution
+
+1. **讀 issue + 既有檔**：Game.h / Game.cpp / Input.cpp / Board.h / Part.h 全讀過，確認：
+   - `Board` / `Part` 全是 vector + POD，C++ 預設 copy 就是 deep copy
+   - `Input::poll` 目前 `KEY_BACKSPACE` 跟 `KEY_ESCAPE` 是 OR 起來都 map 到 `Action::Remove`（issue 沒提到這條 duplicate）
+   - `Game::update` 開頭 `if (won) return;` 會擋住勝利後的所有 action — Reset 必須在這之前處理
+2. **小範圍 plan**（implementation 前 ask）：列出三個檔的精確改動、設計選擇（deep copy vs re-parse）、polish 區暫不做的理由（visualInitialized trap 跟 lerp 動畫衝突）。
+3. **AskUserQuestion 提兩個問題**：(a) `statusMessage` 文案中英文選擇（issue 寫中文但 codebase 其他 message 都英文）；(b) 計畫是否 OK。
+4. **實作（三檔）**：
+   - [src/core/Game.h](../src/core/Game.h)：`enum class Action` append `Reset`；private 新成員 `Board initialBoard;` / `std::vector<Part> initialParts;`（放 private — 不對外曝露）；public 新 method `void resetToInitial();`
+   - [src/core/Game.cpp](../src/core/Game.cpp)：
+     - `init()` 在 `std::move(b/p)` 後從成員 `board` / `parts` copy 一份到 `initialBoard` / `initialParts`（此時 `Part` 視覺欄位都還是 default：`visualInitialized=false`、`rotateCount=0`、`currentAngle=0`、`currentScale=1`，剛好乾淨）
+     - `update()` 在 `statusMessage.clear()` 之後、`if (won) return;` **之前**處理 `Action::Reset → resetToInitial()` + `return`；switch 補一個 `case Action::Reset: break;` 給 `-Wswitch` 編譯器警告
+     - `resetToInitial()`：`board = initialBoard; parts = initialParts;` + `cursorRow=0, cursorCol=TRAY_COL, heldPartIdx=-1, won=false, mouseControlling=false, statusMessage="Board reset."`
+   - [src/ui/Input.cpp](../src/ui/Input.cpp)：拆原本的 OR，改成 `if (IsKeyPressed(KEY_ESCAPE)) return Action::Remove;` + `if (IsKeyPressed(KEY_BACKSPACE)) return Action::Reset;`
+5. **doc 更新**：STATUS.md / plan.md timeline / LOG.md（含本 entry）。
+
+### Human Decision / Review
+
+- **`statusMessage` 文案選英文**：使用者選 `"Board reset."` over issue 原寫的中文「已重置盤面」，理由是 codebase 其他 statusMessage 都英文（"Cannot place here..."、"Move onto the board..."），中文會破壞一致性。**這是 issue spec 與 codebase 一致性衝突時的小範圍 override，使用者拍板。**
+- **計畫獲使用者批准後才動 code**（CLAUDE.md large-change workflow）。
+
+### Details
+
+**設計選擇與背後原因**：
+
+- **deep copy snapshot vs re-parse 檔案**：issue 已寫明選 deep copy（不依賴 file system / 不需保留檔案路徑 / 記憶體成本小）。AI 注意到實作關鍵：snapshot 必須在 `std::move(b/p)` **之後**從 `board` / `parts` 成員 copy，而不是從 parameter copy — 因為 parameter 是 by-value 但已被 move 走了。順序：
+  ```cpp
+  board = std::move(b);
+  parts = std::move(p);
+  initialBoard = board;     // 從成員 copy，是 deep copy
+  initialParts = parts;
+  ```
+- **Action::Reset 在 `if (won) return;` 之前處理**：issue 沒明寫但 Acceptance Criteria 暗示（reset 後可繼續玩、可再次 reset、可勝利 → 勝利後也要能 reset）。`statusMessage.clear()` → 處理 Reset → `if (won) return` → 一般 actions。
+- **不破壞 Esc 的「取消 held / 拔起」語意**：issue 第 99 行特別寫了 `Esc 已有「取消 held / 拔起」語意`。原 Input.cpp 把 Backspace 跟 Esc OR 起來是個歷史遺留 duplicate；改動把 Backspace 解放給 Reset，Esc 保持原行為。
+- **switch 補 `case Action::Reset: break;`**：雖然 Reset 在 switch 之前 `return` 掉了，編譯器 `-Wswitch` 仍會抱怨 enum 值未涵蓋。加 case + 註解寫明「handled above; listed to satisfy -Wswitch」。
+- **不在這次處理 Polish 區的 lerp 動畫**：issue 列了「零件從目前位置 lerp 飛回 tray」當 polish，但同時又列「`visualInitialized` 一定要在 reset 時歸 `false`」當 trap。這兩條是衝突的：若保留 `currentCenterX/Y/Angle` 讓動畫從當前位置 lerp 到 tray，就不能歸 `visualInitialized=false`（否則下 frame 會 snap 而非 lerp）。Must-have 走 deep copy（含視覺欄位歸 default、含 `visualInitialized=false`），結果是 reset 時零件「瞬移」回 tray — 沒有飛回動畫，但符合 must-have AC 也沒踩 trap。lerp polish 留到驗收後評估。
+
+**改了幾行**：3 個檔、共 +25 / -3 行（不含 doc）。
+
+### Verification / Tests Performed
+
+- `cmake --build build`：0 warning、0 error、game 執行檔 build 出來。
+- **未驗證（需使用者手動互動）**：issue 的 6 條 Manual Tests + 3 條 Regression Checks。需要使用者跑 `./build/game docs/io/Example1.txt`：
+  1. 放幾個零件 → Backspace → 全部回 tray
+  2. 旋轉零件後 reset → rotate 回 CW_0
+  3. 拿著零件時 reset → held state 清掉
+  4. 放到快勝利時 reset → won=false 可繼續
+  5. 勝利後 reset → 重新可玩
+  6. reset 後再次達成 win
+  7. Regression: 鍵盤移動 / 放置 / 旋轉 / 滑鼠拖放 / Phase 2 動畫
+
+### Result
+
+程式碼三檔 + doc 三檔完成。等使用者手動驗收 → 通過後可勾 STATUS.md「重置盤面」+1%（37.5% → 38.5%）+ commit。**目前分數未變動**。
+
+### Risks / Follow-ups
+
+- **手動驗收若 fail，最可能的失敗點**：
+  - 視覺欄位殘留 → 部分零件 reset 後位置 / 角度錯位（理論上不會，因為 copy initialParts 會把 visual fields 全歸 default）
+  - 同 frame Reset + Backspace 之前的 mouse hover → mouseControlling 重置時序問題（理論上也不會，resetToInitial 把 mouseControlling=false 寫死）
+- **Backspace 改綁可能讓使用者短期不適應** — 原本 Backspace = Remove，現在 Backspace = Reset。Esc 還是 Remove，所以 Remove 功能沒掉，但記憶 muscle memory 要切換。可以在 verification 時觀察。
+- **Polish lerp 動畫**：留 follow-up，須額外設計才能跟 `visualInitialized` trap 共存。可能解法：reset 時保留 `currentCenterX/Y`、不重置 `visualInitialized`，但仍重置 `rotateCount`（讓角度 lerp 到 0）+ `location`（讓位置 target = tray）。要等驗收穩定後再評估。
+- 未進入 `Game::initialBoard / initialParts` 的記憶體成本目前不大（Example1 ~10 個 parts），但若 Phase 3 後續加大關卡（雙色、大盤面），snapshot 大小會線性成長。仍遠小於重新 parse 的複雜度。
+
+### Other Notes
+
+**口頭報告素材**：
+
+- **「為什麼選 deep copy 而不是記檔案路徑 re-parse」**：4 個理由 — (1) 中途檔案被改 / 刪不影響 reset；(2) 不必把 file path 塞進 `Game` 類；(3) C++ value-copy 對 `Board` / `Part` 自動 deep copy（vector + POD，零自寫 boilerplate）；(4) 記憶體成本遠小於重走 parser 的複雜度。展現了「選方案不是只看哪個比較快寫，而是評估維護面與耦合度」。
+- **「為什麼 Reset 必須在 `if (won) return` 之前」**：勝利後玩家也要能重新開始；如果 Reset 走一般 action 流程就會被 win-gate 擋住。**這個小細節是 issue spec 沒明寫但從 AC 隱含推出的 — 展示「讀 spec 要讀到言外之意」。**
+- **「Backspace duplicate 的歷史遺留」**：Phase 1 寫 Input.cpp 時 Esc / Backspace 都當 Remove（兩個鍵都直覺）；Phase 3 引入 Reset 時剛好可以解放 Backspace。**展示「設計演進中能發現舊決定有 slack 空間」。**
+- **「Polish 跟 Trap 衝突的取捨」**：issue 自己同時列了 polish（lerp 飛回）與 trap（`visualInitialized` 要歸 false），兩條互相矛盾。AI 看出來並選擇先穩拿 must-have 1% 不踩 trap；polish 留 follow-up。**展示「rubric 寫的東西要 cross-check 內部一致性，不能照抄」。**
+
+
+## 2026-05-24 — Phase 3 issue 01-reset 手動驗收通過（small）
+Phase: 3  
+Commit: 待 commit
+
+使用者跑 `./build/game docs/io/Example1.txt`，issue [01-reset](issues/phase-3/01-reset.md#L132) 的 6 條 Manual Tests + 3 條 Regression Checks 全綠：放幾個零件 → Backspace 回 tray；旋轉後 reset → CW_0；持有零件 reset → held 清掉；快勝利時 reset → won=false 可繼續；勝利後 reset → 重新可玩；reset 後再勝一次；鍵盤 / 滑鼠 / Phase 2 動畫 / 音效零退化。配分 +1%（重置盤面 1%、[scoring.md:56](scoring.md#L56)）入帳，目前分數 37.5 → 38.5% / 65%。STATUS.md / plan.md 同步更新。
+
+
+## 2026-05-29 — Phase 3 issue 02-new-game 程式碼完成（待手動驗收）
+
+Type: Implementation  
+Phase: 3  
+Feature: Issue 02-new-game / GitHub #4  
+Commit: 待 commit
+
+### Context
+
+使用者已把 Phase 3 issue 01-reset commit 出去，接著要求開始做 issue #4（新遊戲流程）。Issue #4 的分數點是 [scoring.md:57](scoring.md#L57)：遊戲進行中或遊戲結束後，可以直接開啟新遊戲，不用關程式重開。
+
+調查後確認：#4 的完整 AC 需要「回主畫面選不同關卡」，但完整精美主畫面是 #6 的範圍。因此這次採用折衷：先在 `main.cpp` 實作 app-level state machine + minimal menu，讓 #4 flow 可以驗收；#6 之後再把 menu 視覺與關卡列表 polish 成正式版。
+
+### AI Contribution
+
+- 讀 [CLAUDE.md](../CLAUDE.md)、[plan.md](plan.md)、[STATUS.md](STATUS.md)、[issues/phase-3/02-new-game.md](issues/phase-3/02-new-game.md) 與 [03-main-menu.md](issues/phase-3/03-main-menu.md)，確認 #4 / #6 的相依關係。
+- 用 GitHub CLI 確認線上 #4 issue body 與本機草稿一致。
+- 分析現有 [main.cpp](../src/main.cpp)：目前一次性 `promptPath → loadGame → run loop`；音效在 process-level 載入；`Game::init()` 因 #3 reset 已能清 transient state。
+- 實作：
+  - `enum class AppState { Menu, InGame }`
+  - `findLevels()`：優先掃 `assets/levels/*.txt`，若不存在 fallback 到 `docs/io/*.txt`
+  - minimal `drawMenu()`：顯示標題、關卡列表、選取框、基本操作提示
+  - menu keyboard / mouse selection：Up/Down、Enter/Space、Left Click
+  - InGame / Win 狀態按 `N` 回 Menu
+  - 選關後重新 `Parser::parse(...)` + `Game::init(...)`
+  - 切關後重設音效 diff baseline，避免誤觸發聲音
+- 更新 [STATUS.md](STATUS.md)、[plan.md](plan.md)、[learning-notes.md](learning-notes.md)、本 LOG entry。
+
+### Human Decision / Review
+
+- 使用者同意「#4 先做 flow + minimal menu，#6 再做完整精美主畫面」這個切法。
+- 使用者要求可參考 `CLAUDE.md` / `plan.md` / `STATUS.md`，並在開始實作前先調查「會不會有問題」；AI 回報 #4 主要問題是依賴 #6，但可用 minimal menu 解開。
+
+### Details
+
+**主要改動集中在 `src/main.cpp`**，避免現在就新增 `Menu.cpp/Menu.h` 造成 #6 後續要重抽一次。
+
+啟動流程：
+
+- `argc > 1`：保留既有硬性行為，直接 `loadGame(argv[1])`，成功後 `appState = InGame`。壞路徑仍印錯誤並 exit 1，不開視窗。
+- 沒有 argv：進 `AppState::Menu`，由 menu 掃描可用 `.txt` 關卡讓玩家 runtime 選擇。
+
+主迴圈分流：
+
+- Menu：
+  - mouse hover 更新 selected level
+  - Up/Down 鍵切 selected level
+  - Enter / Space / left click 呼叫 `loadGame(level.path, game, menuMessage)`
+  - 成功後 `appState = InGame`，並 `resetSoundBaseline()`
+- InGame：
+  - 先檢查 `KEY_N`，因此勝利後也能回 menu，不會被 `Game::update()` 的 `if (won) return;` 擋住
+  - 其它流程沿用 Phase 2：`Input::poll()`、`Input::pollMouse()`、聲音 frame diff、`renderer.draw(...)`
+
+Sound lifecycle：
+
+- `InitAudioDevice()` / `LoadSound(...)` 仍只做一次
+- 切關不 reload sound
+- `resetSoundBaseline()` 把 `prevHeld / prevWon / prevPlacedCnt / prevRotateSum` 設成新 game 初始值，避免第一 frame 誤判成事件
+
+### Verification / Tests Performed
+
+- `cmake --build build`：成功，`[100%] Built target game`
+- `./build/game /nonexistent.txt`：維持 invalid-path 行為，輸出 `Cannot open file: /nonexistent.txt`，exit code 1
+- 尚未完成互動手動驗收。需要使用者跑：
+  - `./build/game` 不給 argv → menu 出現 Example1–6 → 選 Example1 進 InGame
+  - InGame 放幾個零件 → 按 `N` → 回 menu → 選 Example2 → 新關乾淨載入
+  - 勝利後按 `N` → 回 menu → 選另一關 → 不殘留 win banner
+  - 回 menu 後重選同一關 → 可重新遊玩
+  - Backspace reset 仍只重來同關，不回 menu
+
+### Result
+
+Issue #4 程式碼完成、build 通過，但尚未把 +1% 入帳。STATUS 目前標為「程式碼完成，待手動驗收」。
+
+### Risks / Follow-ups
+
+- Minimal menu 是為了 #4 flow 驗收而做，還不是 #6 的「精美主畫面」最終版。#6 仍需要補 Exo 2 字體、hover polish、空資料夾處理、`assets/levels` 正式資料來源等細節。
+- 目前 menu 顯示最多 6 個關卡，剛好覆蓋 Example1–6；未來若關卡更多，#6 應補 scrolling 或 pagination。
+- `findLevels()` fallback 到 `docs/io` 是目前開發便利；正式打包時應讓 `assets/levels` 存在，避免 classroom exe 缺 docs folder 時 menu 沒關卡。
+
+### Other Notes
+
+口頭報告可以強調：Reset 與 New Game 分層不同。Reset 是 `Game` 內部狀態還原；New Game 是 app-level state machine，重新 parse / init，並且不把 `KEY_N` 塞進 core `Action`，保持 core/UI/app flow 邊界清楚。
+
+
+## 2026-05-29 — 首頁 menu 字體改用 Exo 2（small）
+Phase: 3  
+Commit: 待 commit
+
+使用者指出首頁字體要和目前遊戲內一致；AI 將 [src/main.cpp](../src/main.cpp) 的 minimal menu 從 raylib default `DrawText` 改為載入 `assets/fonts/Exo2-Regular.ttf` 並用 `DrawTextEx` 繪製標題、關卡列與操作提示；若字體載入失敗則 fallback 到 `GetFontDefault()`。`cmake --build build` 通過。
+
+
+## 2026-05-29 — menu 鍵盤選關不再被靜止滑鼠 hover 拉回（small）
+Phase: 3  
+Commit: 待 commit
+
+使用者發現滑鼠停在某個 level 上時，Up/Down 鍵切換會立刻被 hover 狀態拉回原格。AI 將 menu selected 更新規則改為：只有 `GetMouseDelta()` 顯示滑鼠真的移動時，hover 才更新 `selectedLevel`；左鍵點擊仍會直接選取 hovered level。`cmake --build build` 通過。
+
+
+## 2026-05-29 — Phase 3 issue 03-main-menu 程式碼完成（待手動驗收）
+
+Type: Implementation  
+Phase: 3  
+Feature: Issue 03-main-menu / GitHub #6  
+Commit: 待 commit
+
+### Context
+
+Issue #4 已把 New Game flow 和 minimal menu 接起來；接著實作 issue #6，目標是把主畫面 / 關卡選擇做成正式可評分的功能：沒給 argv 時進主畫面、關卡從 `assets/levels/*.txt` 動態掃、點/Enter 選關、視覺沿用 Phase 2 的 Exo 2 / 圓角 / 漸層風格。
+
+### AI Contribution
+
+- 讀 [issues/phase-3/03-main-menu.md](issues/phase-3/03-main-menu.md)，確認 #6 的 must-have / polish / test plan。
+- 檢查現有 #4 `main.cpp` menu 實作，找出需要補齊的差距：仍有 `docs/io` fallback、沒有正式 `assets/levels` 關卡、hover 與 keyboard selection 還可以更清楚分離。
+- 實作：
+  - 新增 `assets/levels/Example1.txt` ~ `Example6.txt`
+  - `findLevels()` 改為只掃 `assets/levels`
+  - 抽出 menu layout constants 與 `menuVisibleStart(...)`
+  - menu 超過 6 關時以 selected 為中心捲動顯示
+  - `menuSelectionFromMouse(...)` 回傳實際 level index，而不是 visible local index
+  - `drawMenu(...)` 新增 hover row 視覺狀態，hover 與 selected 可分開
+  - 修正文案：若關卡超過可視範圍，顯示 `Showing X-Y of N`
+- 更新 [STATUS.md](STATUS.md)、[plan.md](plan.md)、[learning-notes.md](learning-notes.md)、本 LOG entry。
+
+### Human Decision / Review
+
+- 使用者要求「開始 #6」。
+- 前一輪使用者已指出首頁字體應和遊戲內一致、滑鼠停在 level 上時不能阻止鍵盤上下切換；這些 review feedback 也整合進 #6 polish。
+
+### Details
+
+`assets/levels` 成為正式 runtime level source。這符合 #6 issue 的 Level List Behavior，也符合 demo 打包：CMake 既有 post-build rule 會把整個 `assets/` copy 到 executable 旁，所以 `build/assets/levels` 會存在。
+
+`findLevels()` 現在不再 fallback 到 `docs/io`。理由是 `docs/io` 是 repo 文件 / 測資來源，不應該成為 packaged game 的 runtime dependency。若 `assets/levels` missing 或 empty，menu 會顯示 no playable levels，不 crash。
+
+Menu selection 的修正：
+
+- hover row 可以高亮，但不一定等於 selected
+- mouse moved 時，hover 會更新 selected
+- mouse stationary 時，keyboard Up/Down 可以自由切換 selected，不會被 hover 拉回
+- left click 時直接把 selected 設成 hover 並啟動該關卡
+
+### Verification / Tests Performed
+
+- `cmake --build build`：成功，`[100%] Built target game`
+- `find assets/levels -maxdepth 1 -type f`：確認 Example1–6 都存在
+- build 後 `find build/assets/levels -maxdepth 1 -type f`：確認 CMake post-build copy 有把 Example1–6 複製到 build assets
+- `./build/game /nonexistent.txt`：維持 invalid-path 行為，輸出 `Cannot open file: /nonexistent.txt`，exit code 1
+
+尚未完成 GUI 互動手動驗收。需要使用者測：
+
+- `./build/game` 不給 argv → 主畫面顯示，關卡列表來自 `assets/levels`
+- hover 有 highlight；滑鼠停著時 Up/Down 可正常切換
+- Enter / 左鍵選關可進 InGame
+- InGame 按 `N` 回主畫面，選另一關後舊狀態清空
+- `./build/game docs/io/Example1.txt` 給 argv → 直接進關卡，不出現主畫面
+
+### Result
+
+Issue #6 程式碼完成、build 通過，但尚未把 +1% 入帳。STATUS 目前標為「程式碼完成，待手動驗收」。
+
+### Risks / Follow-ups
+
+- Menu 仍放在 `main.cpp`，目前可接受，因為 #4 / #6 都已集中在 main loop；若 Phase 5 editor 也需要複雜 menu，可以再抽 `src/ui/Menu.{h,cpp}`。
+- 若未來關卡數很多，目前只是 6-row scrolling list，沒有 scrollbar；足夠應付 rubric，Phase 7 polish 可再加。
+- Empty / missing `assets/levels` 需要手動測時暫時 rename folder；不要把 rename 狀態 commit 進去。
+
+### Other Notes
+
+這段可以在報告裡說明「開發資料」和「runtime assets」的差異：`docs/io` 給人讀、給測試參考；`assets/levels` 給遊戲執行時掃描，會跟 exe 一起出貨。
+
+
+## 2026-05-29 — Phase 3 issue 02-new-game + 03-main-menu 手動驗收通過（small）
+Phase: 3  
+Commit: 待 commit
+
+使用者手動驗收通過：`./build/game` 無 argv 進主畫面、關卡列表由 `assets/levels` 顯示、hover highlight / Up-Down / Enter / 左鍵選關正常、InGame 按 `N` 回 menu 可選新關且不殘留舊狀態；`./build/game docs/io/Example1.txt` 給 argv 仍直接進關卡。配分 +2% 入帳：新遊戲流程 1%（[scoring.md:57](scoring.md#L57)）+ 精美主畫面 / 關卡選擇 1%（[scoring.md:58](scoring.md#L58)），目前分數 38.5 → 40.5% / 65%。STATUS.md / plan.md 同步更新。
+
+
+## 2026-05-29 — Phase 3 issue 05-dual-color 程式碼完成（待手動驗收）
+
+Type: Implementation
+Phase: 3
+Feature: Issue 05-dual-color
+Commit: 待 commit
+
+### Context
+
+使用者要求開始做 [issues/phase-3/05-dual-color.md](issues/phase-3/05-dual-color.md)。這張 issue 目標是拿下雙色設定檔載入與顯示 2%（[scoring.md:62](scoring.md#L62)），並讓 demo day 的助教雙色測資 +2%（[scoring.md:63](scoring.md#L63)）有可走的 argv code path。
+
+前置檢查發現 core 已大致支援多色：`Parser` 依 `C` loop constraints，`WinChecker` 依 `board.colors` 判斷每色行列需求，`Board::cannotMoveColor(...)` 也可取固定格顏色。真正 blocker 是 Renderer 的 `drawConstraints` 仍固定 `color = 0`。
+
+### AI Contribution
+
+- 讀 `CLAUDE.md`、`STATUS.md`、`issues/phase-3/05-dual-color.md`、`plan.md`，確認工作流程與配分。
+- 檢查 `src/ui/Renderer.cpp::drawConstraints`、`computeLayout`、`drawParts`、`drawTrayBg`，確認單色 hardcode 與顏色語意不一致的位置。
+- 實作：
+  - `drawConstraints` 改為 loop `color < board.colors`。
+  - column hints 每色一排、row hints 每色一欄。
+  - `computeLayout` 依色數調整 top / left reserve。
+  - tray 色條與零件本體改用 `Part::colorIndex` 對應 `colorBadge(...)`。
+- 更新 `STATUS.md`、`plan.md`、`learning-notes.md` 和本 LOG entry。
+
+### Human Decision / Review
+
+使用者先要求檢查 `drawConstraints`，確認沒有其他核心 blocker 後，明確要求「開始幫我做 phase-3/05-dual-color.md」。本次先完成程式碼與 smoke test，GUI 目視、實際遊玩與勝利驗收留給使用者跑。
+
+### Details
+
+原本 Renderer 有兩個單色時代的假設：
+
+- `drawConstraints` 只畫第 0 色，所以 Example5 / Example6 即使 parser 讀到兩色，也只會顯示第一色 constraints。
+- `drawParts` / `drawTrayBg` 用 `partIndex` 配色，會讓同色 puzzle 零件被畫成不同顏色；這對單色關卡只是美術選擇，但對雙色關卡會混淆「這個零件算哪個顏色」。
+
+新的 layout 使用固定小尺寸 hint boxes：
+
+- `kColHintHeight = 22`
+- `kRowHintWidth = 28`
+- `kConstraintGap = 8`
+
+`stackedFromBoard = colorCount - color` 讓 color 0 離 board 較遠、最後一色離 board 較近。單色時位置接近原本 `boardY - 30` / `boardX - 30`；雙色時會在上方/左側多堆一排。
+
+### Verification / Tests Performed
+
+- `cmake --build build`：成功，`[100%] Built target game`。
+- `./build/game docs/io/Example5.txt`：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+- `./build/game docs/io/Example6.txt`：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+
+尚未完成手動 GUI 驗收。需要使用者測：
+
+- Example5 / Example6 兩色 row / column hints 都顯示，且顏色與零件 / fixed cells 對應。
+- Example5 / Example6 可正常放置、拔除、旋轉，並可達成 win。
+- Example1–4 單色 layout 不退化。
+
+### Result
+
+Issue 05-dual-color 程式碼完成，build 與 Example5/6 啟動 smoke 通過。STATUS 暫不把 +2% 入帳，等手動目視與遊玩驗收通過後再勾「雙色設定檔載入與遊玩」。
+
+### Risks / Follow-ups
+
+- 我沒有在本輪完整手動解 Example5 / Example6，因此「可勝利」仍需使用者實測。
+- 助教 demo 雙色測資要到 demo day 才有檔案；目前能保證的是 runtime argv path 沒被破壞，且 renderer 不再寫死單色。
+- `drawConstraints` 下一張 issue 04-row-col-hints 還會再動，建議在這個多色 layout 上加 current / need，不要回到單色分支。
+
+### Other Notes
+
+口頭報告可以講這次是「用 source inspection 縮小問題範圍」：不是看到雙色就重寫 parser，而是先確認資料流，最後只改 UI 呈現層。這能展示對架構邊界的理解。
+
+
+## 2026-05-29 — Phase 3 issue 04-row-col-hints 程式碼完成（待手動驗收）
+
+Type: Implementation
+Phase: 3
+Feature: Issue 04-row-col-hints
+Commit: 待 commit
+
+### Context
+
+使用者在完成 05-dual-color commit 後要求繼續做 hint 相關功能。這張 issue 對應兩個進階功能分項：列/欄滿足或超出需求提示 1%（[scoring.md:59](scoring.md#L59)），以及周圍顯示每列每欄目前填滿格數 1%（[scoring.md:60](scoring.md#L60)）。
+
+05 已經把 constraint layout 改成多色可堆疊；04 在這個 layout 上把純需求數升級成 `current/need`，並加灰 / 綠 / 紅狀態。
+
+### AI Contribution
+
+- 讀 [issues/phase-3/04-row-col-hints.md](issues/phase-3/04-row-col-hints.md)，確認 must-have、helper 建議、測試方式。
+- 檢查 `Board`、`WinChecker`、`Renderer::drawConstraints` 的資料流，避免 Renderer 複製一份勝利判定邏輯。
+- 實作：
+  - `Board::currentFilledForColor(...)`
+  - `WinChecker` 改用 Board helper
+  - Renderer 顯示 `current/need`
+  - hints 狀態色：不足灰色、滿足綠色、超出紅色
+  - 雙色 hints 保留小色條辨識 color index
+- 更新 `STATUS.md`、`plan.md`、`learning-notes.md` 和本 LOG entry。
+
+### Human Decision / Review
+
+使用者詢問 hint 是否接著做、或是否分成兩個 commit。AI 建議先 commit 05，再做 04，理由是雙色與 current hints 對應不同配分與驗收面。使用者完成 05 commit 後要求繼續，因此本輪只處理 04 相關變更。
+
+### Details
+
+`Board::currentFilledForColor(color, idx, isRow, parts)` 會走指定 row 或 column 的每個 cell：
+
+- 固定格：`CANNOT_MOVE - color`，用 `cannotMoveColor(cell)` 判斷是否算指定色。
+- 已放零件：Board cell 只存 `OCCUPIED + partIndex`，需要用 `parts[partIdx].colorIndex` 判斷顏色。
+- 空格 / 不可放置格：不計入 current。
+
+Renderer 顯示：
+
+- 文字：`current/need`
+- 狀態色：
+  - `current < need` → 灰
+  - `current == need` → 綠
+  - `current > need` → 紅
+- 已滿足或超出時有淡色背景與較明顯 border；不足時保留較淡 border。
+- 雙色時每個 hint box 仍有小色條標示該 row / column hint 屬於哪個 color。
+
+### Verification / Tests Performed
+
+- `cmake --build build`：成功，`[100%] Built target game`。
+- `./build/game docs/io/Example1.txt`：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+- `./build/game docs/io/Example5.txt`：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+
+尚未完成手動 GUI 驗收。需要使用者測：
+
+- Example1 空盤時 row / column hints 顯示 `0/need`。
+- 放置零件後相關 row / column current 立即增加；拔除後立即減少。
+- 不足灰色、剛好滿足綠色、超出紅色。
+- Example5/6 雙色 current / need 各自獨立計算。
+- Hint 不遮盤面或 sidebar。
+
+### Result
+
+Issue 04-row-col-hints 程式碼完成，build 與 Example1/5 啟動 smoke 通過。STATUS 暫不把 +2% 入帳，等手動目視與互動驗收通過後再勾兩個 hint checklist。
+
+### Risks / Follow-ups
+
+- 我沒有在本輪用滑鼠完整擺局確認即時更新和紅/綠/灰視覺狀態；需要使用者目視驗收。
+- Row hint 寬度從雙色 commit 的 28 調到 48，目的是容納 `current/need`。若在小視窗或大盤面仍顯擠，下一輪可再做自適應字級或更寬 layout。
+- `current > need` 只提示，不禁止放置；這是 issue non-goal，不應在 `Board::canPlace` 加 constraint 限制。
+
+### Other Notes
+
+這段很適合口頭報告講「避免 duplicated logic」：Renderer 需要顯示 current，WinChecker 也需要 current；所以把 query 放在 Board，讓 UI 與勝利判定共用同一個 source of truth。
+
+
+## 2026-05-29 — constraint hint UI 改成條狀顯示（small）
+Phase: 3
+Commit: 待 commit
+
+依使用者提供的原遊戲截圖，把 [src/ui/Renderer.cpp](../src/ui/Renderer.cpp) 的 constraint hints 從 `current/need` 文字改為條狀 UI：需求數 = 條數，目前填滿的條亮起，不足時保留對應色描邊，剛好滿足時亮綠；超出時只有多出來的 segments 變紅，既有滿足部分不整組染紅。左側 row hints 改為從靠近盤面的內側開始填，雙色 row hints 改為同一列 hint 區內上下分 lane 並修正藍綠順序；column hints 保持左右分 lane。若某 row / column 只需要 2 條，就只畫 2 條，不再畫剩餘淡框。`cmake --build build` 通過，待目視驗收條距與可讀性。
+
+## 2026-05-31 — Phase 3 issue 04/05 狀態稽核（small）
+Phase: 3
+Commit: 待 commit
+
+依使用者要求重新讀 [CLAUDE.md](../CLAUDE.md)、[docs/STATUS.md](STATUS.md)、[04-row-col-hints.md](issues/phase-3/04-row-col-hints.md)、[05-dual-color.md](issues/phase-3/05-dual-color.md)，並對照 `Parser` / `Board` / `WinChecker` / `Renderer` / `main.cpp`。確認 04/05 程式碼層面完成且 `cmake --build build` 通過，但尚未做 Example5/6 可玩可勝利與 hint 即時更新的手動 GUI 驗收，因此 `STATUS.md` 維持 checklist 未勾、分數不入帳；補上 2026-05-31 稽核結果，以及條狀 segments 可能需補數字標示的驗收風險。
+
+## 2026-05-31 — Phase 3 issue 04/05 手動驗收通過（small）
+Phase: 3
+Commit: 待 commit
+
+使用者完成手動驗收並確認 04-row-col-hints 與 05-dual-color 表現都正確：Example5/6 雙色關卡可載入、可遊玩、可勝利；零件/固定格/hints 顏色對齊；row/column 條狀 hints 會隨放置/拔除即時更新，不足、滿足、超出狀態正確。因此更新 [STATUS.md](STATUS.md)：程式實作分數從 40.5% 調整為 44.5%，勾選「某列/欄滿足或超出需求時周圍提示」+1%、「周圍顯示每列每欄目前填滿格數」+1%、「雙色設定檔載入與遊玩」+2%。助教 demo 雙色測資仍保留未勾，等 demo day 實測。

@@ -9,7 +9,8 @@ Action Input::poll() {
     if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) return Action::MoveRight;
     if (IsKeyPressed(KEY_R))                            return Action::Rotate;
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) return Action::Place;
-    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) return Action::Remove;
+    if (IsKeyPressed(KEY_ESCAPE)) return Action::Remove;
+    if (IsKeyPressed(KEY_BACKSPACE)) return Action::Reset;
     return Action::None;
 }
 

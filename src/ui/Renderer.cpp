@@ -10,20 +10,9 @@ namespace {
 
 constexpr int kTrayPreviewX   = 124;  // offset within slot where preview box starts
 constexpr int kTrayPreviewW   = 98;
-
-Color partColor(unsigned partIndex) {
-    static const Color palette[] = {
-        { 76, 175,  80, 255},
-        { 33, 150, 243, 255},
-        {244,  67,  54, 255},
-        {255, 193,   7, 255},
-        {156,  39, 176, 255},
-        {  0, 188, 212, 255},
-        {255,  87,  34, 255},
-        {139, 195,  74, 255},
-    };
-    return palette[partIndex % (sizeof(palette) / sizeof(palette[0]))];
-}
+constexpr int kConstraintGap  = 8;
+constexpr int kColHintHeight  = 48;
+constexpr int kRowHintWidth   = kColHintHeight;
 
 Color colorBadge(unsigned colorIndex) {
     static const Color colors[] = {
@@ -35,6 +24,11 @@ Color colorBadge(unsigned colorIndex) {
     return colors[colorIndex % (sizeof(colors) / sizeof(colors[0]))];
 }
 
+Color hintStatusColor(unsigned current, unsigned need) {
+    if (current == need) return Color{80, 220, 100, 255};
+    return Color{174, 191, 203, 255};
+}
+
 } // namespace
 
 Layout computeLayout(const Game& g, int screenW, int screenH) {
@@ -42,7 +36,7 @@ Layout computeLayout(const Game& g, int screenW, int screenH) {
     L.rows = std::max(1, static_cast<int>(g.board.rows));
     L.cols = std::max(1, static_cast<int>(g.board.cols));
 
-    const int leftReserve   = 310;
+    const int leftReserve   = 330;
     const int rightPadding  = 60;
     const int topReserve    = 80;
     const int bottomReserve = 120;
@@ -102,6 +96,68 @@ void drawCenteredText(Font font, const char* msg, int boxX, int boxY, int boxW, 
                static_cast<float>(fontSize), 1.0f, tint);
 }
 
+void drawBarSegment(Rectangle r, Color fill, Color border, bool active) {
+    DrawRectangleRounded(r, 0.38f, 5, fill);
+    DrawRectangleRoundedLinesEx(r, 0.38f, 5, active ? 1.0f : 1.5f, border);
+}
+
+void drawConstraintBars(unsigned current, unsigned need,
+                        int boxX, int boxY, int boxW, int boxH,
+                        Color status, Color colorTag, bool rowHint) {
+    const unsigned slots = std::max(need, current);
+    if (slots == 0) return;
+
+    const bool satisfied = current == need;
+    const Color overflow = Color{220, 80, 80, 255};
+    const Color active = satisfied ? status : colorTag;
+    Color inactiveBorder = colorTag;
+    inactiveBorder.a = 150;
+
+    if (rowHint) {
+        const int gap = 3;
+        const int totalGaps = gap * (static_cast<int>(slots) - 1);
+        const int barW = std::max(2, std::min(6, (boxW - 8 - totalGaps) / static_cast<int>(slots)));
+        const int barH = std::max(8, std::min(18, boxH / 2));
+        const int groupW = static_cast<int>(slots) * barW + totalGaps;
+        const int rightPad = groupW + 4 <= boxW ? 4 : std::max(0, (boxW - groupW) / 2);
+        const int startX = boxX + boxW - groupW - rightPad;
+        const int y = boxY + (boxH - barH) / 2;
+        for (unsigned i = 0; i < slots; ++i) {
+            const unsigned logicalIdx = slots - 1 - i;
+            const bool filledSlot = logicalIdx < current;
+            const bool overflowSlot = logicalIdx >= need && logicalIdx < current;
+            const Color fill = overflowSlot ? overflow :
+                               filledSlot   ? active :
+                               Color{0, 0, 0, 0};
+            const Color border = overflowSlot ? overflow :
+                                 filledSlot   ? active : inactiveBorder;
+            const int x = startX + static_cast<int>(i) * (barW + gap);
+            drawBarSegment(Rectangle{(float)x, (float)y, (float)barW, (float)barH},
+                           fill, border, filledSlot);
+        }
+    } else {
+        const int gap = 3;
+        const int totalGaps = gap * (static_cast<int>(slots) - 1);
+        const int barH = std::max(2, std::min(5, (boxH - 8 - totalGaps) / static_cast<int>(slots)));
+        const int barW = std::max(16, std::min(30, boxW - 8));
+        const int groupH = static_cast<int>(slots) * barH + totalGaps;
+        const int x = boxX + (boxW - barW) / 2;
+        const int startY = boxY + boxH - groupH - 4;
+        for (unsigned i = 0; i < slots; ++i) {
+            const bool filledSlot = i < current;
+            const bool overflowSlot = i >= need && i < current;
+            const Color fill = overflowSlot ? overflow :
+                               filledSlot   ? active :
+                               Color{0, 0, 0, 0};
+            const Color border = overflowSlot ? overflow :
+                                 filledSlot   ? active : inactiveBorder;
+            const int y = startY + static_cast<int>(slots - 1 - i) * (barH + gap);
+            drawBarSegment(Rectangle{(float)x, (float)y, (float)barW, (float)barH},
+                           fill, border, filledSlot);
+        }
+    }
+}
+
 void drawBoardBg(const Game& g, const Layout& L, Font font) {
     const Board& b = g.board;
     const Color emptyFill   = { 45,  50,  62, 255};
@@ -136,24 +192,40 @@ void drawBoardBg(const Game& g, const Layout& L, Font font) {
 
 void drawConstraints(const Game& g, const Layout& L, Font font) {
     const Board& b = g.board;
+    (void)font;
     if (b.colors == 0) return;
 
-    const int color = 0; // Phase 1: single color
-    const Color tint = colorBadge(static_cast<unsigned>(color));
+    const int colorCount = static_cast<int>(b.colors);
+    const int laneCount = colorCount > 1 ? std::max(2, colorCount) : 1;
+    for (int color = 0; color < colorCount; ++color) {
+        const Color tint = colorBadge(static_cast<unsigned>(color));
 
-    for (int c = 0; c < L.cols; ++c) {
-        const int x = L.boardX + c * L.cellSize;
-        const int y = L.boardY - 30;
-        char buf[16];
-        std::snprintf(buf, sizeof(buf), "%u", b._constraints[color][L.rows + c]);
-        drawCenteredText(font, buf, x, y, L.cellSize, 20, 18, tint);
-    }
-    for (int r = 0; r < L.rows; ++r) {
-        const int x = L.boardX - 30;
-        const int y = L.boardY + r * L.cellSize;
-        char buf[16];
-        std::snprintf(buf, sizeof(buf), "%u", b._constraints[color][r]);
-        drawCenteredText(font, buf, x, y, 24, L.cellSize, 18, tint);
+        for (int c = 0; c < L.cols; ++c) {
+            const int laneX0 = L.boardX + c * L.cellSize + (color * L.cellSize) / laneCount;
+            const int laneX1 = L.boardX + c * L.cellSize + ((color + 1) * L.cellSize) / laneCount;
+            const int x = laneX0;
+            const int y = L.boardY - kConstraintGap - kColHintHeight;
+            const int w = std::max(8, laneX1 - laneX0);
+            const unsigned need = b._constraints[color][L.rows + c];
+            const unsigned current = b.currentFilledForColor(color, c, false, g.parts);
+            const Color status = hintStatusColor(current, need);
+            drawConstraintBars(current, need, x, y, w, kColHintHeight,
+                               status, tint, false);
+        }
+        for (int r = 0; r < L.rows; ++r) {
+            const int rowHintX = L.boardX - kConstraintGap - kRowHintWidth;
+            const int rowLane = colorCount > 1 ? (colorCount - 1 - color) : color;
+            const int laneY0 = L.boardY + r * L.cellSize + (rowLane * L.cellSize) / laneCount;
+            const int laneY1 = L.boardY + r * L.cellSize + ((rowLane + 1) * L.cellSize) / laneCount;
+            const int x = rowHintX;
+            const int y = laneY0;
+            const int h = std::max(8, laneY1 - laneY0);
+            const unsigned need = b._constraints[color][r];
+            const unsigned current = b.currentFilledForColor(color, r, true, g.parts);
+            const Color status = hintStatusColor(current, need);
+            drawConstraintBars(current, need, x, y, kRowHintWidth, h,
+                               status, tint, true);
+        }
     }
 }
 
@@ -235,7 +307,7 @@ void drawTrayBg(const Game& g, const Layout& L, Font font) {
         drawText(font, label, static_cast<float>(L.trayX), static_cast<float>(slotY),
                  15.0f, placed ? Color{114, 128, 139, 255} : Color{232, 244, 245, 255}, 1.0f);
 
-        const Color cc = partColor(g.parts[i].partIndex);
+        const Color cc = colorBadge(g.parts[i].colorIndex);
         DrawRectangleRounded(Rectangle{(float)L.trayX, (float)(slotY + 26), 44.0f, 8.0f},
                              0.8f, 6, placed ? Color{cc.r, cc.g, cc.b, 80} : cc);
 
@@ -501,7 +573,7 @@ void drawParts(const Game& g, const Layout& L) {
         const Part& p = g.parts[i];
         const bool held = (static_cast<int>(i) == g.heldPartIdx);
         const bool inTray = !p.location.placed && !held;
-        const Color fill = partColor(p.partIndex);
+        const Color fill = colorBadge(p.colorIndex);
         const float alpha = inTray ? 0.85f : 1.0f;
         drawPartAnimated(p, static_cast<float>(L.cellSize), fill, alpha);
     }

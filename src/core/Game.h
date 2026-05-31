@@ -16,6 +16,7 @@ enum class Action {
     Rotate,
     Place,
     Remove,
+    Reset,
 };
 
 class Game {
@@ -37,6 +38,10 @@ public:
     void init(Board b, std::vector<Part> p);
     void update(Action a);
 
+    // Restore board + parts + transient state to what init() received.
+    // Same-level restart; does not re-parse the file.
+    void resetToInitial();
+
     // Snap cursor to an absolute target. If isTray, col is ignored and cursor
     // sits in the tray column (TRAY_COL). Clamps to valid range and re-syncs
     // any held part's location. Used by mouse input; keyboard still goes
@@ -46,6 +51,11 @@ public:
     static constexpr int TRAY_COL = -1;
 
 private:
+    // Snapshot of board + parts as init() received them. Used by
+    // resetToInitial() — copied (not moved) so reset can run repeatedly.
+    Board initialBoard;
+    std::vector<Part> initialParts;
+
     void handlePlace();
     void handleRemove();
     void clampCursor();

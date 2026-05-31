@@ -304,7 +304,7 @@
   - stdin 模式 prompt + 讀檔成功
 - **手動驗證通過（2026-05-22 補測）**：wasd 移動 / R 4 方向循環 / Enter 放置 / Esc 雙語意（持有→還原、盤面→拔起）/ 重疊紅框 + 錯誤訊息 / 全擺對跳 You Win banner — 全部 8 項 OK
 - 卡點：無。skeleton 的 `enum BoardInfo` 加 `: int` 是唯一對 Framework 的改動，是為了讓 `OCCUPIED + partIndex`、`CANNOT_MOVE - color` 等任意 int 值在 C++17 下合法
-- 拿到分數：**+20%**（基本 5% + 遊戲流程 15%），銀行存款 21.5% / 65%
+- 拿到分數：**+20%**（基本 5% + 遊戲流程 15%），目前分數 21.5% / 65%
 - 下一步：Phase 2 視覺打磨（動畫 + 滑鼠 + 程序材質 + 音效，預期 +15%）
 
 ## Phase 2 Day 1 done — 2026-05-22
@@ -320,7 +320,7 @@
   - 旋轉動畫 5%（[scoring.md:93](scoring.md#L93)）
   - 零件跟游標連續移動 5%（[scoring.md:94](scoring.md#L94)）
   - 進階：旋轉/移動中心不為空 1%（[scoring.md:61](scoring.md#L61)）
-- 銀行存款：21.5 → **32.5%** / 65%
+- 目前分數：21.5 → **32.5%** / 65%
 - 卡點與設計演進：
   - Day 1 第一版用 `std::fmod` 做 shortest-arc 角度 lerp，使用者驗證時 D 項（4 次旋轉方向一致）報失敗 → 換成 `rotateCount` 單調累加，避免 mod 邊角
   - Day 1.5 加白色圓點當 pivot marker，使用者要求改成「中心格亮色覆蓋」+ 旋轉時 pivot 應該完全不動 → Day 1.6 把 cursor 語意從 bbox top-left 改成 pivot target，內部用 `rotatedCenterCell` offset 換算
@@ -338,7 +338,7 @@
 - 拿到分數：**+4%**
   - 實作 GUI 2.5%（[scoring.md:90](scoring.md#L90)）
   - 使用圖片或特別材質 1.5%（[scoring.md:92](scoring.md#L92)）— 程序材質：高光帶 + bevel 構成 cell 的「鏡面/金屬」質感
-- 銀行存款：32.5 → **36.5%** / 65%
+- 目前分數：32.5 → **36.5%** / 65%
 - 驗證：使用者跑 `./build/game docs/io/Example1.txt` 手動驗收 8 項全綠 — 背景漸層、板面圓角、tray 圓角、cell 程序材質、drop shadow、中心格仍亮、Win banner 圓角、Phase 1 流程零退化
 - 卡點：無。一次寫一次過、smoke OK、目視驗收通過
 - 下一步：Day 2b 滑鼠（tray hover/拖曳/左鍵放置/右鍵 cancel） → Day 2c 音效（4 個 wav 接 raylib LoadSound）
@@ -363,7 +363,7 @@
     3. 第三版（2026-05-24）pixel-perfect 從 tray 撿起起算 — 把 mouseDrag 條件從「on board + held」放寬成「held」，點 tray slot 那一 frame 就立刻跟手 + scale 1.0
   - cursor 仍是 cell-quantized — 紅綠預覽框 + canPlace 仍用 cell；視覺與 cursor 解耦：「框框瞄準、視覺跟手」
 - 拿到分數：**+0%**（rubric 完整性而已，wasd/Enter 已涵蓋滑鼠分項）
-- 銀行存款：36.5% / 65%（不變）
+- 目前分數：36.5% / 65%（不變）
 - 卡點：無。build 0 warning 0 error、smoke OK
 - **使用者目視驗收（2026-05-24 通過）**：
   - [x] 滑鼠移到 tray 第 N 個 slot → 左鍵 → 撿起該 part（且**從 tray 撿起那一 frame 就跟手** — 第三版補的）
@@ -390,11 +390,106 @@
   - 一個 frame 最多放一個音：避免最後 place 時同 frame 觸發 place + win 雙音（PlaySound 對同個 Sound 第二次呼叫會中斷前次）
   - `IsSoundValid` guard：缺檔/載入失敗回 false、靜音不 crash（鼓勵漸進補資產）
 - 拿到分數：**+1%**（音效 1%、[scoring.md:91](scoring.md#L91)）
-- 銀行存款：36.5 → **37.5%** / 65%
+- 目前分數：36.5 → **37.5%** / 65%
 - Phase 2 圖形介面分項 15% / 15% 全到位（GUI 2.5 + 音效 1 + 材質 1.5 + 旋轉動畫 5 + 跟游標 5）
 - 卡點：raylib 5.5 把 `IsSoundReady`（5.0）改名為 `IsSoundValid` — 第一次 build compile error → grep `/opt/homebrew/Cellar/raylib/5.5/include/raylib.h` 確認 → replace_all 一次修好
 - 驗證：
   - Build 0 warning 0 error；post-build copy 確認 `build/assets/sfx/` 5 檔到位
   - Smoke `./build/game ../docs/io/Example1.txt` 1.5 秒、`grep -iE "audio|sound|wave"` raylib log：`AUDIO: Device initialized successfully | Backend: miniaudio | Core Audio` + 4 個音檔各自 `FILEIO: ... File loaded successfully` + `WAVE: Data loaded successfully (44100 Hz, 32 bit, 2 channels)`、無 error 無 warn
   - **手動驗收通過**（2026-05-24，6 項全綠 + 額外暴露 Phase 1 keyboard-era `autoSelectNextUnplaced` 殘留 bug — 開檔零件自動跟手、放完自動接下一個；獨立 commit 修掉、不算 Day 2c 退化）
-- 下一步：auto-select bugfix commit 後 → Phase 2 closeout → Phase 3 規劃（雙色 + 進階功能，§7 展開）
+- 下一步：~~auto-select bugfix commit 後~~（已於 `c33d562` commit）→ Phase 2 closeout → Phase 3 規劃（雙色 + 進階功能，§7 展開）
+
+
+## Phase 3 issue 01-reset done — 2026-05-24（驗收通過 / commit `a22ea8b`）
+
+- 完成項目（對應 [issues/phase-3/01-reset.md](issues/phase-3/01-reset.md) must-have）：
+  - [src/core/Game.h](../src/core/Game.h)：`enum class Action` 加 `Reset`、新 private 成員 `Board initialBoard;` / `std::vector<Part> initialParts;`、新 public method `void resetToInitial();`
+  - [src/core/Game.cpp](../src/core/Game.cpp)：`init()` 在 `std::move(b/p)` 之後從成員 copy 一份到 `initialBoard / initialParts`（此時 Part 視覺欄位都還是 default，剛好乾淨）；`update()` 在 `if (won) return;` **之前**處理 `Action::Reset → resetToInitial()`，讓勝利後也能重來；`resetToInitial()` 把 `board = initialBoard; parts = initialParts;` + cursor / held / won / mouseControlling 還原 + `statusMessage = "Board reset."`；switch 補 `case Action::Reset: break;` 給 `-Wswitch`
+  - [src/ui/Input.cpp](../src/ui/Input.cpp)：拆掉原本 `KEY_ESCAPE || KEY_BACKSPACE → Remove` 的 OR；改成 `KEY_ESCAPE → Remove`、`KEY_BACKSPACE → Reset` 兩條獨立判斷
+- 設計選擇：
+  - 用 deep copy（value copy）snapshot，而非保留檔案路徑 re-parse — `Board` / `Part` 全是 vector + POD，預設 copy 就是 deep copy，零自寫 boilerplate；中途檔案被改 / 刪也不影響 reset；不需把檔案路徑塞進 `Game`
+  - 不新增 hotkey 衝突：Esc 仍是 Remove（保留「取消 held / 拔起」語意），Backspace 從 Remove 的 duplicate 解放出來當 Reset
+  - 沒做 Polish 區的「零件從當前位置 lerp 飛回 tray」 — 跟 issue 列的 trap「`visualInitialized` 要歸 false 否則下 frame 從錯的視覺位置 lerp」打架，須額外設計才不互相牴觸；must-have 先穩拿 1%
+- 拿到分數：**+1%**（重置盤面 1%、[scoring.md:56](scoring.md#L56)）
+- 目前分數：37.5 → **38.5%** / 65%
+- 驗證：
+  - Build 0 warning 0 error（cmake --build build）
+  - **手動驗收通過**（2026-05-24）：`./build/game docs/io/Example1.txt` 跑了 6 條 Manual Tests + 3 條 Regression Checks（issue [01-reset](issues/phase-3/01-reset.md#L132)），全綠 — 放幾個零件 → Backspace → 全部回 tray；旋轉後 reset → rotate 回 CW_0；拿著零件 reset → held state 清掉；快勝利時 reset → won=false 可繼續；勝利後 reset → 重新可玩；reset 後再勝一次；鍵盤 / 滑鼠 / Phase 2 動畫 / 音效零退化
+- 下一步：接 issue 02-new-game 或 phase-3 其他項目（auto-select bugfix 早已在 `c33d562` 獨立 commit；reset 已於 `a22ea8b` commit）
+
+## Phase 3 issue 02-new-game done — 2026-05-29（驗收通過 / commit `7240b43`）
+
+- 完成項目（對應 [issues/phase-3/02-new-game.md](issues/phase-3/02-new-game.md) must-have）：
+  - [src/main.cpp](../src/main.cpp)：新增 `AppState { Menu, InGame }`，讓同一個 process 可在遊戲與 menu 之間切換
+  - 保留 `argv[1]` 直接載入關卡進 InGame；沒給 argv 時進 minimal level menu
+  - 遊戲中或勝利後按 `N` 回 menu；menu 透過 Enter / Space / 左鍵選關後重新 `Parser::parse(...)` + `Game::init(...)`
+  - `findLevels()` 優先掃 `assets/levels/*.txt`，若不存在則 fallback 到 `docs/io/*.txt`，方便目前 repo 直接選 Example1–6
+  - 切關後重設音效 baseline，避免新關第一 frame 誤觸發 pickup/place/win 音效；音效 device / sound assets 仍維持 process-level 載入，不隨關卡重載
+- 拿到分數：**+1%**（新遊戲 1%、[scoring.md:57](scoring.md#L57)），目前分數 38.5 → **39.5%** / 65%
+- 已驗證：
+  - `cmake --build build` 成功
+  - `./build/game /nonexistent.txt` 維持既有 invalid-path 行為：印 `Cannot open file...`、exit 1、不開視窗
+- 手動驗收通過（2026-05-29）：
+  - 不給 argv 啟動 → menu 出現 Example1–6 → 選 Example1 進 InGame
+  - InGame 放幾個零件 → 按 `N` 回 menu → 選 Example2 → 新關卡乾淨載入
+  - 勝利後按 `N` → 回 menu → 選另一關，不殘留 win banner
+  - Backspace reset 仍只重來同關，不回 menu
+- 下一步：接 [03-main-menu](issues/phase-3/03-main-menu.md) 做完整主畫面 polish
+
+## Phase 3 issue 03-main-menu done — 2026-05-29（驗收通過 / 待 commit）
+
+- 完成項目（對應 [issues/phase-3/03-main-menu.md](issues/phase-3/03-main-menu.md) must-have / polish）：
+  - [assets/levels](../assets/levels)：新增 `Example1.txt` ~ `Example6.txt`，讓 menu 正式從 packaged assets 掃關卡；CMake 現有 post-build copy 會同步到 `build/assets/levels`
+  - [src/main.cpp](../src/main.cpp)：`findLevels()` 改為只掃 `assets/levels/*.txt`，不再依賴 `docs/io` fallback；missing / empty folder 會顯示 no playable levels 訊息，不 crash
+  - menu list 維持 filename-only、ASCII sort；新增 `menuVisibleStart(...)`，關卡超過 6 個時可圍繞 selected 捲動顯示
+  - hover highlight 與 keyboard selection 解耦：滑鼠移動時更新 selected，滑鼠靜止時 Up/Down 可正常切換；hover row 仍有獨立框色提示，left click 仍可直接點選
+  - 主畫面沿用 Phase 2 visual language：Exo 2 字體、ORIGINIUM / CIRCUIT REPAIR 標題、圓角面板、全屏漸層、cyan highlight
+- 拿到分數：**+1%**（精美主畫面 / 關卡選擇 1%、[scoring.md:58](scoring.md#L58)），目前分數 39.5 → **40.5%** / 65%
+- 已驗證：
+  - `cmake --build build` 成功
+  - `build/assets/levels/Example1.txt` ~ `Example6.txt` 存在
+  - `./build/game /nonexistent.txt` 維持既有 invalid-path 行為：印 `Cannot open file...`、exit 1、不開視窗
+- 手動驗收通過（2026-05-29）：
+  - `./build/game` 不給 argv → 主畫面顯示，列表來自 `assets/levels`
+  - hover 有 highlight；滑鼠停著時 Up/Down 不會被 hover 拉回
+  - Enter / 左鍵選關可進 InGame；InGame 按 `N` 回 menu
+  - `./build/game docs/io/Example1.txt` 給 argv → 直接進關卡，不出現主畫面
+- 下一步：建議接 [05-dual-color](issues/phase-3/05-dual-color.md)，再接 [04-row-col-hints](issues/phase-3/04-row-col-hints.md)
+
+## Phase 3 issue 05-dual-color code complete — 2026-05-29（待手動驗收）
+
+- 完成項目（對應 [issues/phase-3/05-dual-color.md](issues/phase-3/05-dual-color.md) must-have）：
+  - [src/ui/Renderer.cpp](../src/ui/Renderer.cpp)：`drawConstraints` 移除 `const int color = 0` 單色 hardcode，改為 `for (color = 0; color < board.colors; ++color)`。
+  - 雙色 layout：column hints 依顏色往 board 上方堆疊，row hints 依顏色往 board 左側堆疊；單色維持接近原本間距。
+  - `computeLayout` 依 `board.colors` 增加 top / left reserve，避免雙色提示壓到 sidebar 或貼太近 board。
+  - tray 色條與盤面零件本體改用 `Part::colorIndex` 對應 `colorBadge(...)`，讓零件、固定格、constraint hint 的色彩語意一致。
+- 拿到分數：**待驗收**。驗收通過後可入帳雙色設定檔載入與遊玩 2%（[scoring.md:62](scoring.md#L62)）；助教 demo 雙色測資 +2%（[scoring.md:63](scoring.md#L63)）留到 demo day 用 argv 載入實測。
+- 已驗證：
+  - `cmake --build build` 成功。
+  - `./build/game docs/io/Example5.txt` 啟動 smoke 通過：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+  - `./build/game docs/io/Example6.txt` 啟動 smoke 通過：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+- 待手動驗收：
+  - Example5 / Example6 目視確認兩色 row / column hints 都顯示、顏色可分辨且不遮 sidebar。
+  - Example5 / Example6 實際放置 / 拔除 / 旋轉正常，並可達成 win。
+  - Example1–4 單色 layout 不退化。
+- 下一步：手動驗收雙色；通過後更新 STATUS 分數，再接 [04-row-col-hints](issues/phase-3/04-row-col-hints.md)。
+
+## Phase 3 issue 04-row-col-hints code complete — 2026-05-29（待手動驗收）
+
+- 完成項目（對應 [issues/phase-3/04-row-col-hints.md](issues/phase-3/04-row-col-hints.md) must-have）：
+  - [src/core/Board.h](../src/core/Board.h) / [Board.cpp](../src/core/Board.cpp)：新增 `currentFilledForColor(int color, int idx, bool isRow, const std::vector<Part>& parts) const`，統一計算某色在指定 row / column 的目前填滿格數。
+  - [src/core/WinChecker.cpp](../src/core/WinChecker.cpp)：改用 `Board::currentFilledForColor(...)` 判斷 row / column 是否等於 constraint，避免 Renderer 與 WinChecker 各算一套。
+  - [src/ui/Renderer.cpp](../src/ui/Renderer.cpp)：constraint hint 從 `current/need` 文字版 polish 成條狀 UI，需求數 = 條數，目前填滿的條亮起。
+  - Hint 狀態：不足時保留對應色描邊、剛好滿足時亮綠；超出時只有多出來的 segments 變紅，不把整組染紅。
+  - 雙色 column hints 在同一欄上方左右分 lane；雙色 row hints 在同一列左側上下分 lane，並從靠近棋盤的內側開始填。
+- 拿到分數：**待驗收**。驗收通過後可入帳「某列/欄滿足或超出需求時周圍提示」1%（[scoring.md:59](scoring.md#L59)）與「周圍顯示每列每欄目前填滿格數」1%（[scoring.md:60](scoring.md#L60)）。
+- 已驗證：
+  - `cmake --build build` 成功。
+  - `./build/game docs/io/Example1.txt` 啟動 smoke 通過：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+  - `./build/game docs/io/Example5.txt` 啟動 smoke 通過：raylib 初始化並進入視窗 loop，無 parse error / crash；用 Ctrl-C 關閉。
+- 待手動驗收：
+  - Example1 空盤時 hints 顯示對應需求條數，放置後相關 row / column 條狀狀態立即增加，拔除後立即減少。
+  - 不足時保留色框、剛好滿足時亮綠、超出時只有多出的 segments 變紅。
+  - Example5/6 雙色 current / need 各自獨立計算，不互相混色。
+  - Hint 不遮盤面、不擠 sidebar，Phase 2 視覺與遊玩流程零退化。
+- 下一步：手動驗收 04 + 05；通過後更新 STATUS 分數，Phase 3 進階功能剩助教 demo 測資與後續大項。

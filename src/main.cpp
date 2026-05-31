@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -217,11 +218,8 @@ int sumRotateCount(const Game& g) {
 
 // --- Level editor (Phase 5) ---
 
-// Part-designer paint grid (sidebar, lower-left). Shared by draw + hit-test.
-constexpr int kPaintN    = 5;
-constexpr int kPaintCell = 30;
-constexpr int kPaintX    = 60;
-constexpr int kPaintY    = 396;
+// Part-designer paint grid dimension (NxN canvas; trimmed to bbox on add).
+constexpr int kPaintN = 5;
 
 Color editorColorBadge(unsigned i) {
     static const Color cs[] = {
@@ -254,106 +252,184 @@ std::string exportEditorLevel(const Editor& ed) {
     return path.string();
 }
 
-void drawEditor(const Editor& ed, int selIdx, const std::vector<std::vector<bool>>& paint,
-                const std::string& msg, Font font, int sw, int sh) {
+enum class EditorResult { Stay, Play, Menu };
+
+// Immediate-mode editor: draws and handles mouse input in one pass. Click a
+// board cell to apply the active tool (erase / block / fix); click the number
+// boxes around the board to adjust that color's row/column requirement
+// (left = +1, right = -1); paint a shape in the designer and ADD it as a part.
+EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& tool,
+                       std::string& msg, Font font, int sw, int sh) {
+    const Vector2 mp = GetMousePosition();
+    const bool lc = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    const bool rc = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
+    const Color cyan = Color{109, 236, 218, 255};
+    const Color text = Color{232, 244, 245, 255};
+    const Color cur  = editorColorBadge(ed.currentColor);
+
+    auto hit = [&](Rectangle r) { return CheckCollisionPointRec(mp, r); };
+    auto button = [&](Rectangle r, const char* label, bool active, float fs = 16.0f) -> bool {
+        const bool over = hit(r);
+        DrawRectangleRounded(r, 0.22f, 5,
+            active ? Color{36, 55, 61, 255} : over ? Color{40, 48, 60, 255} : Color{26, 31, 41, 255});
+        DrawRectangleRoundedLinesEx(r, 0.22f, 5, active ? 2.0f : 1.0f,
+            active ? cyan : over ? Color{120, 150, 170, 255} : Color{72, 94, 112, 255});
+        editorCenteredText(font, label, r.x + r.width / 2, r.y + r.height / 2, fs, text);
+        return over && lc;
+    };
+
+    EditorResult result = EditorResult::Stay;
+    if (IsKeyPressed(KEY_ESCAPE)) result = EditorResult::Menu;
+
     DrawRectangleGradientV(0, 0, sw, sh, Color{22, 29, 43, 255}, Color{9, 12, 20, 255});
 
+    // Adaptive board geometry (right of the sidebar).
     const int M = static_cast<int>(ed.board.rows);
     const int N = static_cast<int>(ed.board.cols);
-    const int cell = 56;
-    const int boardX = (sw - N * cell) / 2 + 90;
-    const int boardY = (sh - M * cell) / 2 + 10;
-    const Color cur = editorColorBadge(ed.currentColor);
-    const Color cyan = Color{109, 236, 218, 255};
+    const int availW = sw - 360 - 40;
+    const int availH = sh - 170;
+    int cell = std::min(availW / std::max(1, N), availH / std::max(1, M));
+    cell = std::max(26, std::min(cell, 60));
+    const int boardX = 372 + (availW - N * cell) / 2;
+    const int boardY = 120 + (availH - M * cell) / 2;
+    const int nb = std::min(cell - 2, 30);  // number-box size
 
-    // Board cells.
-    for (int r = 0; r < M; ++r) {
-        for (int c = 0; c < N; ++c) {
-            Rectangle rc = {(float)(boardX + c * cell), (float)(boardY + r * cell),
-                            (float)(cell - 4), (float)(cell - 4)};
-            DrawRectangleRounded(rc, 0.15f, 6, Color{45, 50, 62, 255});
-            DrawRectangleRoundedLinesEx(rc, 0.15f, 6, 1.0f, Color{80, 90, 110, 255});
-        }
-    }
+    // ---- Sidebar ----
+    Rectangle panel = {24.0f, 20.0f, 320.0f, (float)sh - 40};
+    DrawRectangleRounded(panel, 0.04f, 8, Color{18, 22, 32, 235});
+    DrawRectangleRoundedLinesEx(panel, 0.04f, 8, 1.0f, Color{72, 94, 112, 255});
+    DrawTextEx(font, "LEVEL EDITOR", Vector2{44, 34}, 24.0f, 1.2f, text);
+    DrawTextEx(font, "CIRCUIT DESIGNER", Vector2{45, 62}, 13.0f, 1.4f, cyan);
 
-    // Constraint slots for the current color: row reqs (left), col reqs (top).
-    const int box = 38;
-    auto drawSlot = [&](int x, int y, unsigned val, bool sel) {
-        Rectangle r = {(float)x, (float)y, (float)box, (float)box};
-        DrawRectangleRounded(r, 0.2f, 5, sel ? Color{36, 55, 61, 255} : Color{26, 31, 41, 255});
-        DrawRectangleRoundedLinesEx(r, 0.2f, 5, sel ? 2.0f : 1.0f, sel ? cyan : cur);
-        char buf[16];
-        std::snprintf(buf, sizeof(buf), "%u", val);
-        editorCenteredText(font, buf, x + box / 2.0f, y + box / 2.0f, 20.0f,
-                           Color{232, 244, 245, 255});
+    float y = 92;
+    auto stepper = [&](const char* label, int value, int lo, int hi, std::function<void(int)> apply) {
+        DrawTextEx(font, label, Vector2{44, y + 5}, 15.0f, 1.0f, Color{174, 191, 203, 255});
+        if (button({168, y, 26, 26}, "-", false)) apply(std::max(lo, value - 1));
+        char b[8]; std::snprintf(b, sizeof(b), "%d", value);
+        editorCenteredText(font, b, 224, y + 13, 18.0f, text);
+        if (button({250, y, 26, 26}, "+", false)) apply(std::min(hi, value + 1));
+        y += 34;
     };
-    for (int r = 0; r < M; ++r) {
-        drawSlot(boardX - box - 8, boardY + r * cell + (cell - box) / 2,
-                 ed.constraintAt(ed.currentColor, r, true), selIdx == r);
+    stepper("ROWS",   M, 1, Editor::kMaxDim,    [&](int v){ ed.setSize(v, ed.board.cols); });
+    stepper("COLS",   N, 1, Editor::kMaxDim,    [&](int v){ ed.setSize(ed.board.rows, v); });
+    stepper("COLORS", (int)ed.board.colors, 1, Editor::kMaxColors, [&](int v){ ed.setColorCount(v); });
+
+    // Color picker.
+    y += 4;
+    DrawTextEx(font, "COLOR", Vector2{44, y}, 14.0f, 1.2f, Color{150, 166, 180, 255});
+    for (int i = 0; i < (int)ed.board.colors; ++i) {
+        Rectangle sw_ = {110.0f + i * 40, y - 4, 32, 22};
+        DrawRectangleRounded(sw_, 0.3f, 5, editorColorBadge(i));
+        if ((int)ed.currentColor == i)
+            DrawRectangleRoundedLinesEx(sw_, 0.3f, 5, 2.5f, cyan);
+        if (hit(sw_) && lc) ed.currentColor = (unsigned)i;
     }
-    for (int c = 0; c < N; ++c) {
-        drawSlot(boardX + c * cell + (cell - box) / 2, boardY - box - 8,
-                 ed.constraintAt(ed.currentColor, c, false), selIdx == M + c);
-    }
+    y += 34;
 
-    // Sidebar — params + key legend.
-    Rectangle panel = {24.0f, 20.0f, 300.0f, 300.0f};
-    DrawRectangleRounded(panel, 0.06f, 8, Color{18, 22, 32, 230});
-    DrawRectangleRoundedLinesEx(panel, 0.06f, 8, 1.0f, Color{72, 94, 112, 255});
-    DrawTextEx(font, "LEVEL EDITOR", Vector2{44, 36}, 26.0f, 1.2f, Color{232, 244, 245, 255});
+    // Tools.
+    DrawTextEx(font, "CELL TOOL", Vector2{44, y}, 14.0f, 1.2f, Color{150, 166, 180, 255});
+    y += 22;
+    if (button({44, y, 84, 30}, "ERASE", tool == 0)) tool = 0;
+    if (button({134, y, 84, 30}, "BLOCK", tool == 1)) tool = 1;
+    if (button({224, y, 84, 30}, "FIX",   tool == 2)) tool = 2;
+    y += 40;
+    DrawTextEx(font, "Click board: apply  ·  R-click: erase", Vector2{44, y}, 13.0f, 1.0f,
+               Color{130, 146, 160, 255});
+    y += 26;
 
-    char line[96];
-    std::snprintf(line, sizeof(line), "Size: %d x %d     Colors: %u", M, N, ed.board.colors);
-    DrawTextEx(font, line, Vector2{44, 86}, 18.0f, 1.0f, Color{174, 191, 203, 255});
-
-    DrawTextEx(font, "Editing color:", Vector2{44, 116}, 18.0f, 1.0f, Color{174, 191, 203, 255});
-    DrawRectangleRounded(Rectangle{196, 118, 40, 18}, 0.6f, 6, cur);
-
-    const char* help[] = {
-        "Z/X rows   C/V cols",
-        "K/L colors   Tab color",
-        "Up/Down pick slot",
-        "Left/Right value -/+",
-        "A add part   D del last",
-        "E export   P play   Esc menu",
-    };
-    float y = 156;
-    for (const char* h : help) {
-        DrawTextEx(font, h, Vector2{44, y}, 16.0f, 1.0f, Color{150, 166, 180, 255});
-        y += 26;
-    }
-
-    // Part-designer panel — paint a shape, A adds it as a part of the current color.
-    Rectangle dpanel = {24.0f, 332.0f, 300.0f, 368.0f};
-    DrawRectangleRounded(dpanel, 0.06f, 8, Color{18, 22, 32, 230});
-    DrawRectangleRoundedLinesEx(dpanel, 0.06f, 8, 1.0f, Color{72, 94, 112, 255});
-    DrawTextEx(font, "PART DESIGNER", Vector2{44, 346}, 18.0f, 1.2f, Color{174, 191, 203, 255});
-    DrawRectangleRounded(Rectangle{210, 348, 40, 16}, 0.6f, 6, cur);
-
+    // Part designer.
+    DrawTextEx(font, "PART DESIGNER", Vector2{44, y}, 15.0f, 1.2f, Color{174, 191, 203, 255});
+    DrawRectangleRounded(Rectangle{200, y, 34, 16}, 0.6f, 6, cur);
+    y += 24;
+    const int pcs = 26, pgx = 60, pgy = (int)y;
     for (int r = 0; r < kPaintN; ++r) {
         for (int c = 0; c < kPaintN; ++c) {
-            Rectangle pc = {(float)(kPaintX + c * kPaintCell), (float)(kPaintY + r * kPaintCell),
-                            (float)(kPaintCell - 3), (float)(kPaintCell - 3)};
-            const bool on = r < (int)paint.size() && c < (int)paint[r].size() && paint[r][c];
+            Rectangle pc = {(float)(pgx + c * pcs), (float)(pgy + r * pcs), (float)(pcs - 3), (float)(pcs - 3)};
+            const bool on = paint[r][c];
             DrawRectangleRounded(pc, 0.18f, 4, on ? cur : Color{30, 36, 46, 255});
             DrawRectangleRoundedLinesEx(pc, 0.18f, 4, 1.0f, on ? cyan : Color{70, 82, 98, 255});
+            if (hit(pc) && lc) paint[r][c] = !paint[r][c];
+        }
+    }
+    float py = pgy + kPaintN * pcs + 8;
+    if (button({60, py, 84, 28}, "ADD", false)) {
+        const std::size_t before = ed.parts.size();
+        ed.addPart(paint, ed.currentColor);
+        if (ed.parts.size() > before) { for (auto& row : paint) std::fill(row.begin(), row.end(), false); msg = "Part added."; }
+        else msg = "Paint a shape first.";
+    }
+    if (button({150, py, 84, 28}, "DEL LAST", false)) { ed.removeLastPart(); msg = "Removed last part."; }
+    char pcount[48];
+    std::snprintf(pcount, sizeof(pcount), "PARTS: %d", (int)ed.parts.size());
+    DrawTextEx(font, pcount, Vector2{60, py + 36}, 15.0f, 1.0f, text);
+    for (int i = 0; i < (int)ed.parts.size() && i < 12; ++i)
+        DrawRectangleRounded(Rectangle{150.0f + i * 14, py + 36, 12, 15}, 0.5f, 4,
+                             editorColorBadge(ed.parts[i].colorIndex));
+
+    // Action buttons (bottom of sidebar).
+    const float ay = panel.y + panel.height - 44;
+    if (button({44, ay, 84, 30}, "EXPORT", false)) {
+        const std::string path = exportEditorLevel(ed);
+        msg = path.empty() ? "Export failed." : ("Exported: " + path);
+    }
+    if (button({134, ay, 84, 30}, "PLAY", false)) result = EditorResult::Play;
+    if (button({224, ay, 84, 30}, "MENU", false)) result = EditorResult::Menu;
+
+    // ---- Board + clickable number boxes ----
+    auto numberBox = [&](int x, int yy, int idx, bool isRow) {
+        Rectangle r = {(float)x, (float)yy, (float)nb, (float)nb};
+        DrawRectangleRounded(r, 0.25f, 5, Color{26, 31, 41, 255});
+        DrawRectangleRoundedLinesEx(r, 0.25f, 5, 1.0f, cur);
+        char b[8]; std::snprintf(b, sizeof(b), "%u", ed.constraintAt(ed.currentColor, idx, isRow));
+        editorCenteredText(font, b, x + nb / 2.0f, yy + nb / 2.0f, 17.0f, text);
+        if (hit(r)) {
+            if (lc) ed.adjustConstraint(ed.currentColor, idx, isRow, +1);
+            if (rc) ed.adjustConstraint(ed.currentColor, idx, isRow, -1);
+        }
+    };
+    for (int r = 0; r < M; ++r)
+        numberBox(boardX - nb - 6, boardY + r * cell + (cell - nb) / 2, r, true);
+    for (int c = 0; c < N; ++c)
+        numberBox(boardX + c * cell + (cell - nb) / 2, boardY - nb - 6, c, false);
+
+    for (int r = 0; r < M; ++r) {
+        for (int c = 0; c < N; ++c) {
+            Rectangle cellRect = {(float)(boardX + c * cell), (float)(boardY + r * cell),
+                                  (float)(cell - 4), (float)(cell - 4)};
+            const int v = ed.board._boardInfo[r][c];
+            if (v == Board::CANNOT_PLACE) {
+                DrawRectangleRounded(cellRect, 0.15f, 6, Color{28, 30, 38, 255});
+                DrawRectangleRoundedLinesEx(cellRect, 0.15f, 6, 1.0f, Color{200, 80, 80, 255});
+                editorCenteredText(font, "X", cellRect.x + cellRect.width / 2,
+                                   cellRect.y + cellRect.height / 2, 22.0f, Color{200, 80, 80, 255});
+            } else if (Board::isCannotMove(v)) {
+                const Color cc = editorColorBadge((unsigned)Board::cannotMoveColor(v));
+                DrawRectangleRounded(cellRect, 0.15f, 6,
+                    Color{(unsigned char)(cc.r / 3), (unsigned char)(cc.g / 3), (unsigned char)(cc.b / 3), 255});
+                DrawRectangleRoundedLinesEx(cellRect, 0.15f, 6, 1.5f, cc);
+                editorCenteredText(font, "=", cellRect.x + cellRect.width / 2,
+                                   cellRect.y + cellRect.height / 2, 22.0f, cc);
+            } else {
+                DrawRectangleRounded(cellRect, 0.15f, 6, Color{45, 50, 62, 255});
+                DrawRectangleRoundedLinesEx(cellRect, 0.15f, 6, 1.0f, Color{80, 90, 110, 255});
+            }
+            if (hit(cellRect)) {
+                DrawRectangleRoundedLinesEx(cellRect, 0.15f, 6, 2.0f, cyan);
+                if (lc) {
+                    if (tool == 0) ed.clearCell(r, c);
+                    else if (tool == 1) ed.setBlocked(r, c);
+                    else ed.setFixed(r, c, ed.currentColor);
+                }
+                if (rc) ed.clearCell(r, c);
+            }
         }
     }
 
-    char pcount[64];
-    std::snprintf(pcount, sizeof(pcount), "PARTS: %d", (int)ed.parts.size());
-    DrawTextEx(font, pcount, Vector2{44, (float)(kPaintY + kPaintN * kPaintCell + 8)}, 16.0f, 1.0f,
-               Color{232, 244, 245, 255});
-    for (int i = 0; i < (int)ed.parts.size() && i < 14; ++i) {
-        DrawRectangleRounded(Rectangle{140.0f + i * 13, (float)(kPaintY + kPaintN * kPaintCell + 8),
-                                       11, 14}, 0.5f, 4, editorColorBadge(ed.parts[i].colorIndex));
-    }
+    if (!msg.empty())
+        DrawTextEx(font, msg.c_str(), Vector2{(float)boardX, (float)(boardY + M * cell + 16)},
+                   16.0f, 1.0f, Color{255, 203, 126, 255});
 
-    if (!msg.empty()) {
-        DrawTextEx(font, msg.c_str(),
-                   Vector2{(float)boardX, (float)(boardY + M * cell + 18)}, 16.0f, 1.0f,
-                   Color{255, 203, 126, 255});
-    }
+    return result;
 }
 
 } // namespace
@@ -409,7 +485,7 @@ int main(int argc, char** argv) {
     std::string menuMessage;
 
     Editor editor;
-    int editorSel = 0;            // 0..M-1 = row slot, M..M+N-1 = col slot
+    int editorTool = 1;           // 0=erase, 1=block, 2=fix
     std::string editorMessage;
     std::vector<std::vector<bool>> paintGrid(kPaintN, std::vector<bool>(kPaintN, false));
     auto clearPaint = [&]() {
@@ -458,83 +534,26 @@ int main(int argc, char** argv) {
                 }
                 if (IsKeyPressed(KEY_E)) {
                     editor = Editor();
-                    editorSel = 0;
+                    editorTool = 1;
                     editorMessage.clear();
                     clearPaint();
                     appState = AppState::Editor;
                 }
                 drawMenu(levels, selectedLevel, hover, menuMessage, menuFont, sw, sh);
             } else if (appState == AppState::Editor) {
-                const int M = static_cast<int>(editor.board.rows);
-                const int N = static_cast<int>(editor.board.cols);
-                const int slotCount = M + N;
-
-                if (IsKeyPressed(KEY_Z)) editor.setSize(M - 1, N);
-                if (IsKeyPressed(KEY_X)) editor.setSize(M + 1, N);
-                if (IsKeyPressed(KEY_C)) editor.setSize(M, N - 1);
-                if (IsKeyPressed(KEY_V)) editor.setSize(M, N + 1);
-                if (IsKeyPressed(KEY_K)) editor.setColorCount(static_cast<int>(editor.board.colors) - 1);
-                if (IsKeyPressed(KEY_L)) editor.setColorCount(static_cast<int>(editor.board.colors) + 1);
-                if (IsKeyPressed(KEY_TAB) && editor.board.colors > 1) {
-                    editor.currentColor = (editor.currentColor + 1) % editor.board.colors;
-                }
-
-                // Re-clamp selection (size may have changed this frame).
-                if (editorSel >= slotCount) editorSel = std::max(0, slotCount - 1);
-                if (IsKeyPressed(KEY_DOWN)) editorSel = (editorSel + 1) % std::max(1, slotCount);
-                if (IsKeyPressed(KEY_UP))   editorSel = (editorSel + slotCount - 1) % std::max(1, slotCount);
-
-                const bool isRow = editorSel < M;
-                const int  idx   = isRow ? editorSel : editorSel - M;
-                if (IsKeyPressed(KEY_RIGHT)) editor.adjustConstraint(editor.currentColor, idx, isRow, +1);
-                if (IsKeyPressed(KEY_LEFT))  editor.adjustConstraint(editor.currentColor, idx, isRow, -1);
-
-                // Part designer: click paints a cell; A adds the shape as a part, D deletes last.
-                if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                    const Vector2 mp = GetMousePosition();
-                    const int pcc = (static_cast<int>(mp.x) - kPaintX) / kPaintCell;
-                    const int prr = (static_cast<int>(mp.y) - kPaintY) / kPaintCell;
-                    if (mp.x >= kPaintX && mp.y >= kPaintY &&
-                        prr >= 0 && prr < kPaintN && pcc >= 0 && pcc < kPaintN) {
-                        paintGrid[prr][pcc] = !paintGrid[prr][pcc];
-                    }
-                }
-                if (IsKeyPressed(KEY_A)) {
-                    const std::size_t before = editor.parts.size();
-                    editor.addPart(paintGrid, editor.currentColor);
-                    if (editor.parts.size() > before) {
-                        clearPaint();
-                        editorMessage = "Part added.";
-                    } else {
-                        editorMessage = "Paint a shape in the designer first.";
-                    }
-                }
-                if (IsKeyPressed(KEY_D)) {
-                    editor.removeLastPart();
-                    editorMessage = "Removed last part.";
-                }
-
-                if (IsKeyPressed(KEY_E)) {
-                    const std::string path = exportEditorLevel(editor);
-                    editorMessage = path.empty() ? "Export failed." : ("Exported: " + path);
-                }
-                if (IsKeyPressed(KEY_P)) {
+                const EditorResult res =
+                    runEditor(editor, paintGrid, editorTool, editorMessage, menuFont, sw, sh);
+                if (res == EditorResult::Play) {
                     game.init(editor.board, editor.parts);
                     appState = AppState::InGame;
                     resetSoundBaseline();
                     editorMessage.clear();
-                }
-                if (IsKeyPressed(KEY_ESCAPE)) {
+                } else if (res == EditorResult::Menu) {
                     appState = AppState::Menu;
                     levels = findLevels();   // surface any just-exported level
                     if (selectedLevel < 0 && !levels.empty()) selectedLevel = 0;
                     editorMessage.clear();
-                    drawMenu(levels, selectedLevel, -1, menuMessage, menuFont, sw, sh);
-                    EndDrawing();
-                    continue;
                 }
-
-                drawEditor(editor, editorSel, paintGrid, editorMessage, menuFont, sw, sh);
             } else {
                 if (IsKeyPressed(KEY_N)) {
                     appState = AppState::Menu;

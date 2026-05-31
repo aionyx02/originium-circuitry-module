@@ -36,6 +36,11 @@ public:
     // the mask is empty.
     void addPart(const std::vector<std::vector<bool>>& mask, unsigned color);
     void removeLastPart();
+
+    // Direct board-cell editing (bounds-checked, no-op if out of range).
+    void setBlocked(int row, int col);            // -> CANNOT_PLACE
+    void setFixed(int row, int col, unsigned color);  // -> fixed cell of color
+    void clearCell(int row, int col);             // -> EMPTY
 };
 
 #endif

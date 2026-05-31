@@ -891,15 +891,21 @@ Solver **沒有自己重寫任何遊戲規則**：能不能放用 `Board::canPla
 
 口試重點：為什麼裁切包圍盒（畫布/零件解耦）、為什麼零件設計用滑鼠點格（直覺、與遊戲一致）、加入的零件如何直接進 `parts` 而能被 `LevelWriter` 匯出與 `Game` 試玩（同一套 `Part`，零轉換）。
 
+### immediate-mode 編輯器（draw 即 input）
+
+編輯器 UI（`main.cpp` 的 `runEditor`）用 **immediate-mode** 寫法：同一個 pass 裡，每個元件「畫出來」和「判斷有沒有被點到」用**同一份 rect 座標**。例如 `button(rect,label,active)` 一邊畫一邊回傳「這格被點了沒」。盤面格、四周數字格、側欄 `-`/`+`、色塊、工具鈕、PART DESIGNER、EXPORT/PLAY/MENU 全走這套。盤面直接點格套用工具（`Editor::setBlocked/setFixed/clearCell`），點數字格左/右鍵 `adjustConstraint` ±1。
+
+為什麼這樣：工具型畫面用 immediate-mode 比「畫一套座標 + 鍵盤狀態機選取」少很多同步 bug（不會畫的位置和判定的位置對不上），程式碼也集中好讀。
+
 ### 口試我要能講出什麼
 
 - 「設定檔格式」與 `Parser`/`LevelWriter` 互為反函數，round-trip 測試怎麼保固兩邊一致。
 - 為什麼編輯器不另立資料結構、直接用 `Board`/`Part`（匯出/試玩零轉換）。
 - `setSize` 重建時怎麼保留既有內容（overlap 複製）、`adjustConstraint` 為何夾在 0..軸長。
-- `addPart` 為何裁切到 bounding box（畫布大小與零件大小解耦）。
+- `addPart` 為何裁切到 bounding box；immediate-mode（draw 即 input）對工具型 UI 的好處。
 
 ### Score Connection
 
 - 關卡設計器：匯出純文字 2.5%（[scoring.md:85](scoring.md#L85)）— `LevelWriter` 寫 `assets/levels/custom-N.txt`，round-trip 全綠，待 GUI 驗收。
-- 關卡設計器：直接遊玩 2.5%（[scoring.md:86](scoring.md#L86)）— `P` → `Game::init`（含設計的零件）；headless 驗設計關可解，待 GUI 驗收。
-- 關卡設計器：編輯 5%（[scoring.md:75](scoring.md#L75)）— 已做 4/6（大小/顏色數/列欄數字/**任意形狀零件**）；其餘 2 項（不可放置格/固定零件）增量 2。
+- 關卡設計器：直接遊玩 2.5%（[scoring.md:86](scoring.md#L86)）— `P` → `Game::init`（含設計的零件/格）；headless 驗設計關可解，待 GUI 驗收。
+- 關卡設計器：編輯 5%（[scoring.md:75](scoring.md#L75)）— 滑鼠編輯器 **6/6 全到位**（大小/顏色數/列欄數字/任意形狀零件/不可放置格/固定零件）；headless 驗 blocked/fixed round-trip，待 GUI 驗收。

@@ -330,7 +330,7 @@
 
 | 項 | 配分 | 增量 |
 |---|---:|---|
-| 編輯功能（大小/顏色數/任意零件/不可放置/固定零件/列欄數字）6 項合計 | 5%（[scoring.md:75](scoring.md#L75)） | 1（4/6 項）+ 2 |
+| 編輯功能（大小/顏色數/任意零件/不可放置/固定零件/列欄數字）6 項合計 | 5%（[scoring.md:75](scoring.md#L75)） | **6/6 到位** |
 | 匯出純文字設定檔 | 2.5%（:85） | 1 |
 | 直接遊玩設計好的關卡 | 2.5%（:86） | 1（plumbing）|
 
@@ -344,22 +344,22 @@
 
 ### 增量切分
 
-- **增量 1（已完成代碼，待 GUI 驗收）**：LevelWriter（round-trip 驗證）+ Editor 資料模型 + 編輯（盤面大小 `Z/X`/`C/V`、顏色數 `K/L`、列/欄數字 `Up/Down`+`Left/Right`、`Tab` 切色）+ **PART DESIGNER（小網格滑鼠點格畫任意形狀、`A` 加入、`D` 刪除）** + 匯出 `E` + 試玩 `P`。涵蓋編輯 6 項中的 4 項（大小/顏色數/列欄數字/任意形狀零件）。
-- **增量 2（未開工）**：盤面上點格 toggle 不可放置格、cycle 固定零件顏色（編輯 6 項剩的 2 項）+ 編輯器美術 polish。
+- **增量 1（已完成代碼）**：LevelWriter（round-trip 驗證）+ Editor 資料模型 + 鍵盤版最小編輯 + PART DESIGNER + 匯出 + 試玩。（已被增量 2 的滑鼠版取代操作方式）
+- **增量 2 — 編輯器重做為滑鼠直接操作（已完成代碼，待 GUI 驗收）**：immediate-mode UI。側欄 `-`/`+` 改大小/顏色數、點色塊切色、CELL TOOL（ERASE/BLOCK/FIX）+ **直接點盤面格子套用工具**（不可放置格 / 固定零件）、**點盤面四周數字格左/右鍵 +1/−1**、PART DESIGNER 點格畫任意形狀 + ADD/DEL、EXPORT/PLAY/MENU 按鈕。**編輯 6 子項全到位**。`Editor` 加 `setBlocked/setFixed/clearCell`（headless round-trip 驗證）。
 
-### 增量 1 驗收清單
+### 驗收清單（滑鼠版編輯器）
 
-- [ ] 選單按 `E` → 進編輯器；改大小/顏色數/列欄數字即時反映
-- [ ] 按 `E` 匯出 → `assets/levels/custom-1.txt` 生成、畫面顯示路徑；回選單可看到並載入
-- [ ] PART DESIGNER 點格畫形狀 → `A` 加入（看 PARTS 數增加、色點出現）、`D` 刪除
-- [ ] 按 `P` → 用目前設計（含零件）直接進遊戲，零件出現在 tray 可擺放
-- [ ] 匯出檔用 `Parser` 載入無誤（round-trip headless 已驗 Example1–6 + Editor edits 全綠）
-- [ ] 通過後 STATUS 勾「匯出 2.5%」；編輯 5% / 試玩 2.5% 等增量 2 補齊零件後一起驗收
+- [ ] 選單按 `E` → 進編輯器；側欄 `-`/`+` 改大小/顏色數即時反映
+- [ ] 點 BLOCK 後點盤面格 → 變不可放置（X）；點 FIX + 選色後點格 → 變固定零件（=）；ERASE/右鍵清除
+- [ ] 點盤面四周數字格 左鍵 +1 / 右鍵 −1（依目前顏色）
+- [ ] PART DESIGNER 點格畫形狀 → `ADD`（PARTS 數 +1、色點出現）、`DEL LAST` 刪除
+- [ ] `EXPORT` → `assets/levels/custom-N.txt` 生成、顯示路徑；`MENU` 回選單可載入
+- [ ] `PLAY` → 用目前設計（含零件/固定格/不可放置格）直接進遊戲、可擺放可勝利
+- [ ] 通過後 STATUS 勾編輯 5% + 匯出 2.5% + 試玩 2.5%
 
-### 不在增量 1 做
+### 不做（本階段）
 
-- 點格畫不可放置格 / 固定零件 → 增量 2
-- 編輯器美術 polish → 之後
+- 編輯器美術 polish（與遊戲整體視覺一起，依截圖逐項調）
 
 ---
 
@@ -384,7 +384,8 @@
 | 2026-05-31 | Phase 4 / 增量1 solver | `75cf3fb` | (+1% 待 GUI 驗收) | 核心 backtracking Solver + F 鍵一鍵自動解填盤；headless 驗證 Example1–6 全解 |
 | 2026-05-31 | Phase 4 / 增量2 hints | `5096ff9` | (+5% 待 GUI 驗收) | 半透明提示 overlay + 30 秒卡關才顯示（有進度重置）；headless 驗 hintCells 幾何全綠 |
 | 2026-05-31 | Phase 5 / 增量1 editor | `ef473c0` | (待 GUI 驗收) | LevelWriter（反向 Parser）+ Editor 模型 + 編輯 + 匯出 assets/levels + 試玩；round-trip 全綠 |
-| 2026-05-31 | Phase 5 / part designer | （待 commit） | (待 GUI 驗收) | 編輯器加 PART DESIGNER：滑鼠畫任意形狀 + A 加入/D 刪除；headless 驗設計關可解 |
+| 2026-05-31 | Phase 5 / part designer | `5cc28e5` | (待 GUI 驗收) | 編輯器加 PART DESIGNER：滑鼠畫任意形狀 + A 加入/D 刪除；headless 驗設計關可解 |
+| 2026-05-31 | Phase 5 / 編輯器重做 | （待 commit） | (待 GUI 驗收) | immediate-mode 滑鼠直接操作：點盤面套用工具(BLOCK/FIX/ERASE)+點數字±+按鈕匯出/試玩；編輯 6/6 |
 
 > 各里程碑的完整過程、設計演進與驗收細節：見 [docs/log/](log/) 與封存的 [Log.md](Log.md)；現況分數見 [STATUS.md](STATUS.md)。
 

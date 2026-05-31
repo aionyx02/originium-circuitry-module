@@ -98,6 +98,24 @@ void Editor::removeLastPart() {
     if (!parts.empty()) parts.pop_back();
 }
 
+void Editor::setBlocked(int row, int col) {
+    if (!board.inBounds(row, col)) return;
+    board._boardInfo[row][col] = Board::CANNOT_PLACE;
+}
+
+void Editor::setFixed(int row, int col, unsigned color) {
+    if (!board.inBounds(row, col)) return;
+    if (board.colors == 0) return;
+    const int c = static_cast<int>(std::min(color, board.colors - 1));
+    board._boardInfo[row][col] =
+        static_cast<Board::BoardInfo>(static_cast<int>(Board::CANNOT_MOVE) - c);
+}
+
+void Editor::clearCell(int row, int col) {
+    if (!board.inBounds(row, col)) return;
+    board._boardInfo[row][col] = Board::EMPTY;
+}
+
 unsigned Editor::constraintAt(unsigned color, int idx, bool isRow) const {
     if (color >= board.colors) return 0;
     const int M = static_cast<int>(board.rows);

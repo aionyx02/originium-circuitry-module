@@ -11,6 +11,7 @@ Action Input::poll() {
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) return Action::Place;
     if (IsKeyPressed(KEY_ESCAPE)) return Action::Remove;
     if (IsKeyPressed(KEY_BACKSPACE)) return Action::Reset;
+    if (IsKeyPressed(KEY_F)) return Action::Solve;
     return Action::None;
 }
 

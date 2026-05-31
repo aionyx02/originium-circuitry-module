@@ -15,6 +15,11 @@
 > 連結若無法直接點開，用 Cmd+F 搜 Feature 名稱。  
 > 用「Phase X · commit `<short>`」標注每個 entry 在哪段 code 改動產生，方便對照原始 commit 學習。
 
+### Phase 4 增量 1 — `<待 commit>` (2026-05-31)
+自動解題 Solver（backtracking + 剪枝）— 一鍵解出並填盤
+
+- [Solver：backtracking + 剪枝 + 重用既有規則](#solverbacktracking--剪枝--重用既有規則)
+
 ### Phase 3 issue 01-reset — `<待 commit>` (2026-05-24)
 重置盤面（Reset Board）— 重來同關不必關程式
 
@@ -764,3 +769,52 @@ Renderer 和 WinChecker 都呼叫這個 helper，避免兩邊計數規則分裂�
 
 - 進階功能：某列/欄滿足或超出需求時周圍提示 1%（[scoring.md:59](scoring.md#L59)）— 程式碼完成，待手動驗收後入帳。
 - 進階功能：周圍顯示每列每欄目前填滿格數 1%（[scoring.md:60](scoring.md#L60)）— 程式碼完成，待手動驗收後入帳。
+
+---
+
+## Solver：backtracking + 剪枝 + 重用既有規則
+
+*Phase 4 增量 1 · commit `<待 commit>`*
+
+### 它在做什麼
+
+`src/core/Solver.{h,cpp}`。輸入一個盤面 `Board`（只有固定格 + 不可放置格 + 空格）和一堆未放置的零件 `vector<Part>`，找出「每個零件要放哪一格、轉幾度」使得**每個顏色的每一列、每一欄填滿的格數剛好等於需求**（就是遊戲的勝利條件）。回傳一組解（多解只給一個），無解回 `std::nullopt`。
+
+API 故意設計成**純函數**：`Solver::solve(Board, vector<Part>, nodeBudget)` 吃**傳值**（copy），不動到正在玩的 `Game`。Game 按 `F` 時呼叫它、拿到解、再套用到實際盤面。所以 Solver 完全不依賴 raylib / Game / UI，可獨立測試、也可交接給夥伴。
+
+### 演算法（為什麼選 backtracking）
+
+零件擺放是典型的**約束滿足 / 組合搜尋**問題，沒有公式解，最直觀且口試好解釋的就是 **backtracking（回溯）**：
+
+1. 依序處理每個零件。
+2. 對當前零件，枚舉「每個不同旋轉 × 盤面每個 (row, col)」。
+3. 若 `Board::canPlace` 過 → `place`（暫時放上去）→ 遞迴處理下一個零件。
+4. 下一層失敗就 `remove`（撤回），換下一個位置 / 旋轉。
+5. 所有零件都放完 → 用 `WinChecker::isWon` 做最終精確檢查；過了就是一組解。
+
+### 三個讓它夠快、夠穩的關鍵
+
+- **去重旋轉**：正方形或對稱零件轉 90°/180° 可能長一樣，先把重複的旋轉濾掉，少跑無用分支。
+- **超量剪枝**：每次放完就檢查——只要**任何一列或一欄某個顏色的填滿數已經超過需求**，這條路就死了（之後只會加格、不會減），直接回溯。這把搜尋樹砍掉非常多。
+- **最大件優先**：先放格子最多的零件（合法位置最少），讓搜尋樹在上層就變窄。
+- **node budget**：設一個展開節點上限（預設 200 萬），超過就放棄回 `nullopt`，保證 demo 當天不會卡死當機。
+
+### 為什麼「重用既有規則」很重要
+
+Solver **沒有自己重寫任何遊戲規則**：能不能放用 `Board::canPlace`、放/撤用 `Board::place`/`remove`、某列某色填滿數用 `Board::currentFilledForColor`、勝利判定用 `WinChecker::isWon`。這樣 solver 對「什麼叫解開」的定義跟玩家手動玩的定義**保證一致**，不可能出現「solver 說解開了但遊戲不認」的 bug。這也是專案 core/UI「規則只寫一份」原則的體現。
+
+### 套用解到實際盤面（`Game::solveAndApply`）
+
+從 `initialBoard`/`initialParts`（乾淨快照）去解，避免半完成的盤面干擾搜尋；解出後 reset 到初始再逐件 `place`。有個小細節：每件的 `rotateCount` 要設成跟解出的 `rotate` 對齊（renderer 的旋轉動畫是 lerp 到 `rotateCount * 90°`），否則會出現「邏輯上轉了但畫面沒轉」的視覺錯位。
+
+### 口試我要能講出什麼
+
+- backtracking 的「放→遞迴→撤回」骨架，以及它為什麼適合這種沒有公式解的擺放問題。
+- 三個剪枝/加速手段各自砍掉什麼（尤其「超量即剪枝」的正確性論證：填滿數單調遞增）。
+- 為什麼 solver 傳值、純函數、重用 Board/WinChecker——測試性、交接性、規則一致性。
+- node budget 是防呆，不是演算法的一部分。
+
+### Score Connection
+
+- 自動解題：自動解題並顯示一個解 1%（[scoring.md:67](scoring.md#L67)）— 代碼完成、headless 驗 Example1–6 全解，待 GUI 目視驗收後入帳。
+- 自動解題：解開單色 +2%（[scoring.md:68](scoring.md#L68)）/ 雙色 +2%（[scoring.md:69](scoring.md#L69)）— demo day 用 TA 測資實測。

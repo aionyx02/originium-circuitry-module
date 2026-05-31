@@ -1,6 +1,6 @@
 # 開發計劃（Plan）
 
-> 唯一的進度與決策來源。**Phase 1（§5）與 Phase 2（§6）是詳細版**，其餘階段先列大綱，等做到再展開。
+> 唯一的進度與決策來源。**Phase 1（§5）、Phase 2（§6）、Phase 4（§9）是詳細版**，其餘階段先列大綱，等做到再展開。
 
 ---
 
@@ -279,6 +279,43 @@
 
 ---
 
+## 9. Phase 4 詳細計劃（自動解題，進行中）
+
+### 目標與配分（共 10%）
+
+| 項 | 配分 | 增量 |
+|---|---:|---|
+| 自動解題並顯示一個解 | 1%（[scoring.md:67](scoring.md#L67)） | 1 |
+| 解開單色測資（demo day） | +2%（:68） | 1 |
+| 解開雙色測資（demo day） | +2%（:69） | 1 |
+| 依解答顯示半透明提示 | 2.5%（:70） | 2 |
+| 30 秒未解才顯示提示 | 2.5%（:71） | 2 |
+
+### 設計
+
+- **核心 `src/core/Solver.{h,cpp}`（純 core，不碰 raylib，夥伴可接）**：`solve(Board, vector<Part>, nodeBudget)` 傳值（不動 live game），回 `optional<vector<PartLocation>>`（對齊 parts index）。
+- **演算法**：backtracking — 最大件優先、去重旋轉、放置後「任一列/欄某色超出需求即剪枝」、node budget 防卡死、leaf 用 `WinChecker::isWon` 精確驗收。完全重用 `Board::canPlace/place/remove`、`currentFilledForColor`、`WinChecker::isWon`，不重寫規則。
+- **勝利條件**：所有 part placed 且每色每列/欄填滿數剛好等於 `_constraints[color]`（前 M 列、後 N 欄）；固定格（CANNOT_MOVE）計入該色並占格。
+
+### 增量切分
+
+- **增量 1（已完成代碼，待 GUI 驗收）**：核心 Solver + `Action::Solve` + `Game::solveAndApply()`（從 initial 快照解、套回 live board）+ Input 綁 `F` + CMake。鎖 1%，並讓 demo 能解 TA 測資（+2%/+2%）。headless 已驗 Example1–6 全解。
+- **增量 2（未開工）**：半透明提示 overlay（依 Solver 解標出待放格，2.5%）+ 30 秒 idle 計時才顯示提示（2.5%）。主要動 Renderer + main loop 計時，重用同一 Solver。
+
+### 增量 1 驗收清單
+
+- [ ] Example1–6 進遊戲按 `F` → 盤面被正確填滿、顏色/旋轉正確、跳 You Win
+- [ ] 無解的盤面按 `F` → 顯示 "No solution found." 不 crash
+- [ ] 解完按 Backspace（reset）/ `N`（新遊戲）行為正常、零退化
+- [ ] 通過後在 [STATUS.md](STATUS.md) 勾「自動解題並顯示一個解 1%」
+
+### 不在增量 1 做
+
+- 半透明 hint overlay、30 秒計時 → 增量 2
+- solver 動畫（逐步演示解題過程）→ 不做（非配分項）
+
+---
+
 ## 進度時間軸
 
 <!-- 完成一個里程碑就加一列。每列只放：日期 / commit / 分數 / 一句話。詳細過程去 docs/log/（或封存的 Log.md）。 -->
@@ -297,6 +334,7 @@
 | 2026-05-29 | Phase 3 / 03-main-menu | （待 commit） | +1% → 40.5% | `assets/levels` 掃關卡 + Exo 2 / 圓角漸層 / hover / 鍵盤選關 |
 | 2026-05-31 | Phase 3 / 05-dual-color | — | +2% → 42.5% | 雙色 Example5/6 可開可玩可勝利，零件/固定格/hints 顏色對齊 |
 | 2026-05-31 | Phase 3 / 04-row-col-hints | — | +2% → 44.5% | 條狀 row/column hints：不足色框 / 滿足亮綠 / 超出多出段變紅，即時更新 |
+| 2026-05-31 | Phase 4 / 增量1 solver | （待 commit） | (+1% 待 GUI 驗收) | 核心 backtracking Solver + F 鍵一鍵自動解填盤；headless 驗證 Example1–6 全解 |
 
 > 各里程碑的完整過程、設計演進與驗收細節：見 [docs/log/](log/) 與封存的 [Log.md](Log.md)；現況分數見 [STATUS.md](STATUS.md)。
 

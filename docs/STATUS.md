@@ -1,6 +1,6 @@
 # STATUS.md — 進度與配分追蹤
 
-> Last updated: 2026-05-31（context engineering 文件重構；分數不變，仍 44.5%）
+> Last updated: 2026-05-31（Phase 4 Solver 增量 1 代碼完成，待 GUI 驗收；分數暫仍 44.5%）
 > 路由：[index.md](index.md) ｜ 規劃：[plan.md](plan.md) ｜ 配分：[scoring.md](scoring.md) ｜ 工作規範：[CLAUDE.md](../CLAUDE.md) / [docs/CLAUDE.md](CLAUDE.md) ｜ 協作紀錄：[docs/log/](log/)（舊：[Log.md](Log.md)）
 
 > **這份檔只回答「現在到哪、勾了哪些分」**。決策原則去 CLAUDE.md，階段規劃去 plan.md。
@@ -18,13 +18,13 @@
 
 ## 目前階段
 
-**Phase 3 進行中 — issue 04/05 手動驗收通過**
+**Phase 4 進行中 — Solver 增量 1 代碼完成（待 GUI 驗收）**
 
-Phase 0–2 完成（圖形分項 **15/15 全到位**）。Phase 3 進階功能 issue 01-reset / 02-new-game / 03-main-menu / 05-dual-color / 04-row-col-hints 皆已手動驗收入帳。
+Phase 0–3 完成（圖形分項 **15/15**；進階功能皆已入帳）。Phase 4 自動解題增量 1：核心 `Solver`（backtracking + 剪枝）+ `F` 鍵一鍵自動解填盤，headless 驗證 Example1–6 全解（SOLVED+VERIFIED 6/6），**待 GUI 目視驗收後勾 1%**。詳見 [plan.md §9](plan.md)。
 
 各里程碑 commit 與一句話：[plan.md 進度時間軸](plan.md#進度時間軸)。完整過程與設計演進：[docs/log/](log/) + 封存的 [Log.md](Log.md)。
 
-**下一步**：Phase 3 剩助教 demo 測資（單色 +2% / 雙色 +2%，demo day 用 argv 載入實測）；之後 Phase 4+（Solver / Editor）。
+**下一步**：GUI 驗收 Solver（按 F 解 Example1–6）→ Phase 4 增量 2（半透明提示 + 30 秒計時）；Phase 3/4 助教 demo 測資（demo day 實測）。
 
 ---
 
@@ -62,7 +62,7 @@ Phase 0–2 完成（圖形分項 **15/15 全到位**）。Phase 3 進階功能 
 
 ### 自動解題（共 10%）
 
-- [ ] 自動解題並顯示一個解 — 1%
+- [ ] 自動解題並顯示一個解 — 1%（`F` 鍵一鍵自動解填盤；headless 驗證 Example1–6 全解，**待 GUI 目視驗收**）
 - [ ] 解開單色測資 — (+2%)
 - [ ] 解開雙色測資 — (+2%)
 - [ ] 依解答在盤面上顯示半透明提示 — 2.5%

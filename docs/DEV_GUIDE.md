@@ -101,7 +101,10 @@ CMake 設定（`CMakeLists.txt` 本身）改了才需要清；只改 .cpp/.h 用
 | `W / A / S / D` 或方向鍵 | 移動選中的零件 |
 | `R` | 旋轉零件 |
 | `Enter` / `Space` | 放置 |
-| `Esc` / `Backspace` | 拔起 |
+| `Esc` | 拔起 |
+| `Backspace` | 重置盤面為初始狀態 |
+| `F` | 自動解題（解出並填滿盤面） |
+| `N` | 回主畫面 / 開新遊戲 |
 | 視窗 X 鈕 | 關閉程式 |
 
 > `Esc` 已被改寫成「拔起零件」（`SetExitKey(KEY_NULL)`），所以不會關視窗。

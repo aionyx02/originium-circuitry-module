@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "Solver.h"
 #include "WinChecker.h"
 
 void Game::init(Board b, std::vector<Part> p) {
@@ -56,6 +57,7 @@ void Game::update(Action a) {
         }
         case Action::Place:  handlePlace();  break;
         case Action::Remove: handleRemove(); break;
+        case Action::Solve:  solveAndApply(); break;
         case Action::Reset:  break;  // handled above; listed to satisfy -Wswitch
         case Action::None: break;
     }
@@ -165,4 +167,30 @@ void Game::handleRemove() {
             board.remove(parts[partIdx]);
         }
     }
+}
+
+void Game::solveAndApply() {
+    // Always solve from the clean initial snapshot (fixed cells only, no movable
+    // part placed) so a half-finished board can't confuse the search.
+    auto solution = Solver::solve(initialBoard, initialParts);
+    if (!solution) {
+        statusMessage = "No solution found.";
+        return;
+    }
+
+    // Reset to the clean state, then drop every part where the solver said.
+    board = initialBoard;
+    parts = initialParts;
+    heldPartIdx = -1;
+    cursorRow = 0;
+    cursorCol = TRAY_COL;
+    for (std::size_t i = 0; i < parts.size(); ++i) {
+        Part& p = parts[i];
+        p.location.rotate = (*solution)[i].rotate;
+        // Keep the visual orientation in sync with the logical rotation: the
+        // renderer lerps currentAngle toward rotateCount * 90°.
+        p.rotateCount = static_cast<unsigned>((*solution)[i].rotate);
+        board.place(p, (*solution)[i].row, (*solution)[i].col);
+    }
+    statusMessage = "Solved!";
 }

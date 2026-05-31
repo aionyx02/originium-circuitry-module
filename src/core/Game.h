@@ -17,6 +17,7 @@ enum class Action {
     Place,
     Remove,
     Reset,
+    Solve,
 };
 
 class Game {
@@ -58,6 +59,7 @@ private:
 
     void handlePlace();
     void handleRemove();
+    void solveAndApply();
     void clampCursor();
     void syncHeldLocation();
 };

@@ -1,6 +1,6 @@
 # STATUS.md — 進度與配分追蹤
 
-> Last updated: 2026-05-30（Phase 3 issue 04-row-col-hints 條狀 UI polish 完成，待手動驗收）
+> Last updated: 2026-05-31（Phase 3 issue 04/05 手動驗收通過，+4% 入帳）
 > 規劃 / 策略：[plan.md](plan.md) ｜ 配分細節：[scoring.md](scoring.md) ｜ 工作規範：[CLAUDE.md](../CLAUDE.md) ｜ 協作紀錄：[LOG.md](LOG.md)
 
 > **這份檔只回答「現在到哪、勾了哪些分」**。決策原則去 CLAUDE.md，階段規劃去 plan.md。
@@ -9,7 +9,7 @@
 
 ## 目前分數
 
-**程式實作：40.5% / 65%**  
+**程式實作：44.5% / 65%**  
 口頭報告：尚未開始評估 / 60%
 
 > 每完成一個 Phase 更新一次。「目前分數」= 已穩穩拿到的分（demo 不會被扣回去的）。
@@ -18,9 +18,9 @@
 
 ## 目前階段
 
-**Phase 3 進行中 — issue 04-row-col-hints 條狀 UI polish 完成，待手動驗收**
+**Phase 3 進行中 — issue 04/05 手動驗收通過**
 
-Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）commit `6f7abcb`；Day 2b（滑鼠 hover/pixel-perfect drag/左鍵放置/右鍵 cancel）commit `59401b4`；Day 2c（音效：InitAudioDevice + 4 個 LoadSound + frame diff 觸發、CMake post-build copy assets/）commit `2ea7726`、2026-05-24 驗收通過；auto-select bugfix（Day 2c 驗收暴露的 Phase 1 殘留）commit `c33d562`。Phase 2 圖形分項 **15 / 15 全到位**。Phase 3 issue [01-reset](issues/phase-3/01-reset.md) 驗收通過（`Action::Reset` + `Game::initialBoard/Parts` 快照 + `Game::resetToInitial()` + Backspace 鍵改綁 Reset），**+1% 入帳**。Phase 3 issue [02-new-game](issues/phase-3/02-new-game.md) 已 commit `7240b43` 並手動驗收通過，**+1% 入帳**。Phase 3 issue [03-main-menu](issues/phase-3/03-main-menu.md) 驗收通過：`assets/levels/Example1-6.txt` 到位、menu 正式從 `assets/levels` 掃關卡、支援 hover highlight / keyboard selection / Exo 2 / 圓角漸層，**+1% 入帳**。Phase 3 issue [05-dual-color](issues/phase-3/05-dual-color.md) 程式碼完成：constraint hints 改為依 `board.colors` 多色顯示，零件/固定格/hints 顏色對齊。Phase 3 issue [04-row-col-hints](issues/phase-3/04-row-col-hints.md) 程式碼完成並 polish：`Board::currentFilledForColor(...)` 共用 row/column current 計算，Renderer 將 `current/need` 改成條狀 hints；不足時保留色框、滿足亮綠、超出時只有多出的 segments 變紅，雙色 column hints 左右分 lane、row hints 上下分 lane；build 通過，待手動驗收後入帳。
+Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit `0fcfcd4`；Day 2a（圓角 + 漸層 + 程序材質 + drop shadow）commit `6f7abcb`；Day 2b（滑鼠 hover/pixel-perfect drag/左鍵放置/右鍵 cancel）commit `59401b4`；Day 2c（音效：InitAudioDevice + 4 個 LoadSound + frame diff 觸發、CMake post-build copy assets/）commit `2ea7726`、2026-05-24 驗收通過；auto-select bugfix（Day 2c 驗收暴露的 Phase 1 殘留）commit `c33d562`。Phase 2 圖形分項 **15 / 15 全到位**。Phase 3 issue [01-reset](issues/phase-3/01-reset.md) 驗收通過（`Action::Reset` + `Game::initialBoard/Parts` 快照 + `Game::resetToInitial()` + Backspace 鍵改綁 Reset），**+1% 入帳**。Phase 3 issue [02-new-game](issues/phase-3/02-new-game.md) 已 commit `7240b43` 並手動驗收通過，**+1% 入帳**。Phase 3 issue [03-main-menu](issues/phase-3/03-main-menu.md) 驗收通過：`assets/levels/Example1-6.txt` 到位、menu 正式從 `assets/levels` 掃關卡、支援 hover highlight / keyboard selection / Exo 2 / 圓角漸層，**+1% 入帳**。Phase 3 issue [05-dual-color](issues/phase-3/05-dual-color.md) 程式碼完成並於 2026-05-31 手動驗收通過：Parser 依 `C` 讀多色 constraints / fixed cells / part color，constraint hints 依 `board.colors` 多色顯示，零件/固定格/hints 顏色對齊，Example5/6 可開、可玩、可勝利，**+2% 入帳**。Phase 3 issue [04-row-col-hints](issues/phase-3/04-row-col-hints.md) 程式碼完成並於 2026-05-31 手動驗收通過：`Board::currentFilledForColor(...)` 共用 row/column current 計算，`WinChecker` 與 Renderer 共用同一套 current source of truth，Renderer 將 `current/need` 改成條狀 hints；不足時保留色框、滿足亮綠、超出時只有多出的 segments 變紅，放置/拔除即時更新，雙色 column hints 左右分 lane、row hints 上下分 lane，**+2% 入帳**。助教 demo 雙色測資 +2% 保留到 demo day。
 
 ---
 
@@ -50,10 +50,10 @@ Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit
 - [x] 重置盤面為初始狀態 — 1%（Backspace 重來同關，driver = `Game::resetToInitial()` snapshot deep-copy；issue [01-reset](issues/phase-3/01-reset.md) 2026-05-24 驗收通過）
 - [x] 不關程式開新遊戲 — 1%（`N` 回 menu、選關後重新 parse + `Game::init()`；2026-05-29 手動驗收通過）
 - [x] 精美主畫面 / 關卡選擇 — 1%（`assets/levels` 動態掃關卡、Exo 2 + 圓角漸層 + hover highlight；2026-05-29 手動驗收通過）
-- [ ] 某列/欄滿足或超出需求時周圍提示 — 1%
-- [ ] 周圍顯示每列每欄目前填滿格數 — 1%
+- [x] 某列/欄滿足或超出需求時周圍提示 — 1%（條狀 hints 不足/滿足/超出狀態，2026-05-31 手動驗收通過）
+- [x] 周圍顯示每列每欄目前填滿格數 — 1%（條狀 segments 等價呈現 current/need，2026-05-31 手動驗收通過）
 - [x] 旋轉/移動中心不為空 — 1%（Phase 2 Day 1.5/1.6：`Part::computeCenterCell` 選離形心最近占據格；中心格亮色覆蓋；cursor=pivot 語意使旋轉時 pivot 螢幕位置不動）
-- [ ] 雙色設定檔載入與遊玩 — 2%
+- [x] 雙色設定檔載入與遊玩 — 2%（Example5/6 雙色 hints、零件顏色、可玩與可勝利，2026-05-31 手動驗收通過）
 - [ ] 能讀取助教 demo 測資（雙色） — (+2%)
 
 ### 自動解題（共 10%）
@@ -91,18 +91,22 @@ Phase 0 / 1 完成；Phase 2 Day 1（動畫骨架 + 旋轉/移動 pivot）commit
 - **auto-select bugfix**（2026-05-24，commit `c33d562`）：拔掉 Phase 1 keyboard-era 的 `Game::autoSelectNextUnplaced()` — 兩處呼叫（init 末 + handlePlace 放置成功後）+ 函式定義 + 宣告全刪。修掉滑鼠模式下「開檔零件自動跟手 + 放完自動接下一個」的 bug（Day 2c 驗收時暴露）。鍵盤路徑相容（cursor 初始在 TRAY_COL row 0，按 Enter 一樣撿第一件）。
 - **Phase 3 issue 01-reset**（2026-05-24，驗收通過；commit `a22ea8b`）：`Action::Reset` + `Game::initialBoard / initialParts` 快照 + `Game::resetToInitial()` + Backspace 改綁 Reset（Esc 保留 Remove 語意）。`init()` 在 `std::move` 後從成員 deep-copy 一份 snapshot；`update()` 在 `if (won) return;` 之前處理 Reset 讓勝利後也能重來。Manual tests 6 條 + Regression 3 條全綠。+1%。
 - **Phase 3 issue 02-new-game + 03-main-menu**（2026-05-29，驗收通過 / 待 commit）：`AppState { Menu, InGame }` + `N` 回 menu + 選關重新 parse/init；`assets/levels/Example1-6.txt` 正式關卡來源；主畫面 Exo 2、圓角面板、全屏漸層、hover highlight、鍵盤/滑鼠選關。Manual flow 驗收通過。+2%。
+- **Phase 3 issue 04-row-col-hints + 05-dual-color**（2026-05-31，手動驗收通過）：雙色 Example5/6 可開、可玩、可勝利；零件/固定格/hints 顏色對齊；條狀 row/column hints 會隨放置/拔除即時更新，不足保留色框、滿足亮綠、超出多出的 segments 變紅。+4%。
 - **文件結構**：CLAUDE / plan / STATUS / LOG / learning-notes / DEV_GUIDE / my-note 7 檔到位
 
 ## 進行中
 
-- Phase 3 04-row-col-hints：程式碼完成，待手動驗收條狀 hints、超出 segments 轉紅、放置/拔除即時更新；驗收通過後「滿足或超出提示」+1%、「目前填滿格數」+1% 入帳
-- Phase 3 05-dual-color：程式碼完成，待手動驗收 Example5/6 雙色 hints、零件顏色、可玩與可勝利；驗收通過後「雙色設定檔載入與遊玩」+2% 入帳，助教 demo 雙色測資 +2% 留到 demo day
+- 助教 demo 雙色測資 +2% 留到 demo day：當場測資能透過 argv 直接載入並遊玩後再勾
 - 材質策略：純程序材質（不引入 png 資產）
 - 音效策略：使用者已用 jsfxr 生 pickup / place / spin 3 個 mp3 + 沿用 victory.mp3 當 win 音
 
 ## 已知 Bug
 
 （尚無；待手動驗證後可能會浮出）
+
+待確認 / 驗收風險：
+
+- 助教 demo 雙色測資要等 demo day 才能驗收與入帳。
 
 ---
 

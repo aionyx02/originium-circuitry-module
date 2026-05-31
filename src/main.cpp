@@ -283,17 +283,6 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
 
     DrawRectangleGradientV(0, 0, sw, sh, Color{22, 29, 43, 255}, Color{9, 12, 20, 255});
 
-    // Adaptive board geometry (right of the sidebar).
-    const int M = static_cast<int>(ed.board.rows);
-    const int N = static_cast<int>(ed.board.cols);
-    const int availW = sw - 360 - 40;
-    const int availH = sh - 170;
-    int cell = std::min(availW / std::max(1, N), availH / std::max(1, M));
-    cell = std::max(26, std::min(cell, 60));
-    const int boardX = 372 + (availW - N * cell) / 2;
-    const int boardY = 120 + (availH - M * cell) / 2;
-    const int nb = std::min(cell - 2, 30);  // number-box size
-
     // ---- Sidebar ----
     Rectangle panel = {24.0f, 20.0f, 320.0f, (float)sh - 40};
     DrawRectangleRounded(panel, 0.04f, 8, Color{18, 22, 32, 235});
@@ -310,8 +299,8 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
         if (button({250, y, 26, 26}, "+", false)) apply(std::min(hi, value + 1));
         y += 34;
     };
-    stepper("ROWS",   M, 1, Editor::kMaxDim,    [&](int v){ ed.setSize(v, ed.board.cols); });
-    stepper("COLS",   N, 1, Editor::kMaxDim,    [&](int v){ ed.setSize(ed.board.rows, v); });
+    stepper("ROWS",   (int)ed.board.rows, 1, Editor::kMaxDim, [&](int v){ ed.setSize(v, ed.board.cols); });
+    stepper("COLS",   (int)ed.board.cols, 1, Editor::kMaxDim, [&](int v){ ed.setSize(ed.board.rows, v); });
     stepper("COLORS", (int)ed.board.colors, 1, Editor::kMaxColors, [&](int v){ ed.setColorCount(v); });
 
     // Color picker.
@@ -326,21 +315,27 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
     }
     y += 34;
 
-    // Tools.
-    DrawTextEx(font, "CELL TOOL", Vector2{44, y}, 14.0f, 1.2f, Color{150, 166, 180, 255});
+    // Cell tool — paints directly onto the board on the right.
+    DrawTextEx(font, "BOARD TOOL  (click cells on the right)", Vector2{44, y}, 14.0f, 1.2f,
+               Color{150, 166, 180, 255});
     y += 22;
     if (button({44, y, 84, 30}, "ERASE", tool == 0)) tool = 0;
     if (button({134, y, 84, 30}, "BLOCK", tool == 1)) tool = 1;
     if (button({224, y, 84, 30}, "FIX",   tool == 2)) tool = 2;
-    y += 40;
-    DrawTextEx(font, "Click board: apply  ·  R-click: erase", Vector2{44, y}, 13.0f, 1.0f,
-               Color{130, 146, 160, 255});
-    y += 26;
+    y += 36;
+    const char* toolHelp = tool == 0 ? "ERASE: click a board cell to clear it"
+                         : tool == 1 ? "BLOCK: marks a cell as no-placement (X)"
+                                     : "FIX: locks a cell as a fixed piece (color)";
+    DrawTextEx(font, toolHelp, Vector2{44, y}, 13.0f, 1.0f, Color{130, 146, 160, 255});
+    y += 30;
 
-    // Part designer.
-    DrawTextEx(font, "PART DESIGNER", Vector2{44, y}, 15.0f, 1.2f, Color{174, 191, 203, 255});
-    DrawRectangleRounded(Rectangle{200, y, 34, 16}, 0.6f, 6, cur);
-    y += 24;
+    // Part designer — draw a piece shape, then ADD it to the tray.
+    DrawTextEx(font, "MAKE A PIECE", Vector2{44, y}, 15.0f, 1.2f, Color{174, 191, 203, 255});
+    DrawRectangleRounded(Rectangle{186, y, 34, 16}, 0.6f, 6, cur);
+    y += 22;
+    DrawTextEx(font, "click squares to draw its shape", Vector2{44, y}, 13.0f, 1.0f,
+               Color{130, 146, 160, 255});
+    y += 22;
     const int pcs = 26, pgx = 60, pgy = (int)y;
     for (int r = 0; r < kPaintN; ++r) {
         for (int c = 0; c < kPaintN; ++c) {
@@ -352,18 +347,18 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
         }
     }
     float py = pgy + kPaintN * pcs + 8;
-    if (button({60, py, 84, 28}, "ADD", false)) {
+    if (button({60, py, 110, 30}, "ADD PIECE", false)) {
         const std::size_t before = ed.parts.size();
         ed.addPart(paint, ed.currentColor);
-        if (ed.parts.size() > before) { for (auto& row : paint) std::fill(row.begin(), row.end(), false); msg = "Part added."; }
-        else msg = "Paint a shape first.";
+        if (ed.parts.size() > before) { for (auto& row : paint) std::fill(row.begin(), row.end(), false); msg = "Piece added to tray."; }
+        else msg = "Draw a shape above first.";
     }
-    if (button({150, py, 84, 28}, "DEL LAST", false)) { ed.removeLastPart(); msg = "Removed last part."; }
-    char pcount[48];
-    std::snprintf(pcount, sizeof(pcount), "PARTS: %d", (int)ed.parts.size());
-    DrawTextEx(font, pcount, Vector2{60, py + 36}, 15.0f, 1.0f, text);
+    if (button({178, py, 90, 30}, "DELETE", false)) { ed.removeLastPart(); msg = "Removed last piece."; }
+    char pcount[64];
+    std::snprintf(pcount, sizeof(pcount), "PIECES IN TRAY: %d", (int)ed.parts.size());
+    DrawTextEx(font, pcount, Vector2{60, py + 38}, 15.0f, 1.0f, text);
     for (int i = 0; i < (int)ed.parts.size() && i < 12; ++i)
-        DrawRectangleRounded(Rectangle{150.0f + i * 14, py + 36, 12, 15}, 0.5f, 4,
+        DrawRectangleRounded(Rectangle{210.0f + i * 14, py + 38, 12, 15}, 0.5f, 4,
                              editorColorBadge(ed.parts[i].colorIndex));
 
     // Action buttons (bottom of sidebar).
@@ -376,6 +371,25 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
     if (button({224, ay, 84, 30}, "MENU", false)) result = EditorResult::Menu;
 
     // ---- Board + clickable number boxes ----
+    // Read dims AFTER the steppers/color count above (they may have resized the
+    // board this frame) so the loops below never index a stale, larger grid.
+    const int M = static_cast<int>(ed.board.rows);
+    const int N = static_cast<int>(ed.board.cols);
+    const int availW = sw - 360 - 40;
+    const int availH = sh - 170;
+    int cell = std::min(availW / std::max(1, N), availH / std::max(1, M));
+    cell = std::max(26, std::min(cell, 60));
+    const int boardX = 372 + (availW - N * cell) / 2;
+    const int boardY = 120 + (availH - M * cell) / 2;
+    const int nb = std::min(cell - 2, 30);  // number-box size
+
+    // Board header + how-to.
+    DrawTextEx(font, "BOARD", Vector2{(float)(boardX - nb - 6), 46.0f}, 22.0f, 1.2f, text);
+    DrawTextEx(font, "Numbers around the board = filled cells needed per row/column.",
+               Vector2{(float)(boardX - nb - 6), 74.0f}, 14.0f, 1.0f, Color{150, 166, 180, 255});
+    DrawTextEx(font, "Click a number: +1   ·   right-click: -1   ·   click cells to use the board tool.",
+               Vector2{(float)(boardX - nb - 6), 94.0f}, 14.0f, 1.0f, Color{150, 166, 180, 255});
+
     auto numberBox = [&](int x, int yy, int idx, bool isRow) {
         Rectangle r = {(float)x, (float)yy, (float)nb, (float)nb};
         DrawRectangleRounded(r, 0.25f, 5, Color{26, 31, 41, 255});

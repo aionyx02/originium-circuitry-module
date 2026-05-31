@@ -118,7 +118,7 @@ CMake 設定（`CMakeLists.txt` 本身）改了才需要清；只改 .cpp/.h 用
 | 點 CELL TOOL：ERASE/BLOCK/FIX | 選工具（清除 / 不可放置格 / 固定零件） |
 | 盤面格子左鍵 | 套用目前工具；右鍵 = 清除該格 |
 | 盤面四周數字格 左鍵 / 右鍵 | 該色該列/欄需求 +1 / −1 |
-| PART DESIGNER 網格左鍵 | 點格畫零件形狀；`ADD` 加入、`DEL LAST` 刪除 |
+| MAKE A PIECE 網格左鍵 | 點格畫零件形狀；`ADD PIECE` 加入、`DELETE` 刪除 |
 | `EXPORT` 按鈕 | 匯出成 `assets/levels/custom-N.txt` |
 | `PLAY` 按鈕 | 用目前設計直接試玩 |
 | `MENU` 按鈕 / `Esc` | 回主選單 |

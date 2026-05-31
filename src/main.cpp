@@ -607,11 +607,16 @@ int main(int argc, char** argv) {
                                           % static_cast<int>(levels.size());
                     }
 
-                    // Right-click a level row → open its context menu.
-                    if (rclick && hover >= 0) {
-                        ctxMenuIdx = hover;
-                        selectedLevel = hover;
-                        ctxPos = mp;
+                    // Right-click → open the context menu for the hovered (or
+                    // currently selected) level. Tolerant of clicking slightly
+                    // off a row.
+                    if (rclick) {
+                        const int idx = hover >= 0 ? hover : selectedLevel;
+                        if (idx >= 0 && idx < static_cast<int>(levels.size())) {
+                            ctxMenuIdx = idx;
+                            selectedLevel = idx;
+                            ctxPos = mp;
+                        }
                     }
 
                     const bool chooseByKey = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE);
@@ -635,6 +640,25 @@ int main(int argc, char** argv) {
                 }
 
                 drawMenu(levels, selectedLevel, ctxOpen ? -1 : hover, menuMessage, menuFont, sw, sh);
+
+                // OPTIONS button below the panel — opens the same menu with a
+                // left click (works even without a right mouse button).
+                if (!ctxOpen && !levels.empty() && selectedLevel >= 0) {
+                    const int panelY = (sh - kMenuPanelH) / 2;
+                    Rectangle ob = {static_cast<float>(sw / 2 - 110),
+                                    static_cast<float>(panelY + kMenuPanelH + 10), 220, 32};
+                    const bool over = CheckCollisionPointRec(mp, ob);
+                    DrawRectangleRounded(ob, 0.3f, 6, over ? Color{40, 48, 60, 255}
+                                                           : Color{26, 31, 41, 235});
+                    DrawRectangleRoundedLinesEx(ob, 0.3f, 6, 1.5f, Color{109, 236, 218, 210});
+                    editorCenteredText(menuFont, "OPTIONS  (or right-click a level)",
+                                       ob.x + ob.width / 2, ob.y + ob.height / 2, 14.0f,
+                                       Color{232, 244, 245, 255});
+                    if (over && lclick) {
+                        ctxMenuIdx = selectedLevel;
+                        ctxPos = Vector2{ob.x, ob.y - 2 * 34.0f - 6};
+                    }
+                }
 
                 // Right-click context menu (Play / Delete) overlay.
                 if (ctxOpen) {

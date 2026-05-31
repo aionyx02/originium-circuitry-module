@@ -190,7 +190,7 @@ void drawMenu(const std::vector<LevelEntry>& levels,
         }
     }
 
-    DrawTextEx(font, "Enter/Click: play   Up/Down: select   Right-click: options (play/delete)   E: create",
+    DrawTextEx(font, "Enter/Click: play   Up/Down: select   Right arrow / right-click: options   E: create",
                Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + kMenuPanelH - 58)},
                15.0f, 1.0f, Color{170, 184, 196, 255});
     if (!message.empty()) {
@@ -560,7 +560,8 @@ int main(int argc, char** argv) {
 
     std::vector<LevelEntry> levels = findLevels();
     int selectedLevel = levels.empty() ? -1 : 0;
-    int ctxMenuIdx = -1;           // level row whose right-click context menu is open
+    int ctxMenuIdx = -1;           // level row whose options menu is open
+    int ctxSel = 0;                // highlighted item in that menu (keyboard nav)
     Vector2 ctxPos{};              // where to draw it
     std::string menuMessage;
 
@@ -615,8 +616,21 @@ int main(int argc, char** argv) {
                         if (idx >= 0 && idx < static_cast<int>(levels.size())) {
                             ctxMenuIdx = idx;
                             selectedLevel = idx;
+                            ctxSel = 0;
                             ctxPos = mp;
                         }
+                    }
+
+                    // Right ARROW key → open the options menu beside the selected row.
+                    if (IsKeyPressed(KEY_RIGHT) && !levels.empty() && selectedLevel >= 0) {
+                        const int panelX = (sw - kMenuPanelW) / 2;
+                        const int panelY = (sh - kMenuPanelH) / 2;
+                        const int start = menuVisibleStart(selectedLevel, static_cast<int>(levels.size()));
+                        const int localIdx = selectedLevel - start;
+                        ctxMenuIdx = selectedLevel;
+                        ctxSel = 0;
+                        ctxPos = Vector2{static_cast<float>(panelX + kMenuPanelW - 188),
+                                         static_cast<float>(panelY + kMenuListOffsetY + localIdx * kMenuRowH)};
                     }
 
                     const bool chooseByKey = IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE);
@@ -656,11 +670,12 @@ int main(int argc, char** argv) {
                                        Color{232, 244, 245, 255});
                     if (over && lclick) {
                         ctxMenuIdx = selectedLevel;
+                        ctxSel = 0;
                         ctxPos = Vector2{ob.x, ob.y - 2 * 34.0f - 6};
                     }
                 }
 
-                // Right-click context menu (Play / Delete) overlay.
+                // Options menu (Play / Delete) overlay — mouse or keyboard.
                 if (ctxOpen) {
                     const char* items[] = {"Play", "Delete"};
                     const int n = 2;
@@ -668,39 +683,51 @@ int main(int argc, char** argv) {
                     float px = ctxPos.x, py = ctxPos.y;
                     if (px + iw > sw) px = sw - iw - 4;
                     if (py + ih * n > sh) py = sh - ih * n - 4;
+
+                    // Keyboard navigation within the menu.
+                    if (IsKeyPressed(KEY_DOWN)) ctxSel = (ctxSel + 1) % n;
+                    if (IsKeyPressed(KEY_UP))   ctxSel = (ctxSel + n - 1) % n;
+
                     Rectangle bg = {px, py, iw, ih * n};
                     DrawRectangleRounded(bg, 0.12f, 6, Color{24, 29, 39, 248});
                     DrawRectangleRoundedLinesEx(bg, 0.12f, 6, 1.5f, Color{109, 236, 218, 210});
                     DrawTextEx(menuFont, levels[ctxMenuIdx].name.c_str(), Vector2{px + 12, py - 22},
                                14.0f, 1.0f, Color{174, 191, 203, 255});
 
-                    bool consumed = false;
+                    // Run an item then close the menu.
+                    bool done = false;
+                    auto doItem = [&](int i) {
+                        if (i == 0) {
+                            if (loadGame(levels[ctxMenuIdx].path.string(), game, menuMessage)) {
+                                appState = AppState::InGame;
+                                resetSoundBaseline();
+                                menuMessage.clear();
+                            }
+                        } else {
+                            std::error_code ec;
+                            std::filesystem::remove(levels[ctxMenuIdx].path, ec);
+                            levels = findLevels();
+                            if (selectedLevel >= static_cast<int>(levels.size()))
+                                selectedLevel = levels.empty() ? -1 : static_cast<int>(levels.size()) - 1;
+                            menuMessage = ec ? "Delete failed." : "Level deleted.";
+                        }
+                        done = true;
+                    };
+
                     for (int i = 0; i < n; ++i) {
                         Rectangle it = {px, py + i * ih, iw, ih};
                         const bool over = CheckCollisionPointRec(mp, it);
-                        if (over) DrawRectangleRounded(it, 0.12f, 6, Color{40, 48, 60, 255});
+                        if (over) ctxSel = i;                       // hover updates keyboard selection
+                        if (i == ctxSel) DrawRectangleRounded(it, 0.12f, 6, Color{40, 48, 60, 255});
                         editorCenteredText(menuFont, items[i], it.x + iw / 2, it.y + ih / 2, 17.0f,
                                            i == 1 ? Color{235, 140, 140, 255} : Color{232, 244, 245, 255});
-                        if (over && lclick) {
-                            consumed = true;
-                            if (i == 0) {
-                                if (loadGame(levels[ctxMenuIdx].path.string(), game, menuMessage)) {
-                                    appState = AppState::InGame;
-                                    resetSoundBaseline();
-                                    menuMessage.clear();
-                                }
-                            } else {
-                                std::error_code ec;
-                                std::filesystem::remove(levels[ctxMenuIdx].path, ec);
-                                levels = findLevels();
-                                if (selectedLevel >= static_cast<int>(levels.size()))
-                                    selectedLevel = levels.empty() ? -1 : static_cast<int>(levels.size()) - 1;
-                                menuMessage = ec ? "Delete failed." : "Level deleted.";
-                            }
-                            ctxMenuIdx = -1;
-                        }
+                        if (over && lclick) doItem(i);
                     }
-                    if (!consumed && ((lclick && !CheckCollisionPointRec(mp, bg)) || IsKeyPressed(KEY_ESCAPE)))
+                    if (!done && (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))) doItem(ctxSel);
+
+                    if (done) ctxMenuIdx = -1;
+                    else if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_LEFT)
+                             || (lclick && !CheckCollisionPointRec(mp, bg)))
                         ctxMenuIdx = -1;
                 }
             } else if (appState == AppState::Editor) {

@@ -180,3 +180,17 @@ cmake --build build && ./build/game docs/io/Example1.txt
 # 清乾淨重 build（只在改 CMakeLists.txt 時需要）
 rm -rf build && cmake -S . -B build && cmake --build build
 ```
+
+---
+
+## Docs Tooling（dev-only，與遊戲 build 無關）
+
+`scripts/docs-*.mjs` + `package.json` 是純文件檢查工具，**只在開發機跑**，零相依（只用 Node 內建，不需 `npm install`、不產 `node_modules`）。**遊戲 build 與 demo `.exe` 完全不需要 Node**（Hard Constraint #3）。
+
+```bash
+npm run docs:refresh          # 跑全部 guard（size / links / placeholders / narrative）
+npm run docs:guard-size       # 單跑：現況小檔不得超過大小上限
+npm run docs:new-log-month    # 開新月份 log，如 docs/log/2026-06.md
+```
+
+文件拓撲與寫作規範見 [index.md](index.md) 與 [docs/CLAUDE.md](CLAUDE.md)。改完 `docs/` 後跑一次 `docs:refresh` 確認沒把長敘事塞進現況小檔、連結沒斷。

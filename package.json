@@ -1,0 +1,16 @@
+{
+  "name": "originium-docs-tools",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Dev-only documentation guard scripts. NOT part of the game build — the C++/CMake build and the demo .exe do not need Node.",
+  "scripts": {
+    "docs:guard-size": "node scripts/docs-guard-size.mjs",
+    "docs:guard-links": "node scripts/docs-guard-links.mjs",
+    "docs:guard-placeholders": "node scripts/docs-guard-placeholders.mjs",
+    "docs:narrative-check": "node scripts/docs-narrative-check.mjs",
+    "docs:new-log-month": "node scripts/docs-new-log-month.mjs",
+    "docs:refresh": "node scripts/docs-refresh.mjs"
+  },
+  "devDependencies": {}
+}

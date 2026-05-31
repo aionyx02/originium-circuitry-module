@@ -351,19 +351,21 @@ void drawStatus(const Game& g, int screenW, int screenH, Font font) {
         drawText(font, g.statusMessage.c_str(), 48.0f, static_cast<float>(screenH - 84),
                  18.0f, Color{255, 203, 126, 255}, 1.0f);
     }
-    drawText(font, "WASD / ARROWS  MOVE      R  ROTATE      ENTER / CLICK  PLACE      ESC / RMB  CANCEL",
+    drawText(font, "WASD MOVE  ·  R ROTATE  ·  ENTER/CLICK PLACE  ·  ESC/RMB REMOVE  ·  F SOLVE  ·  BKSP RESTART  ·  N MENU",
              40.0f, static_cast<float>(screenH - 38), 15.0f, Color{143, 160, 174, 255}, 1.0f);
     (void)screenW;
 }
 
 void drawWinBanner(int screenW, int screenH, Font font) {
-    const int bw = 430, bh = 108;
+    const int bw = 430, bh = 132;
     const int bx = (screenW - bw) / 2;
     const int by = (screenH - bh) / 2;
     Rectangle r = { (float)bx, (float)by, (float)bw, (float)bh };
     drawRoundedRect(r, 0.12f, Color{9, 14, 20, 232}, Color{109, 236, 218, 255}, 2.5f);
-    drawCenteredText(font, "CIRCUIT RESTORED", bx, by + 20, bw, 44, 32, Color{230, 249, 246, 255});
-    drawCenteredText(font, "All constraints satisfied", bx, by + 64, bw, 24, 16, Color{109, 236, 218, 255});
+    drawCenteredText(font, "CIRCUIT RESTORED", bx, by + 18, bw, 40, 32, Color{230, 249, 246, 255});
+    drawCenteredText(font, "All constraints satisfied", bx, by + 58, bw, 22, 16, Color{109, 236, 218, 255});
+    drawCenteredText(font, "N: Menu      Backspace: Replay", bx, by + 90, bw, 22, 16,
+                     Color{174, 191, 203, 255});
 }
 
 // --- Phase 2 animation ---

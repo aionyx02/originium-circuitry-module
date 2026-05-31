@@ -190,7 +190,7 @@ void drawMenu(const std::vector<LevelEntry>& levels,
         }
     }
 
-    DrawTextEx(font, "Enter / Click: start    Up/Down: select    E: create level    N: menu (in game)",
+    DrawTextEx(font, "Enter/Click: play   Up/Down: select   E: create   Del: delete   (in game) N: menu",
                Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + kMenuPanelH - 58)},
                15.0f, 1.0f, Color{170, 184, 196, 255});
     if (!message.empty()) {
@@ -560,6 +560,7 @@ int main(int argc, char** argv) {
 
     std::vector<LevelEntry> levels = findLevels();
     int selectedLevel = levels.empty() ? -1 : 0;
+    int deleteArmedIdx = -1;       // two-step confirm for level deletion
     std::string menuMessage;
 
     Editor editor;
@@ -591,6 +592,25 @@ int main(int argc, char** argv) {
                 const bool mouseMoved = (mouseDelta.x != 0.0f) || (mouseDelta.y != 0.0f);
                 if (hover >= 0 && mouseMoved) selectedLevel = hover;
 
+                // Delete the selected level file (two-step confirm).
+                if (deleteArmedIdx != selectedLevel) deleteArmedIdx = -1;
+                auto tryDelete = [&]() {
+                    if (levels.empty() || selectedLevel < 0) return;
+                    if (deleteArmedIdx != selectedLevel) {
+                        deleteArmedIdx = selectedLevel;
+                        menuMessage = "Delete '" + levels[selectedLevel].name + "'? press Del / DELETE again";
+                        return;
+                    }
+                    std::error_code ec;
+                    std::filesystem::remove(levels[selectedLevel].path, ec);
+                    deleteArmedIdx = -1;
+                    levels = findLevels();
+                    if (selectedLevel >= static_cast<int>(levels.size()))
+                        selectedLevel = levels.empty() ? -1 : static_cast<int>(levels.size()) - 1;
+                    menuMessage = ec ? "Delete failed." : "Level deleted.";
+                };
+                if (IsKeyPressed(KEY_DELETE)) tryDelete();
+
                 if (!levels.empty()) {
                     if (IsKeyPressed(KEY_DOWN)) {
                         selectedLevel = (selectedLevel + 1) % static_cast<int>(levels.size());
@@ -620,6 +640,23 @@ int main(int argc, char** argv) {
                     appState = AppState::Editor;
                 }
                 drawMenu(levels, selectedLevel, hover, menuMessage, menuFont, sw, sh);
+
+                // DELETE-level button below the panel.
+                if (!levels.empty() && selectedLevel >= 0) {
+                    const int panelY = (sh - kMenuPanelH) / 2;
+                    Rectangle delBtn = {static_cast<float>(sw / 2 - 90),
+                                        static_cast<float>(panelY + kMenuPanelH + 10), 180, 30};
+                    const bool over = CheckCollisionPointRec(GetMousePosition(), delBtn);
+                    const bool armed = (deleteArmedIdx == selectedLevel);
+                    DrawRectangleRounded(delBtn, 0.3f, 6, over ? Color{64, 32, 34, 255}
+                                                              : Color{30, 24, 28, 235});
+                    DrawRectangleRoundedLinesEx(delBtn, 0.3f, 6, armed ? 2.5f : 1.5f,
+                                                Color{220, 120, 120, 230});
+                    editorCenteredText(menuFont, armed ? "CONFIRM DELETE" : "DELETE LEVEL",
+                                       delBtn.x + delBtn.width / 2, delBtn.y + delBtn.height / 2,
+                                       15.0f, Color{240, 210, 210, 255});
+                    if (over && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) tryDelete();
+                }
             } else if (appState == AppState::Editor) {
                 const EditorResult res =
                     runEditor(editor, paintGrid, editorTool, editorSelPiece, editorMessage, menuFont, sw, sh);
@@ -635,7 +672,13 @@ int main(int argc, char** argv) {
                     editorMessage.clear();
                 }
             } else {
-                if (IsKeyPressed(KEY_N)) {
+                // In-game quick buttons (top-right): MENU and RESTART.
+                const Vector2 mpg = GetMousePosition();
+                const bool lclickg = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+                const Rectangle menuBtn    = {(float)sw - 152, 16.0f, 136, 34};
+                const Rectangle restartBtn = {(float)sw - 152, 56.0f, 136, 34};
+
+                if (IsKeyPressed(KEY_N) || (lclickg && CheckCollisionPointRec(mpg, menuBtn))) {
                     appState = AppState::Menu;
                     levels = findLevels();
                     if (selectedLevel < 0 && !levels.empty()) selectedLevel = 0;
@@ -647,11 +690,13 @@ int main(int argc, char** argv) {
                     EndDrawing();
                     continue;
                 }
+                const bool restartClicked = lclickg && CheckCollisionPointRec(mpg, restartBtn);
 
                 const Layout L = computeLayout(game, sw, sh);
                 const Action a = Input::poll();
                 if (a != Action::None) game.update(a);
-                Input::pollMouse(L, game);
+                if (restartClicked) game.update(Action::Reset);
+                else Input::pollMouse(L, game);
 
                 const int  heldNow      = game.heldPartIdx;
                 const bool wonNow       = game.won;
@@ -682,6 +727,18 @@ int main(int argc, char** argv) {
                 prevRotateSum = rotateSumNow;
 
                 renderer.draw(game, sw, sh, GetFrameTime());
+
+                // Draw the quick buttons on top of the game.
+                auto qbtn = [&](Rectangle r, const char* label) {
+                    const bool over = CheckCollisionPointRec(mpg, r);
+                    DrawRectangleRounded(r, 0.25f, 6, over ? Color{40, 48, 60, 255}
+                                                          : Color{26, 31, 41, 235});
+                    DrawRectangleRoundedLinesEx(r, 0.25f, 6, 1.5f, Color{109, 236, 218, 255});
+                    editorCenteredText(menuFont, label, r.x + r.width / 2, r.y + r.height / 2,
+                                       16.0f, Color{232, 244, 245, 255});
+                };
+                qbtn(menuBtn, "MENU  (N)");
+                qbtn(restartBtn, "RESTART");
             }
             EndDrawing();
         }

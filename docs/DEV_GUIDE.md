@@ -102,12 +102,13 @@ CMake 設定（`CMakeLists.txt` 本身）改了才需要清；只改 .cpp/.h 用
 | `R` | 旋轉零件 |
 | `Enter` / `Space` | 放置 |
 | `Esc` | 拔起 |
-| `Backspace` | 重置盤面為初始狀態 |
+| `Backspace` 或畫面右上 `RESTART` 鈕 | 重置盤面為初始狀態 |
 | `F` | 自動解題（解出並填滿盤面） |
-| `N` | 回主畫面 / 開新遊戲 |
+| `N` 或畫面右上 `MENU` 鈕 | 回主畫面 / 開新遊戲 |
 | 視窗 X 鈕 | 關閉程式 |
 
-> `Esc` 已被改寫成「拔起零件」（`SetExitKey(KEY_NULL)`），所以不會關視窗。
+> `Esc` 已被改寫成「拔起零件」（`SetExitKey(KEY_NULL)`），所以不會關視窗。遊戲內畫面右上常駐 `MENU` / `RESTART` 兩個按鈕；勝利 banner 也提示 `N`/`Backspace`。
+> 主選單：選中關卡後按 `Del` 或點 `DELETE LEVEL` 鈕可刪除該關卡檔（兩段確認：第一次顯示確認、再按一次才刪）。
 
 ### 關卡編輯器（主選單按 `E` 進入，**滑鼠操作 / 排解答自動生成數字**）
 

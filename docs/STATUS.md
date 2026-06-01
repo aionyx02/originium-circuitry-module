@@ -20,7 +20,7 @@
 
 **Phase 5 完成 — 關卡編輯器已驗收；程式面只剩 demo day 加分**
 
-Phase 0–5 完成。Phase 4 的 `F` 自動解與 30 秒 hint 已 GUI 驗收。Phase 5 編輯器也已 GUI 驗收：可改大小/顏色數、畫零件、BLOCK/FIX/ERASE、微調列欄數字；`EXPORT` 可寫 `assets/levels/custom-N.txt`；`PLAY` 走 `Editor::buildPlayableSnapshot(...)`，會先把暫放的解答零件收回 tray 再進遊戲。讀檔硬限制也已補強：支援 `argv[1]`、無參數 `stdin` prompt、`--menu`、以及 menu / game 拖放 `.txt` 載入。詳見 [plan.md §10](plan.md)。
+Phase 0–5 完成。Phase 4 的 `F` 自動解與 30 秒 hint 已 GUI 驗收。Phase 5 編輯器也已 GUI 驗收：可改大小/顏色數、畫零件、BLOCK/FIX/ERASE、微調列欄數字；`EXPORT` 可寫 `assets/levels/<自訂檔名>.txt`（支援 editor 內直接改名）；`PLAY` 走 `Editor::buildPlayableSnapshot(...)`，會先把暫放的解答零件收回 tray 再進遊戲。讀檔硬限制也已補強：支援 `argv[1]`、無參數 `stdin` prompt、`--menu`、以及 menu / game 拖放 `.txt` 載入。詳見 [plan.md §10](plan.md)。
 
 各里程碑 commit 與一句話：[plan.md 進度時間軸](plan.md#進度時間軸)。完整過程：[docs/log/](log/) + 封存的 [Log.md](Log.md)。
 
@@ -71,7 +71,7 @@ Phase 0–5 完成。Phase 4 的 `F` 自動解與 30 秒 hint 已 GUI 驗收。P
 ### 關卡設計器（共 10%）
 
 - [x] 編輯功能：盤面大小、顏色數、新增任意零件、不可放置格、固定零件、列/欄數字 — **5%（六項合計）**（GUI 腳本已跑過 stepper / PART DESIGNER / BLOCK / FIX / ERASE / 數字框）
-- [x] 匯出設定檔（純文字格式） — 2.5%（`LevelWriter` 成功寫出 `assets/levels/custom-1.txt`；GUI 匯出 + round-trip / solve 全綠）
+- [x] 匯出設定檔（純文字格式） — 2.5%（`LevelWriter` 可由 editor 直接寫出 `assets/levels/<自訂檔名>.txt`；GUI 匯出 + round-trip / solve 全綠）
 - [x] 直接遊玩設計好的關卡 — 2.5%（`P` → `buildPlayableSnapshot(...)` → `Game::init(...)`；GUI 確認零件回 tray，`F` 可解自製關卡）
 
 ### 圖形介面（共 15%）

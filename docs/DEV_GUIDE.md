@@ -128,8 +128,9 @@ CMake 設定（`CMakeLists.txt` 本身）改了才需要清；只改 .cpp/.h 用
 | BOARD TOOL = `BLOCK`/`FIX`/`ERASE` + 點盤面 | 設不可放置格 / 固定零件 / 清除 |
 | 盤面格子右鍵 | 清除該格（擺上的零件整個收回） |
 | 盤面四周數字 | 依目前解答**自動顯示**；左鍵 +1、右鍵 -1 微調當前顏色的列/欄需求 |
-| `EXPORT` / `PLAY` / `MENU`（或 `Esc`） | 匯出 `assets/levels/custom-N.txt` / 試玩 / 回選單 |
-| `E` / `P` | 匯出 / 直接試玩快捷鍵 |
+| `EXPORT NAME` / `F2` | 編輯匯出檔名（存到 `assets/levels/<name>.txt`） |
+| `EXPORT` / `PLAY` / `MENU`（或 `Esc`） | 匯出 `assets/levels/<name>.txt` / 試玩 / 回選單 |
+| `E` / `P` | 匯出 / 直接試玩快捷鍵（未在編輯檔名時） |
 
 > 匯出時零件回到 tray（未放置），數字 = 你排的解答 → 保證可解。編輯 6 子項全到位。
 

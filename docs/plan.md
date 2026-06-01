@@ -339,7 +339,7 @@
 - **`core/LevelWriter.{h,cpp}`（純 core）**：`Board + parts → 文字`，`Parser::parse` 的反向。round-trip 與 Parser 等價。
 - **`core/Editor.{h,cpp}`（純 core）**：持有 `Board` + `parts` + `currentColor`，編輯操作 `setSize` / `setColorCount` / `adjustConstraint`（重建/保留 overlap、夾範圍）。重用 `Board`/`Part`，不另立平行結構。
 - **`AppState::Editor`**（main 第三態）：主選單按 `E` 進入；`Esc` 回選單。
-- **匯出**：寫 `assets/levels/custom-N.txt`（下個空號），畫面顯示路徑；回選單會重掃，匯出的關卡直接出現在選單可玩。
+- **匯出**：寫 `assets/levels/<自訂檔名>.txt`，畫面顯示路徑；回選單會重掃，匯出的關卡直接出現在選單可玩。
 - **直接遊玩**：從同一份 `Editor` 狀態先建出可遊玩快照（`Editor::buildPlayableSnapshot`：保留大小 / 固定格 / 不可放置格 / 列欄數字，但把暫放解答零件收回 tray），再 `Game::init(...)` 切 InGame。
 
 ### 增量切分
@@ -353,7 +353,7 @@
 - [x] 點 BLOCK 後點盤面格 → 變不可放置（X）；點 FIX + 選色後點格 → 變固定零件（=）；ERASE/右鍵清除
 - [x] 點盤面四周數字格 左鍵 +1 / 右鍵 −1（依目前顏色）
 - [x] PART DESIGNER 點格畫形狀 → `ADD`（PARTS 數 +1、色點出現）、`DEL LAST` 刪除
-- [x] `EXPORT` → `assets/levels/custom-N.txt` 生成、顯示路徑；`MENU` 回選單可載入
+- [x] `EXPORT` → `assets/levels/<自訂檔名>.txt` 生成、顯示路徑；`MENU` 回選單可載入
 - [x] `PLAY` → 用目前設計產生 playable snapshot 後進遊戲、零件可擺放且 `F` 可勝利
 - [x] 通過後 STATUS 勾編輯 5% + 匯出 2.5% + 試玩 2.5%
 

@@ -16,6 +16,7 @@ constexpr int kTrayPreviewW   = 98;
 constexpr int kConstraintGap  = 8;
 constexpr int kColHintHeight  = 48;
 constexpr int kRowHintWidth   = kColHintHeight;
+constexpr int kTopHudClearance = 8;   // gap between top-right buttons and column hints
 
 Color hintStatusColor(unsigned current, unsigned need) {
     if (current == need) return Color{80, 220, 100, 255};
@@ -31,7 +32,8 @@ Layout computeLayout(const Game& g, int screenW, int screenH) {
 
     const int leftReserve   = 330;
     const int rightPadding  = 60;
-    const int topReserve    = 80;
+    const int topReserve =
+        std::max(80, kQuickButtonBottom + kTopHudClearance + kConstraintGap + kColHintHeight);
     const int bottomReserve = 120;
 
     const int availW = screenW - leftReserve - rightPadding - 60;

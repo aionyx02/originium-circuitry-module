@@ -6,11 +6,14 @@
 
 ## Features
 
-- 可從命令列或啟動後輸入路徑載入純文字關卡
-- 支援完整單色遊戲流程：選取零件、移動、旋轉、放置、拔起與過關判定
-- 盤面會顯示列/欄需求、固定格、不可放置格與放置失敗提示
+- 可從命令列、啟動後輸入路徑、關卡選單，或拖放 `.txt` 檔載入純文字關卡
+- 支援完整遊戲流程：選取零件、移動、旋轉、放置、拔起、重玩與過關判定
+- 支援單色與雙色關卡，盤面會顯示列/欄需求、目前進度、固定格與不可放置格
+- 放置失敗會顯示錯誤訊息與紅框提示
 - 可用鍵盤操作，也可直接用滑鼠從 tray 拖曳零件到盤面
-- 介面包含平滑移動、旋轉動畫、程序材質、陰影與音效回饋
+- 內建求解器：`F` 可自動填入一組解，30 秒未完成時會顯示半透明提示
+- 內建關卡編輯器：可調盤面大小、顏色數、零件、不可放置格、固定格與列/欄數字，並匯出純文字關卡
+- 介面包含主畫面、關卡選擇、平滑移動、旋轉動畫、程序材質、陰影與音效回饋
 - 使用 CMake 建置；raylib 5.5 可由 CMake 自動下載與編譯
 
 目前進度與配分追蹤請看 [docs/STATUS.md](docs/STATUS.md)。
@@ -42,7 +45,7 @@ Windows MinGW 環境下會自動使用 static link，方便 demo 時帶著執行
 使用命令列參數載入關卡：
 
 ```bash
-./build/game docs/io/Example1.txt
+./build/game assets/levels/Example1.txt
 ```
 
 或直接啟動，依提示輸入關卡路徑：
@@ -54,18 +57,36 @@ Windows MinGW 環境下會自動使用 static link，方便 demo 時帶著執行
 程式會印出：
 
 ```text
-Enter level file path:
+Enter level file path (leave blank for level menu):
 ```
 
-可用測資位於 [docs/io](docs/io)，例如：
+也可以直接進入關卡選單：
 
 ```bash
-./build/game docs/io/Example1.txt
-./build/game docs/io/Example2.txt
-./build/game docs/io/Example5.txt
+./build/game --menu
+```
+
+可用測資位於 [assets/levels](assets/levels)，例如：
+
+```bash
+./build/game assets/levels/Example1.txt
+./build/game assets/levels/Example2.txt
+./build/game assets/levels/Example5.txt
 ```
 
 ## Controls
+
+### Menu
+
+| 操作 | 動作 |
+|---|---|
+| `Up` / `Down` | 選擇關卡 |
+| `Enter` / `Space` / 滑鼠左鍵 | 開始選中的關卡 |
+| `E` | 開啟關卡編輯器 |
+| `Right` / 對關卡按滑鼠右鍵 | 開啟關卡選項 |
+| 拖放 `.txt` 檔到視窗 | 直接載入該關卡 |
+
+### Game
 
 | 操作 | 動作 |
 |---|---|
@@ -73,11 +94,26 @@ Enter level file path:
 | 方向鍵 | 移動目前選取的零件 |
 | `R` | 旋轉零件 |
 | `Enter` / `Space` | 放置或選取零件 |
-| `Esc` / `Backspace` | 拔起零件 / 取消持有 |
+| `Esc` | 拔起零件 / 取消持有 |
+| `Backspace` | 重玩目前關卡 |
+| `F` | 自動解題並顯示一組解 |
+| `N` | 回到關卡選單 |
 | 滑鼠左鍵 | 從 tray 選取、在盤面放置或取起零件 |
 | 滑鼠右鍵 | 取消持有，或從盤面拔起零件 |
+| 拖放 `.txt` 檔到視窗 | 不關程式載入新關卡 |
 
 `Esc` 在遊戲中用來拔起零件，不會關閉視窗。
+
+### Editor
+
+| 操作 | 動作 |
+|---|---|
+| 滑鼠左鍵 | 使用目前工具編輯盤面或點選按鈕 |
+| `R` | 旋轉目前選中的零件 |
+| `E` | 匯出到 `assets/levels/<名稱>.txt` |
+| `F2` | 編輯匯出檔名 |
+| `P` | 直接遊玩目前設計 |
+| `Esc` | 回到關卡選單 |
 
 ## Level Format
 
@@ -122,16 +158,20 @@ src/
     Board.*             # 盤面狀態、放置規則、需求數字
     Part.*              # 零件形狀、顏色、旋轉與位置
     Parser.*            # 純文字關卡檔解析
+    LevelWriter.*       # 編輯器匯出的純文字關卡寫入
     Game.*              # 遊戲狀態與操作更新
     WinChecker.*        # 勝利判定
+    Solver.*            # 自動解題與提示資料
+    Editor.*            # 關卡編輯器資料模型
   ui/                   # raylib 輸入與繪圖
     Input.*
     Renderer.*
 assets/
   fonts/
+  levels/               # 內建與編輯器匯出的關卡
   sfx/
 docs/
-  io/                   # 測資與輸入格式
+  io/                   # 輸入格式說明
   issues/               # Phase issue drafts
   STATUS.md             # 目前進度
   DEV_GUIDE.md          # 開發指令與驗收方式
@@ -143,7 +183,7 @@ docs/
 
 ```bash
 cmake --build build
-./build/game docs/io/Example1.txt
+./build/game assets/levels/Example1.txt
 ```
 
 清乾淨重建：

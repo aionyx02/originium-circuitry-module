@@ -1,6 +1,6 @@
 # STATUS.md — 進度與配分追蹤
 
-> Last updated: 2026-06-01（Phase 5 GUI 驗收完成；editor 匯出 / 試玩收尾；分數 58.0%）
+> Last updated: 2026-06-01（Phase 5 GUI 驗收完成，editor 收尾；分數 58.0%）
 > 路由：[index.md](index.md) ｜ 規劃：[plan.md](plan.md) ｜ 配分：[scoring.md](scoring.md) ｜ 工作規範：[CLAUDE.md](../CLAUDE.md) / [docs/CLAUDE.md](CLAUDE.md) ｜ 協作紀錄：[docs/log/](log/)（舊：[Log.md](Log.md)）
 
 > **這份檔只回答「現在到哪、勾了哪些分」**。決策原則去 CLAUDE.md，階段規劃去 plan.md。
@@ -9,7 +9,7 @@
 
 ## 目前分數
 
-**程式實作：58.0% / 65%**  
+**程式實作：58.0%/65%**  
 口頭報告：尚未開始評估 / 60%
 
 > 每完成一個 Phase 更新一次。「目前分數」= 已穩穩拿到的分（demo 不會被扣回去的）。
@@ -20,7 +20,7 @@
 
 **Phase 5 完成 — 關卡編輯器已驗收；程式面只剩 demo day 加分**
 
-Phase 0–5 完成。Phase 4（Solver + 提示 + 30 秒計時）已完成 GUI 驗收：`F` 一鍵自動解、勝利 banner、以及 30 秒 idle 後的半透明 hint overlay 均已實機截圖確認。Phase 5 關卡編輯器也已完成 GUI 驗收：側欄 `-`/`+` 可即時改大小與顏色數、PART DESIGNER 可畫形狀加入零件、BLOCK/FIX/ERASE 與列/欄數字框可編輯；`EXPORT` 成功寫出 `assets/levels/custom-N.txt`，`PLAY` 走 `Editor::buildPlayableSnapshot(...)`，會把設計時暫放的解答零件收回 tray 後再進遊戲，接著可用 `F` 解開自製關卡。另已補強啟動讀檔硬限制：無參數啟動恢復 `stdin` prompt（留白可進 menu），且在 menu / game 可直接拖放 `.txt` 關卡載入。詳見 [plan.md §10](plan.md)。
+Phase 0–5 完成。Phase 4 的 `F` 自動解與 30 秒 hint 已 GUI 驗收。Phase 5 編輯器也已 GUI 驗收：可改大小/顏色數、畫零件、BLOCK/FIX/ERASE、微調列欄數字；`EXPORT` 可寫 `assets/levels/custom-N.txt`；`PLAY` 走 `Editor::buildPlayableSnapshot(...)`，會先把暫放的解答零件收回 tray 再進遊戲。讀檔硬限制也已補強：支援 `argv[1]`、無參數 `stdin` prompt、`--menu`、以及 menu / game 拖放 `.txt` 載入。詳見 [plan.md §10](plan.md)。
 
 各里程碑 commit 與一句話：[plan.md 進度時間軸](plan.md#進度時間軸)。完整過程：[docs/log/](log/) + 封存的 [Log.md](Log.md)。
 
@@ -70,9 +70,9 @@ Phase 0–5 完成。Phase 4（Solver + 提示 + 30 秒計時）已完成 GUI �
 
 ### 關卡設計器（共 10%）
 
-- [x] 編輯功能：盤面大小、顏色數、新增任意零件、不可放置格、固定零件、列/欄數字 — **5%（六項合計）**（GUI 腳本已跑過 stepper / PART DESIGNER / BLOCK / FIX / ERASE / 數字框微調）
-- [x] 匯出設定檔（純文字格式） — 2.5%（`LevelWriter` 成功寫出 `assets/levels/custom-1.txt`；GUI 匯出 + round-trip / solve 驗證全綠）
-- [x] 直接遊玩設計好的關卡 — 2.5%（`P` → `Editor::buildPlayableSnapshot(...)` → `Game::init(...)`；GUI 畫面確認零件回 tray，`F` 可解自製關卡）
+- [x] 編輯功能：盤面大小、顏色數、新增任意零件、不可放置格、固定零件、列/欄數字 — **5%（六項合計）**（GUI 腳本已跑過 stepper / PART DESIGNER / BLOCK / FIX / ERASE / 數字框）
+- [x] 匯出設定檔（純文字格式） — 2.5%（`LevelWriter` 成功寫出 `assets/levels/custom-1.txt`；GUI 匯出 + round-trip / solve 全綠）
+- [x] 直接遊玩設計好的關卡 — 2.5%（`P` → `buildPlayableSnapshot(...)` → `Game::init(...)`；GUI 確認零件回 tray，`F` 可解自製關卡）
 
 ### 圖形介面（共 15%）
 
@@ -86,7 +86,7 @@ Phase 0–5 完成。Phase 4（Solver + 提示 + 30 秒計時）已完成 GUI �
 
 ## 已完成
 
-已落地的功能與配分見上方 **配分 Checklist**（每項附一句實作摘要）。各里程碑的日期 / commit / 一句話見 [plan.md 進度時間軸](plan.md#進度時間軸)；完整過程見 [docs/log/](log/) 與封存的 [Log.md](Log.md)。
+已落地的功能與配分見上方 **配分 Checklist**。里程碑日期 / commit / 一句話見 [plan.md 進度時間軸](plan.md#進度時間軸)；完整過程見 [docs/log/](log/) 與封存的 [Log.md](Log.md)。
 
 ## 進行中
 
@@ -101,15 +101,13 @@ Phase 0–5 完成。Phase 4（Solver + 提示 + 30 秒計時）已完成 GUI �
 
 （尚無；待手動驗證後可能會浮出）
 
-待確認 / 驗收風險：
-
 - 助教 demo 雙色測資要等 demo day 才能驗收與入帳。
 
 ---
 
 ## 更新規則
 
-- 每完成一個 checklist 項目並驗證 → 打勾、更新「目前分數」、補一句到「已完成」
+- 每完成一個 checklist 項目並驗證 → 打勾、更新「目前分數」
 - 每個 Phase 結束 → 對應 plan.md 進度時間軸新增一條
 - 已知 Bug 不要藏，立刻寫上來；修好了從清單刪掉並記到 [docs/log/](log/) 當日檔
 - 修動本檔記得改最上方的 `Last updated`

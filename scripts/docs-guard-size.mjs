@@ -13,10 +13,10 @@ const limits = [
   ['docs/plan.md', 30 * 1024]       // plan, read on demand
 ];
 
-// Each monthly active log file: cap to force rollover into a new month file
-// instead of growing unbounded like the old Log.md (132 KB).
+// Each per-day active log file: cap so a single day can't grow unbounded like
+// the old Log.md (132 KB). One file per day (docs/log/YYYY-MM-DD.md).
 const logCap = 45 * 1024;
-for (const f of walk('docs/log', f => /\/\d{4}-\d{2}\.md$/.test(f))) {
+for (const f of walk('docs/log', f => /\/\d{4}-\d{2}-\d{2}\.md$/.test(f))) {
   limits.push([f, logCap]);
 }
 

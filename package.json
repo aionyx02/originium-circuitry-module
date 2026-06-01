@@ -9,7 +9,7 @@
     "docs:guard-links": "node scripts/docs-guard-links.mjs",
     "docs:guard-placeholders": "node scripts/docs-guard-placeholders.mjs",
     "docs:narrative-check": "node scripts/docs-narrative-check.mjs",
-    "docs:new-log-month": "node scripts/docs-new-log-month.mjs",
+    "docs:new-log-day": "node scripts/docs-new-log-day.mjs",
     "docs:refresh": "node scripts/docs-refresh.mjs"
   },
   "devDependencies": {}

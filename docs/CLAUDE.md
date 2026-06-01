@@ -45,7 +45,7 @@
 7. 對應配分項（引用 [scoring.md](scoring.md) 行號）。
 8. 點出風險 / edge case。
 9. 更新 [plan.md](plan.md) 進度表，並在 [STATUS.md](STATUS.md) 勾項。
-10. 在 [docs/log/](log/) 當月檔 append 一條 10 欄 entry。
+10. 在 [docs/log/](log/) 當日檔 append 一條 10 欄 entry。
 11. 若引入口試要解釋的非 trivial 概念，補一則 [learning-notes.md](learning-notes.md)。
 
 ### 小改 — 輕流程
@@ -54,7 +54,7 @@ Bug fix、補 helper、調 UI 常數、加測資、改錯字：
 
 1. 直接做。
 2. 一句話說明改了什麼、怎麼驗。
-3. 在 [docs/log/](log/) 當月檔 append 一行 one-liner（見下方「Log 寫法」）。
+3. 在 [docs/log/](log/) 當日檔 append 一行 one-liner（見下方「Log 寫法」）。
 
 `plan.md` / `STATUS.md` 不必為小改更新，除非剛好完成一個 checklist 項。
 
@@ -68,7 +68,7 @@ canonical 文件集如下。**未經核准不要新增 `.md`**（會讓文件碎
 - **[plan.md](plan.md)** — 階段、配分策略、進度表。要做什麼的 source of truth。
 - **[STATUS.md](STATUS.md)** — 現況：到哪、勾了哪些分、已知 bug。落地就勾，不放計劃 / 決策。
 - **[DEV_GUIDE.md](DEV_GUIDE.md)** — 上手 Quick Start：build / run / test、專案結構、載測資。
-- **[docs/log/](log/)** — AI 協作 active log（依月分檔）。每次有意義變更後 append。口試「如何用 AI 實作程式」素材（口頭報告 30%）。
+- **[docs/log/](log/)** — AI 協作 active log（依日分檔，`YYYY-MM-DD.md`）。每次有意義變更後 append。口試「如何用 AI 實作程式」素材（口頭報告 30%）。
 - **[Log.md](Log.md)** — 已封存的舊 log（2026-05-31 前），凍結不動。
 - **[learning-notes.md](learning-notes.md)** — 各非 trivial 功能的教學筆記。口試「對程式的熟悉度」素材（15%）。
 - **[scoring.md](scoring.md)** — 配分標的細節。
@@ -81,7 +81,7 @@ canonical 文件集如下。**未經核准不要新增 `.md`**（會讓文件碎
 
 ## Log 寫法
 
-> 新 entry append 到 [docs/log/](log/) 當月檔（如 `2026-05.md`）最下方，時間正序，**不維護倒序索引**。
+> 新 entry append 到 [docs/log/](log/) 當日檔（一天一檔，如 `2026-05-31.md`）最下方，時間正序，**不維護倒序索引**。當天還沒有檔就先跑 `npm run docs:new-log-day` 開檔（或直接建 `docs/log/YYYY-MM-DD.md`）。
 
 ### 大事 vs 小事
 

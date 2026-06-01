@@ -879,7 +879,7 @@ Solver **沒有自己重寫任何遊戲規則**：能不能放用 `Board::canPla
 ### 兩個關鍵設計
 
 - **序列化與反序列化互為反函數**：`Parser`（讀）和 `LevelWriter`（寫）對同一格式，一個解析一個產生。我用 round-trip 測試 `parse → write → parse` 對 6 個官方範例**完全相等**來保證——任何一邊對格式理解錯了，round-trip 就會抓到。這比各寫各的安全得多。
-- **編輯資料直接重用 `Board`/`Part`，不另立平行結構**：編輯器改的就是一個 `Board` + 一串 `Part`；要匯出就丟 `LevelWriter`，要試玩就丟 `Game::init`。沒有「編輯用一套、遊玩用另一套」的轉換層，少一整類同步 bug。`Editor` 只是包一層方便的編輯操作（`setSize` 重建格子與 constraint 並保留重疊區、`adjustConstraint` 夾在合理範圍）。
+- **編輯資料直接重用 `Board`/`Part`，不另立平行結構**：編輯器改的就是一個 `Board` + 一串 `Part`；要匯出或試玩時，只是從同一份資料建一個「可遊玩快照」（`buildPlayableSnapshot`：保留大小 / 固定格 / 不可放置格 / 列欄數字，但把暫放在盤上的解答零件收回 tray），再分別丟 `LevelWriter` 或 `Game::init`。沒有「編輯用一套、遊玩用另一套」的平行模型，少一整類同步 bug。`Editor` 只是包一層方便的編輯操作（`setSize` 重建格子與 constraint 並保留重疊區、`adjustConstraint` 夾在合理範圍）。
 
 ### 為什麼純 core / 無 raylib
 
@@ -912,6 +912,6 @@ Solver **沒有自己重寫任何遊戲規則**：能不能放用 `Board::canPla
 
 ### Score Connection
 
-- 關卡設計器：匯出純文字 2.5%（[scoring.md:85](scoring.md#L85)）— `LevelWriter` 寫 `assets/levels/custom-N.txt`，round-trip 全綠，待 GUI 驗收。
-- 關卡設計器：直接遊玩 2.5%（[scoring.md:86](scoring.md#L86)）— `P` → `Game::init`（含設計的零件/格）；headless 驗設計關可解，待 GUI 驗收。
-- 關卡設計器：編輯 5%（[scoring.md:75](scoring.md#L75)）— 滑鼠編輯器 **6/6 全到位**（大小/顏色數/列欄數字/任意形狀零件/不可放置格/固定零件）；headless 驗 blocked/fixed round-trip，待 GUI 驗收。
+- 關卡設計器：匯出純文字 2.5%（[scoring.md:85](scoring.md#L85)）— `LevelWriter` 寫 `assets/levels/custom-N.txt`；GUI 自動驗證成功匯出 `custom-1.txt`，round-trip / solve 全綠。
+- 關卡設計器：直接遊玩 2.5%（[scoring.md:86](scoring.md#L86)）— `P` 走 `Editor::buildPlayableSnapshot(...)` → `Game::init(...)`；GUI 畫面確認零件回 tray，`F` 可解自製關卡。
+- 關卡設計器：編輯 5%（[scoring.md:75](scoring.md#L75)）— 滑鼠編輯器 **6/6 全到位**（大小/顏色數/列欄數字/任意形狀零件/不可放置格/固定零件）；GUI 腳本已逐項跑過。

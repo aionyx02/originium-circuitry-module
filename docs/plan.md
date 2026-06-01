@@ -273,7 +273,7 @@
 ## 8. 進度紀錄方式
 
 - **每個 Phase / 里程碑結束**：在下方「進度時間軸」表加一列（日期 / commit / 分數 / 一句話）。詳細過程不寫這裡。
-- **AI 使用紀錄 & 詳細過程**：去 [docs/log/](log/) 當月檔 append（寫法見 [CLAUDE.md §Log 寫法](CLAUDE.md#log-寫法)）。2026-05-31 前的歷史在已封存的 [Log.md](Log.md)。
+- **AI 使用紀錄 & 詳細過程**：去 [docs/log/](log/) 當日檔 append（寫法見 [CLAUDE.md §Log 寫法](CLAUDE.md#log-寫法)）。2026-05-31 前的歷史在已封存的 [Log.md](Log.md)。
 - **現況（到哪、勾哪些分）**：去 [STATUS.md](STATUS.md)。
 - **臨時想到的小事**：去 [my-note.md](my-note.md)，不要污染這份檔。
 
@@ -324,7 +324,7 @@
 
 ---
 
-## 10. Phase 5 詳細計劃（關卡編輯器，進行中）
+## 10. Phase 5 詳細計劃（關卡編輯器，已完成 GUI 驗收）
 
 ### 目標與配分（共 10%）
 
@@ -340,22 +340,22 @@
 - **`core/Editor.{h,cpp}`（純 core）**：持有 `Board` + `parts` + `currentColor`，編輯操作 `setSize` / `setColorCount` / `adjustConstraint`（重建/保留 overlap、夾範圍）。重用 `Board`/`Part`，不另立平行結構。
 - **`AppState::Editor`**（main 第三態）：主選單按 `E` 進入；`Esc` 回選單。
 - **匯出**：寫 `assets/levels/custom-N.txt`（下個空號），畫面顯示路徑；回選單會重掃，匯出的關卡直接出現在選單可玩。
-- **直接遊玩**：`Game::init(editor.board, editor.parts)` 切 InGame，完全重用既有遊戲。
+- **直接遊玩**：從同一份 `Editor` 狀態先建出可遊玩快照（`Editor::buildPlayableSnapshot`：保留大小 / 固定格 / 不可放置格 / 列欄數字，但把暫放解答零件收回 tray），再 `Game::init(...)` 切 InGame。
 
 ### 增量切分
 
 - **增量 1（已完成代碼）**：LevelWriter（round-trip 驗證）+ Editor 資料模型 + 鍵盤版最小編輯 + PART DESIGNER + 匯出 + 試玩。（已被增量 2 的滑鼠版取代操作方式）
-- **增量 2 — 滑鼠 immediate-mode 編輯器 + 「排解答自動生成數字」（已完成代碼，待 GUI 驗收）**：核心交互改成**把零件擺上盤面排出解答 → 列/欄數字自動推導**（`Editor::deriveConstraints` 從擺放佈局算 `currentFilledForColor`），不再手動填數字。PIECES 清單顯示已建立零件（可選取/旋轉/刪除）；MAKE A PIECE 畫任意形狀加入；PLACE 工具 + ghost 預覽擺零件；BLOCK/FIX/ERASE 點格設不可放置/固定/清除；右鍵清除。匯出時零件回 tray、數字=解答 → 保證可解。`Editor` 加 `placePart/removePartAt/rotatePart/deriveConstraints/setBlocked/setFixed/clearCell`；resize/換色會清擺放保持一致。**編輯 6 子項全到位**。headless 驗 place→derive→export→solve、resize-unplace 全綠。
+- **增量 2 — 滑鼠 immediate-mode 編輯器 + 「排解答自動生成數字」（已完成，GUI 驗收通過）**：核心交互改成**把零件擺上盤面排出解答 → 列/欄數字自動推導**（`Editor::deriveConstraints` 從擺放佈局算 `currentFilledForColor`），不再手動填數字。PIECES 清單顯示已建立零件（可選取/旋轉/刪除）；MAKE A PIECE 畫任意形狀加入；PLACE 工具 + ghost 預覽擺零件；BLOCK/FIX/ERASE 點格設不可放置/固定/清除；右鍵清除。匯出與試玩都改走 `buildPlayableSnapshot`，零件回 tray、數字 = 解答，避免「設計時已擺好的解答直接留在遊戲盤面」。`Editor` 加 `placePart/removePartAt/rotatePart/deriveConstraints/setBlocked/setFixed/clearCell/buildPlayableSnapshot`；resize/換色會清擺放保持一致。**編輯 6 子項全到位**。headless 驗 place→derive→export→solve、resize-unplace 全綠，GUI 腳本也已跑通匯出 / 試玩 / `F` 解自製關卡。
 
 ### 驗收清單（滑鼠版編輯器）
 
-- [ ] 選單按 `E` → 進編輯器；側欄 `-`/`+` 改大小/顏色數即時反映
-- [ ] 點 BLOCK 後點盤面格 → 變不可放置（X）；點 FIX + 選色後點格 → 變固定零件（=）；ERASE/右鍵清除
-- [ ] 點盤面四周數字格 左鍵 +1 / 右鍵 −1（依目前顏色）
-- [ ] PART DESIGNER 點格畫形狀 → `ADD`（PARTS 數 +1、色點出現）、`DEL LAST` 刪除
-- [ ] `EXPORT` → `assets/levels/custom-N.txt` 生成、顯示路徑；`MENU` 回選單可載入
-- [ ] `PLAY` → 用目前設計（含零件/固定格/不可放置格）直接進遊戲、可擺放可勝利
-- [ ] 通過後 STATUS 勾編輯 5% + 匯出 2.5% + 試玩 2.5%
+- [x] 選單按 `E` → 進編輯器；側欄 `-`/`+` 改大小/顏色數即時反映
+- [x] 點 BLOCK 後點盤面格 → 變不可放置（X）；點 FIX + 選色後點格 → 變固定零件（=）；ERASE/右鍵清除
+- [x] 點盤面四周數字格 左鍵 +1 / 右鍵 −1（依目前顏色）
+- [x] PART DESIGNER 點格畫形狀 → `ADD`（PARTS 數 +1、色點出現）、`DEL LAST` 刪除
+- [x] `EXPORT` → `assets/levels/custom-N.txt` 生成、顯示路徑；`MENU` 回選單可載入
+- [x] `PLAY` → 用目前設計產生 playable snapshot 後進遊戲、零件可擺放且 `F` 可勝利
+- [x] 通過後 STATUS 勾編輯 5% + 匯出 2.5% + 試玩 2.5%
 
 ### 不做（本階段）
 
@@ -383,10 +383,12 @@
 | 2026-05-31 | Phase 3 / 04-row-col-hints | — | +2% → 44.5% | 條狀 row/column hints：不足色框 / 滿足亮綠 / 超出多出段變紅，即時更新 |
 | 2026-05-31 | Phase 4 / 增量1 solver | `75cf3fb` | (+1% 待 GUI 驗收) | 核心 backtracking Solver + F 鍵一鍵自動解填盤；headless 驗證 Example1–6 全解 |
 | 2026-05-31 | Phase 4 / 增量2 hints | `5096ff9` | (+5% 待 GUI 驗收) | 半透明提示 overlay + 30 秒卡關才顯示（有進度重置）；headless 驗 hintCells 幾何全綠 |
+| 2026-06-01 | Phase 4 / GUI 驗收 + 啟動硬化 | — | +6% → 48.0% | `F` 自動解與 30 秒 hint overlay 實機截圖驗收通過；無參數啟動恢復 prompt、支援拖放 `.txt` 載關、editor 數字框可微調 |
 | 2026-05-31 | Phase 5 / 增量1 editor | `ef473c0` | (待 GUI 驗收) | LevelWriter（反向 Parser）+ Editor 模型 + 編輯 + 匯出 assets/levels + 試玩；round-trip 全綠 |
 | 2026-05-31 | Phase 5 / part designer | `5cc28e5` | (待 GUI 驗收) | 編輯器加 PART DESIGNER：滑鼠畫任意形狀 + A 加入/D 刪除；headless 驗設計關可解 |
 | 2026-05-31 | Phase 5 / 編輯器重做 | `bdaeaef` | (待 GUI 驗收) | immediate-mode 滑鼠操作 + crash 修復（縮盤面越界） |
 | 2026-05-31 | Phase 5 / 排解答編輯器 | （待 commit） | (待 GUI 驗收) | 擺零件排解答→列欄數字自動生成 + PIECES 清單/ghost 預覽；headless place→derive→solve 全綠 |
+| 2026-06-01 | Phase 5 / GUI 驗收 + playable snapshot | — | +10% → 58.0% | GUI 腳本驗 stepper / BLOCK / FIX / ERASE / 數字框 / PART DESIGNER；匯出 `custom-1.txt`；`PLAY` 會把解答零件收回 tray，再用 `F` 解開自製關卡 |
 
 > 各里程碑的完整過程、設計演進與驗收細節：見 [docs/log/](log/) 與封存的 [Log.md](Log.md)；現況分數見 [STATUS.md](STATUS.md)。
 

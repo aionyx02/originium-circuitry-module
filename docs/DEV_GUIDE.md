@@ -83,14 +83,19 @@ CMake 設定（`CMakeLists.txt` 本身）改了才需要清；只改 .cpp/.h 用
 
 ```bash
 ./build/game docs/io/Example1.txt          # argv[1]
-./build/game                                # 互動式：印 "Enter level file path: " 後讀 stdin
+./build/game                                # 互動式：印 "Enter level file path (leave blank for level menu): " 後讀 stdin
+./build/game --menu                         # 直接進主選單（跳過 prompt）
 ```
 
 錯誤行為（都不 crash）：
 
-- 沒給路徑且 stdin 為空 → 印 `No level file given.`，exit 1
 - 路徑不存在 → 印 `Cannot open file: <path>`，exit 1
 - 檔案格式錯 → 印 `Parse error: ...`，exit 1
+
+補充：
+
+- 無參數 prompt 時直接按 Enter（空字串）→ 進主選單，不 exit
+- 主選單 / 遊戲中可直接把 `.txt` 關卡拖進視窗載入
 
 ---
 
@@ -112,18 +117,19 @@ CMake 設定（`CMakeLists.txt` 本身）改了才需要清；只改 .cpp/.h 用
 
 ### 關卡編輯器（主選單按 `E` 進入，**滑鼠操作 / 排解答自動生成數字**）
 
-設計概念：**把零件擺到盤面上排出一個解答，列/欄數字就自動算出來**（不用手動填數字）。
+設計概念：**把零件擺到盤面上排出一個解答，列/欄數字就自動算出來**；若想微調，也可直接點數字框增減。
 
 | 操作 | 動作 |
 |---|---|
 | 側欄 ROWS/COLS/COLORS 的 `-`/`+` | 改盤面大小、顏色數 |
 | MAKE A PIECE 網格左鍵 + `ADD` | 畫任意形狀 → 加入 PIECES 清單（自動選取） |
-| PIECES 清單點任一零件 | 選取要擺的零件；`ROTATE` 旋轉、`DELETE` 刪除 |
+| PIECES 清單點任一零件 | 選取要擺的零件；`ROTATE` 旋轉、`DEL LAST` 刪最後加入的零件 |
 | BOARD TOOL = `PLACE` + 點盤面 | 把選取的零件擺上盤面（綠/紅 ghost 預覽合不合法） |
 | BOARD TOOL = `BLOCK`/`FIX`/`ERASE` + 點盤面 | 設不可放置格 / 固定零件 / 清除 |
 | 盤面格子右鍵 | 清除該格（擺上的零件整個收回） |
-| 盤面四周數字 | **自動顯示**目前排出的每列/欄填滿數（唯讀） |
+| 盤面四周數字 | 依目前解答**自動顯示**；左鍵 +1、右鍵 -1 微調當前顏色的列/欄需求 |
 | `EXPORT` / `PLAY` / `MENU`（或 `Esc`） | 匯出 `assets/levels/custom-N.txt` / 試玩 / 回選單 |
+| `E` / `P` | 匯出 / 直接試玩快捷鍵 |
 
 > 匯出時零件回到 tray（未放置），數字 = 你排的解答 → 保證可解。編輯 6 子項全到位。
 
@@ -211,7 +217,7 @@ rm -rf build && cmake -S . -B build && cmake --build build
 ```bash
 npm run docs:refresh          # 跑全部 guard（size / links / placeholders / narrative）
 npm run docs:guard-size       # 單跑：現況小檔不得超過大小上限
-npm run docs:new-log-month    # 開新月份 log，如 docs/log/2026-06.md
+npm run docs:new-log-day      # 開當日 log，如 docs/log/2026-06-01.md
 ```
 
 文件拓撲與寫作規範見 [index.md](index.md) 與 [docs/CLAUDE.md](CLAUDE.md)。改完 `docs/` 後跑一次 `docs:refresh` 確認沒把長敘事塞進現況小檔、連結沒斷。

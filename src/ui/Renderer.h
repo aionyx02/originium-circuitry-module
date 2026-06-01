@@ -29,6 +29,7 @@ public:
 private:
     Font uiFont{};
     bool hasUiFont = false;
+    float winAnim = 0.0f;  // 0→1 fade/scale-in progress for the win banner
 };
 
 #endif

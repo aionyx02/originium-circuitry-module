@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <filesystem>
 #include <functional>
@@ -15,6 +16,7 @@
 #include "core/Parser.h"
 #include "ui/Input.h"
 #include "ui/Renderer.h"
+#include "ui/Theme.h"
 
 namespace {
 
@@ -31,9 +33,11 @@ enum class AppState {
 
 std::string promptPath(int argc, char** argv) {
     if (argc > 1 && argv[1] != nullptr) {
-        return argv[1];
+        const std::string arg = argv[1];
+        if (arg == "--menu" || arg == "-m") return {};
+        return arg;
     }
-    std::cout << "Enter level file path: " << std::flush;
+    std::cout << "Enter level file path (leave blank for level menu): " << std::flush;
     std::string path;
     if (!std::getline(std::cin, path)) return {};
     return path;
@@ -56,6 +60,29 @@ bool loadGame(const std::string& path, Game& game, std::string& errorOut) {
         errorOut = std::string("Unexpected error: ") + e.what();
         return false;
     }
+}
+
+bool tryLoadDroppedLevel(Game& game, std::string& loadedPath, std::string& errorOut) {
+    if (!IsFileDropped()) return false;
+
+    FilePathList dropped = LoadDroppedFiles();
+    const auto unload = [&]() { UnloadDroppedFiles(dropped); };
+
+    for (unsigned i = 0; i < dropped.count; ++i) {
+        const std::filesystem::path path = dropped.paths[i];
+        if (path.extension() != ".txt") continue;
+        if (loadGame(path.string(), game, errorOut)) {
+            loadedPath = path.string();
+            unload();
+            return true;
+        }
+        unload();
+        return false;
+    }
+
+    errorOut = "Drop a .txt level file.";
+    unload();
+    return false;
 }
 
 constexpr int kMenuPanelW = 560;
@@ -94,6 +121,25 @@ std::vector<LevelEntry> findLevels() {
     return levels;
 }
 
+// Display-only prettifier: "Example1.txt" -> "Example 1", "custom-3.txt" ->
+// "Custom 3". Never used for file IO — LevelEntry::name keeps the raw filename.
+std::string prettyLevelName(const std::string& filename) {
+    std::string s = filename;
+    const std::string ext = ".txt";
+    if (s.size() > ext.size() && s.compare(s.size() - ext.size(), ext.size(), ext) == 0)
+        s.erase(s.size() - ext.size());
+    const std::string pre = "custom-";
+    if (s.compare(0, pre.size(), pre) == 0)
+        return "Custom " + s.substr(pre.size());
+    // Space before a trailing digit run: "Example1" -> "Example 1".
+    std::size_t i = s.size();
+    while (i > 0 && std::isdigit(static_cast<unsigned char>(s[i - 1]))) --i;
+    if (i > 0 && i < s.size() && !std::isspace(static_cast<unsigned char>(s[i - 1])))
+        s.insert(i, " ");
+    if (!s.empty()) s[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(s[0])));
+    return s;
+}
+
 int menuSelectionFromMouse(const std::vector<LevelEntry>& levels,
                            int selected,
                            int screenW,
@@ -123,8 +169,7 @@ void drawMenu(const std::vector<LevelEntry>& levels,
               int screenW,
               int screenH) {
     DrawRectangleGradientV(0, 0, screenW, screenH,
-                           Color{22, 29, 43, 255},
-                           Color{9, 12, 20, 255});
+                           theme::kBgGradTop, theme::kBgGradBottom);
 
     const int panelX = (screenW - kMenuPanelW) / 2;
     const int panelY = (screenH - kMenuPanelH) / 2;
@@ -135,15 +180,15 @@ void drawMenu(const std::vector<LevelEntry>& levels,
         static_cast<float>(kMenuPanelH),
     };
     DrawRectangleRounded(panel, 0.06f, 8, Color{18, 22, 32, 230});
-    DrawRectangleRoundedLinesEx(panel, 0.06f, 8, 1.0f, Color{72, 94, 112, 255});
+    DrawRectangleRoundedLinesEx(panel, 0.06f, 8, 1.0f, theme::kPanelBorder);
 
     DrawTextEx(font, "ORIGINIUM", Vector2{static_cast<float>(panelX + 42), static_cast<float>(panelY + 34)},
-               32.0f, 1.5f, Color{232, 244, 245, 255});
+               32.0f, 1.5f, theme::kTextBright);
     DrawTextEx(font, "CIRCUIT REPAIR", Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + 70)},
-               18.0f, 1.2f, Color{109, 236, 218, 255});
+               18.0f, 1.2f, theme::kAccent);
     DrawRectangle(panelX + 44, panelY + 103, 88, 2, Color{109, 236, 218, 190});
     DrawTextEx(font, "SELECT LEVEL", Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + 132)},
-               18.0f, 1.4f, Color{174, 191, 203, 255});
+               18.0f, 1.4f, theme::kTextMuted);
 
     if (levels.empty()) {
         DrawTextEx(font, "No playable .txt levels found.",
@@ -171,15 +216,28 @@ void drawMenu(const std::vector<LevelEntry>& levels,
                                  : isHover ? Color{36, 44, 56, 245}
                                             : Color{31, 37, 48, 230});
             DrawRectangleRoundedLinesEx(row, 0.10f, 6, isSelected ? 2.0f : 1.0f,
-                                        isSelected ? Color{109, 236, 218, 255}
+                                        isSelected ? theme::kAccent
                                         : isHover ? Color{104, 130, 150, 245}
                                                    : Color{75, 88, 104, 255});
-            DrawTextEx(font, levels[i].name.c_str(),
+            DrawTextEx(font, prettyLevelName(levels[i].name).c_str(),
                        Vector2{static_cast<float>(listX + 18),
                                static_cast<float>(listY + localIdx * kMenuRowH + 7)},
-                       20.0f, 1.0f, Color{232, 244, 245, 255});
+                       20.0f, 1.0f, theme::kTextBright);
         }
         if (levelCount > maxVisible) {
+            // Scroll affordance: line chevrons when there's more above / below
+            // (drawn as lines so we don't depend on Unicode glyphs in the font).
+            const float cx = static_cast<float>(listX + listW - 10);
+            if (start > 0) {
+                const float cy = static_cast<float>(listY - 12);
+                DrawLineEx({cx - 6, cy + 4}, {cx, cy - 4}, 2.0f, theme::kAccent);
+                DrawLineEx({cx, cy - 4}, {cx + 6, cy + 4}, 2.0f, theme::kAccent);
+            }
+            if (start + maxVisible < levelCount) {
+                const float cy = static_cast<float>(listY + maxVisible * kMenuRowH + 2);
+                DrawLineEx({cx - 6, cy - 4}, {cx, cy + 4}, 2.0f, theme::kAccent);
+                DrawLineEx({cx, cy + 4}, {cx + 6, cy - 4}, 2.0f, theme::kAccent);
+            }
             char range[64];
             std::snprintf(range, sizeof(range), "Showing %d-%d of %d",
                           start + 1, start + maxVisible, levelCount);
@@ -221,14 +279,6 @@ int sumRotateCount(const Game& g) {
 // Part-designer paint grid dimension (NxN canvas; trimmed to bbox on add).
 constexpr int kPaintN = 5;
 
-Color editorColorBadge(unsigned i) {
-    static const Color cs[] = {
-        { 76, 175,  80, 255}, { 33, 150, 243, 255},
-        {244,  67,  54, 255}, {255, 193,   7, 255},
-    };
-    return cs[i % 4];
-}
-
 void editorCenteredText(Font font, const char* s, float cx, float cy, float fs, Color col) {
     const Vector2 sz = MeasureTextEx(font, s, fs, 1.0f);
     DrawTextEx(font, s, Vector2{cx - sz.x / 2.0f, cy - sz.y / 2.0f}, fs, 1.0f, col);
@@ -247,7 +297,10 @@ std::string exportEditorLevel(const Editor& ed) {
     }
     std::ofstream out(path);
     if (!out) return {};
-    out << LevelWriter::write(ed.board, ed.parts);
+    Board board;
+    std::vector<Part> parts;
+    ed.buildPlayableSnapshot(board, parts);
+    out << LevelWriter::write(board, parts);
     if (!out) return {};
     return path.string();
 }
@@ -256,20 +309,23 @@ enum class EditorResult { Stay, Play, Menu };
 
 // Immediate-mode editor: draws and handles mouse input in one pass. Click a
 // board cell to apply the active tool (erase / block / fix); click the number
-// boxes around the board to adjust that color's row/column requirement
-// (left = +1, right = -1); paint a shape in the designer and ADD it as a part.
+// boxes around the board to fine-tune the current color's row/column
+// requirement (left = +1, right = -1); paint a shape in the designer and ADD
+// it as a part.
 EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& tool,
-                       int& selPiece, std::string& msg, Font font, int sw, int sh) {
+                       int& selPiece, std::string& msg, Font font, int sw, int sh,
+                       bool& hoverClickable) {
     const Vector2 mp = GetMousePosition();
     const bool lc = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
     const bool rc = IsMouseButtonPressed(MOUSE_BUTTON_RIGHT);
-    const Color cyan = Color{109, 236, 218, 255};
-    const Color text = Color{232, 244, 245, 255};
-    const Color cur  = editorColorBadge(ed.currentColor);
+    const Color cyan = theme::kAccent;
+    const Color text = theme::kTextBright;
+    const Color cur  = theme::colorBadge(ed.currentColor);
 
     auto hit = [&](Rectangle r) { return CheckCollisionPointRec(mp, r); };
     auto button = [&](Rectangle r, const char* label, bool active, float fs = 16.0f) -> bool {
         const bool over = hit(r);
+        if (over) hoverClickable = true;
         DrawRectangleRounded(r, 0.22f, 5,
             active ? Color{36, 55, 61, 255} : over ? Color{40, 48, 60, 255} : Color{26, 31, 41, 255});
         DrawRectangleRoundedLinesEx(r, 0.22f, 5, active ? 2.0f : 1.0f,
@@ -280,15 +336,22 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
 
     EditorResult result = EditorResult::Stay;
     if (IsKeyPressed(KEY_ESCAPE)) result = EditorResult::Menu;
+    if (IsKeyPressed(KEY_P)) result = EditorResult::Play;
+    if (IsKeyPressed(KEY_R)) ed.rotatePart(selPiece);
+    if (IsKeyPressed(KEY_E)) {
+        const std::string path = exportEditorLevel(ed);
+        msg = path.empty() ? "Export failed." : ("Exported: " + path);
+    }
 
-    DrawRectangleGradientV(0, 0, sw, sh, Color{22, 29, 43, 255}, Color{9, 12, 20, 255});
+    DrawRectangleGradientV(0, 0, sw, sh, theme::kBgGradTop, theme::kBgGradBottom);
 
     // ---- Sidebar ----
     Rectangle panel = {24.0f, 20.0f, 320.0f, (float)sh - 40};
     DrawRectangleRounded(panel, 0.04f, 8, Color{18, 22, 32, 235});
-    DrawRectangleRoundedLinesEx(panel, 0.04f, 8, 1.0f, Color{72, 94, 112, 255});
+    DrawRectangleRoundedLinesEx(panel, 0.04f, 8, 1.0f, theme::kPanelBorder);
     DrawTextEx(font, "LEVEL EDITOR", Vector2{44, 34}, 24.0f, 1.2f, text);
     DrawTextEx(font, "CIRCUIT DESIGNER", Vector2{45, 62}, 13.0f, 1.4f, cyan);
+    DrawRectangle(45, 84, 88, 2, Color{109, 236, 218, 190});  // accent underline (matches game/menu)
 
     float y = 92;
     auto stepper = [&](const char* label, int value, int lo, int hi, std::function<void(int)> apply) {
@@ -308,10 +371,10 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
     DrawTextEx(font, "COLOR", Vector2{44, y}, 14.0f, 1.2f, Color{150, 166, 180, 255});
     for (int i = 0; i < (int)ed.board.colors; ++i) {
         Rectangle sw_ = {110.0f + i * 40, y - 4, 32, 22};
-        DrawRectangleRounded(sw_, 0.3f, 5, editorColorBadge(i));
+        DrawRectangleRounded(sw_, 0.3f, 5, theme::colorBadge(i));
         if ((int)ed.currentColor == i)
             DrawRectangleRoundedLinesEx(sw_, 0.3f, 5, 2.5f, cyan);
-        if (hit(sw_) && lc) ed.currentColor = (unsigned)i;
+        if (hit(sw_)) { hoverClickable = true; if (lc) ed.currentColor = (unsigned)i; }
     }
     y += 34;
 
@@ -334,7 +397,7 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
     if (selPiece >= (int)ed.parts.size()) selPiece = (int)ed.parts.size() - 1;
     DrawTextEx(font, "PIECES", Vector2{44, y}, 14.0f, 1.2f, Color{150, 166, 180, 255});
     if (button({200, y - 4, 64, 22}, "ROTATE", false)) ed.rotatePart(selPiece);
-    if (button({270, y - 4, 66, 22}, "DELETE", false)) {
+    if (button({258, y - 4, 78, 22}, "DEL LAST", false)) {
         if (selPiece >= 0 && selPiece == (int)ed.parts.size() - 1) ed.removeLastPart();
         selPiece = (int)ed.parts.size() - 1;
     }
@@ -355,11 +418,11 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
         for (auto [dr, dc] : cells) { mx = std::max(mx, dc); my = std::max(my, dr); }
         const int span = std::max(1, std::max(mx, my) + 1);
         const float cs = (tile - 10.0f) / span;
-        Color pcCol = editorColorBadge(ed.parts[i].colorIndex);
+        Color pcCol = theme::colorBadge(ed.parts[i].colorIndex);
         if (ed.parts[i].location.placed) pcCol = Color{(unsigned char)(pcCol.r/2),(unsigned char)(pcCol.g/2),(unsigned char)(pcCol.b/2),255};
         for (auto [dr, dc] : cells)
             DrawRectangleRounded(Rectangle{tx + 5 + dc * cs, (float)ty + 5 + dr * cs, cs - 1, cs - 1}, 0.2f, 3, pcCol);
-        if (hit(box) && lc) selPiece = i;
+        if (hit(box)) { hoverClickable = true; if (lc) selPiece = i; }
     }
     const int rows_ = (ed.parts.empty() ? 1 : (int)((ed.parts.size() + perRow - 1) / perRow));
     y += rows_ * (tile + 4) + 6;
@@ -378,7 +441,7 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
             const bool on = paint[r][c];
             DrawRectangleRounded(pc, 0.18f, 4, on ? cur : Color{30, 36, 46, 255});
             DrawRectangleRoundedLinesEx(pc, 0.18f, 4, 1.0f, on ? cyan : Color{70, 82, 98, 255});
-            if (hit(pc) && lc) paint[r][c] = !paint[r][c];
+            if (hit(pc)) { hoverClickable = true; if (lc) paint[r][c] = !paint[r][c]; }
         }
     }
     if (button({(float)(pgx + kPaintN * pcs + 12), (float)pgy + 8, 92, 30}, "ADD", false)) {
@@ -420,7 +483,7 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
     DrawTextEx(font, "BOARD", Vector2{(float)(boardX - nb - 6), 46.0f}, 22.0f, 1.2f, text);
     DrawTextEx(font, "Lay your pieces out to form a solution — the row/column",
                Vector2{(float)(boardX - nb - 6), 74.0f}, 14.0f, 1.0f, Color{150, 166, 180, 255});
-    DrawTextEx(font, "numbers fill in automatically. Right-click a cell to clear it.",
+    DrawTextEx(font, "numbers auto-fill; click a box to fine-tune. Right-click a cell to clear it.",
                Vector2{(float)(boardX - nb - 6), 94.0f}, 14.0f, 1.0f, Color{150, 166, 180, 255});
 
     // Hovered board cell.
@@ -431,11 +494,18 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
         if (r >= 0 && r < M && c >= 0 && c < N) { hovR = r; hovC = c; }
     }
 
-    // Auto-derived row/column numbers (read-only).
+    // Auto-derived row/column numbers. Left-click = +1, right-click = -1 for
+    // the current color, so the editor still supports explicit number-setting.
     auto numberBox = [&](int x, int yy, int idx, bool isRow) {
         Rectangle r = {(float)x, (float)yy, (float)nb, (float)nb};
+        const bool over = hit(r);
+        if (over) {
+            hoverClickable = true;
+            if (lc) ed.adjustConstraint(ed.currentColor, idx, isRow, +1);
+            if (rc) ed.adjustConstraint(ed.currentColor, idx, isRow, -1);
+        }
         DrawRectangleRounded(r, 0.25f, 5, Color{26, 31, 41, 255});
-        DrawRectangleRoundedLinesEx(r, 0.25f, 5, 1.0f, cur);
+        DrawRectangleRoundedLinesEx(r, 0.25f, 5, over ? 2.0f : 1.0f, cur);
         char b[8]; std::snprintf(b, sizeof(b), "%u", ed.constraintAt(ed.currentColor, idx, isRow));
         editorCenteredText(font, b, x + nb / 2.0f, yy + nb / 2.0f, 17.0f, text);
     };
@@ -455,7 +525,7 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
                 editorCenteredText(font, "X", cellRect.x + cellRect.width / 2,
                                    cellRect.y + cellRect.height / 2, 22.0f, Color{200, 80, 80, 255});
             } else if (Board::isCannotMove(v)) {
-                const Color cc = editorColorBadge((unsigned)Board::cannotMoveColor(v));
+                const Color cc = theme::colorBadge((unsigned)Board::cannotMoveColor(v));
                 DrawRectangleRounded(cellRect, 0.15f, 6,
                     Color{(unsigned char)(cc.r / 3), (unsigned char)(cc.g / 3), (unsigned char)(cc.b / 3), 255});
                 DrawRectangleRoundedLinesEx(cellRect, 0.15f, 6, 1.5f, cc);
@@ -464,7 +534,7 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
             } else if (Board::isOccupied(v)) {
                 const int pi = Board::occupiedPartIndex(v);
                 const Color cc = (pi >= 0 && pi < (int)ed.parts.size())
-                               ? editorColorBadge(ed.parts[pi].colorIndex) : Color{120,120,120,255};
+                               ? theme::colorBadge(ed.parts[pi].colorIndex) : Color{120,120,120,255};
                 DrawRectangleRounded(cellRect, 0.15f, 6, cc);
                 DrawRectangleRoundedLinesEx(cellRect, 0.15f, 6, 1.0f, Color{240,248,250,160});
             } else {
@@ -492,6 +562,7 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
 
     // Clicks on the board.
     if (hovR >= 0) {
+        hoverClickable = true;
         if (lc) {
             if (tool == 0) {
                 if (selPiece < 0 || selPiece >= (int)ed.parts.size()) msg = "Make/select a piece first.";
@@ -516,12 +587,8 @@ int main(int argc, char** argv) {
     Game game;
     std::string err;
     AppState appState = AppState::Menu;
-    if (argc > 1 && argv[1] != nullptr) {
-        const std::string path = promptPath(argc, argv);
-        if (path.empty()) {
-            std::cerr << "No level file given." << std::endl;
-            return 1;
-        }
+    const std::string path = promptPath(argc, argv);
+    if (!path.empty()) {
         if (!loadGame(path, game, err)) {
             std::cerr << err << std::endl;
             return 1;
@@ -587,6 +654,27 @@ int main(int argc, char** argv) {
             const int sw = GetScreenWidth();
             const int sh = GetScreenHeight();
 
+            if (appState != AppState::Editor) {
+                std::string droppedPath;
+                std::string droppedError;
+                if (tryLoadDroppedLevel(game, droppedPath, droppedError)) {
+                    appState = AppState::InGame;
+                    resetSoundBaseline();
+                    menuMessage.clear();
+                    if (!droppedPath.empty()) {
+                        game.statusMessage = "Loaded: " +
+                                             std::filesystem::path(droppedPath).filename().string();
+                    }
+                } else if (!droppedError.empty()) {
+                    if (appState == AppState::Menu) menuMessage = droppedError;
+                    else game.statusMessage = droppedError;
+                }
+            }
+
+            // Set to true by any branch when the cursor is over a clickable
+            // element; applied as a pointing-hand cursor before EndDrawing.
+            bool hoverClickable = false;
+
             BeginDrawing();
             if (appState == AppState::Menu) {
                 const Vector2 mp = GetMousePosition();
@@ -596,6 +684,7 @@ int main(int argc, char** argv) {
                 const Vector2 mouseDelta = GetMouseDelta();
                 const bool mouseMoved = (mouseDelta.x != 0.0f) || (mouseDelta.y != 0.0f);
                 const bool ctxOpen = (ctxMenuIdx >= 0 && ctxMenuIdx < static_cast<int>(levels.size()));
+                if (!ctxOpen && hover >= 0) hoverClickable = true;
 
                 if (!ctxOpen) {
                     if (hover >= 0 && mouseMoved) selectedLevel = hover;
@@ -662,6 +751,7 @@ int main(int argc, char** argv) {
                     Rectangle ob = {static_cast<float>(sw / 2 - 110),
                                     static_cast<float>(panelY + kMenuPanelH + 10), 220, 32};
                     const bool over = CheckCollisionPointRec(mp, ob);
+                    if (over) hoverClickable = true;
                     DrawRectangleRounded(ob, 0.3f, 6, over ? Color{40, 48, 60, 255}
                                                            : Color{26, 31, 41, 235});
                     DrawRectangleRoundedLinesEx(ob, 0.3f, 6, 1.5f, Color{109, 236, 218, 210});
@@ -691,7 +781,7 @@ int main(int argc, char** argv) {
                     Rectangle bg = {px, py, iw, ih * n};
                     DrawRectangleRounded(bg, 0.12f, 6, Color{24, 29, 39, 248});
                     DrawRectangleRoundedLinesEx(bg, 0.12f, 6, 1.5f, Color{109, 236, 218, 210});
-                    DrawTextEx(menuFont, levels[ctxMenuIdx].name.c_str(), Vector2{px + 12, py - 22},
+                    DrawTextEx(menuFont, prettyLevelName(levels[ctxMenuIdx].name).c_str(), Vector2{px + 12, py - 22},
                                14.0f, 1.0f, Color{174, 191, 203, 255});
 
                     // Run an item then close the menu.
@@ -717,7 +807,7 @@ int main(int argc, char** argv) {
                     for (int i = 0; i < n; ++i) {
                         Rectangle it = {px, py + i * ih, iw, ih};
                         const bool over = CheckCollisionPointRec(mp, it);
-                        if (over) ctxSel = i;                       // hover updates keyboard selection
+                        if (over) { ctxSel = i; hoverClickable = true; }  // hover updates keyboard selection
                         if (i == ctxSel) DrawRectangleRounded(it, 0.12f, 6, Color{40, 48, 60, 255});
                         editorCenteredText(menuFont, items[i], it.x + iw / 2, it.y + ih / 2, 17.0f,
                                            i == 1 ? Color{235, 140, 140, 255} : Color{232, 244, 245, 255});
@@ -732,9 +822,13 @@ int main(int argc, char** argv) {
                 }
             } else if (appState == AppState::Editor) {
                 const EditorResult res =
-                    runEditor(editor, paintGrid, editorTool, editorSelPiece, editorMessage, menuFont, sw, sh);
+                    runEditor(editor, paintGrid, editorTool, editorSelPiece, editorMessage, menuFont, sw, sh,
+                              hoverClickable);
                 if (res == EditorResult::Play) {
-                    game.init(editor.board, editor.parts);
+                    Board board;
+                    std::vector<Part> parts;
+                    editor.buildPlayableSnapshot(board, parts);
+                    game.init(std::move(board), std::move(parts));
                     appState = AppState::InGame;
                     resetSoundBaseline();
                     editorMessage.clear();
@@ -764,6 +858,8 @@ int main(int argc, char** argv) {
                     continue;
                 }
                 const bool restartClicked = lclickg && CheckCollisionPointRec(mpg, restartBtn);
+                if (CheckCollisionPointRec(mpg, menuBtn) || CheckCollisionPointRec(mpg, restartBtn))
+                    hoverClickable = true;
 
                 const Layout L = computeLayout(game, sw, sh);
                 const Action a = Input::poll();
@@ -813,6 +909,7 @@ int main(int argc, char** argv) {
                 qbtn(menuBtn, "MENU  (N)");
                 qbtn(restartBtn, "RESTART");
             }
+            SetMouseCursor(hoverClickable ? MOUSE_CURSOR_POINTING_HAND : MOUSE_CURSOR_DEFAULT);
             EndDrawing();
         }
         if (hasMenuFont) {

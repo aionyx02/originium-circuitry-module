@@ -48,6 +48,12 @@ public:
     void removePartAt(int row, int col);          // lift whatever piece covers the cell
     void rotatePart(int idx);                      // rotate an un-placed piece
     void deriveConstraints();                      // recompute row/col numbers from layout
+
+    // Build the playable/exportable version of the designed level: keep the
+    // current board size, colors, blocked/fixed cells and row/column numbers,
+    // but clear any temporarily placed solution pieces from the board and send
+    // every part back to the tray in its default rotation.
+    void buildPlayableSnapshot(Board& outBoard, std::vector<Part>& outParts) const;
 };
 
 #endif

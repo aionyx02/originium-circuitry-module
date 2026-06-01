@@ -173,3 +173,27 @@ unsigned Editor::constraintAt(unsigned color, int idx, bool isRow) const {
     if (pos < 0 || pos >= static_cast<int>(board._constraints[color].size())) return 0;
     return board._constraints[color][pos];
 }
+
+void Editor::buildPlayableSnapshot(Board& outBoard, std::vector<Part>& outParts) const {
+    outBoard = board;
+    outParts = parts;
+
+    for (auto& row : outBoard._boardInfo) {
+        for (auto& cell : row) {
+            if (Board::isOccupied(cell)) cell = Board::EMPTY;
+        }
+    }
+
+    for (auto& p : outParts) {
+        p.location.row = static_cast<int>(p.partIndex);
+        p.location.col = -1;
+        p.location.rotate = Rotate::CW_0;
+        p.location.placed = false;
+        p.rotateCount = 0;
+        p.currentCenterX = 0.0f;
+        p.currentCenterY = 0.0f;
+        p.currentAngle = 0.0f;
+        p.currentScale = 1.0f;
+        p.visualInitialized = false;
+    }
+}

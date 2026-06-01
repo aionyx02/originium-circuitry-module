@@ -1,6 +1,6 @@
 # STATUS.md — 進度與配分追蹤
 
-> Last updated: 2026-05-31（Phase 4 Solver 增量 1 代碼完成，待 GUI 驗收；分數暫仍 44.5%）
+> Last updated: 2026-06-01（Phase 5 GUI 驗收完成；editor 匯出 / 試玩收尾；分數 58.0%）
 > 路由：[index.md](index.md) ｜ 規劃：[plan.md](plan.md) ｜ 配分：[scoring.md](scoring.md) ｜ 工作規範：[CLAUDE.md](../CLAUDE.md) / [docs/CLAUDE.md](CLAUDE.md) ｜ 協作紀錄：[docs/log/](log/)（舊：[Log.md](Log.md)）
 
 > **這份檔只回答「現在到哪、勾了哪些分」**。決策原則去 CLAUDE.md，階段規劃去 plan.md。
@@ -9,7 +9,7 @@
 
 ## 目前分數
 
-**程式實作：44.5% / 65%**  
+**程式實作：58.0% / 65%**  
 口頭報告：尚未開始評估 / 60%
 
 > 每完成一個 Phase 更新一次。「目前分數」= 已穩穩拿到的分（demo 不會被扣回去的）。
@@ -18,13 +18,13 @@
 
 ## 目前階段
 
-**Phase 5 進行中 — 關卡編輯器代碼完成（滑鼠版，待 GUI 驗收）**
+**Phase 5 完成 — 關卡編輯器已驗收；程式面只剩 demo day 加分**
 
-Phase 0–3 完成；Phase 4（Solver + 提示 + 30 秒計時）代碼完成、headless 全綠、待 GUI 驗收。Phase 5 關卡編輯器：`LevelWriter`（反向 Parser）+ `Editor` 模型 + **滑鼠 immediate-mode 編輯器**，採「**擺零件排解答→列/欄數字自動生成**」（`deriveConstraints`）；PIECES 清單顯示零件、PLACE+ghost 預覽、BLOCK/FIX/ERASE 點格、EXPORT/PLAY/MENU。**編輯 6 子項全到位** + 匯出 + 試玩。Headless 驗 place→derive→export→solve、blocked/fixed、resize-unplace 全綠。詳見 [plan.md §10](plan.md)。
+Phase 0–5 完成。Phase 4（Solver + 提示 + 30 秒計時）已完成 GUI 驗收：`F` 一鍵自動解、勝利 banner、以及 30 秒 idle 後的半透明 hint overlay 均已實機截圖確認。Phase 5 關卡編輯器也已完成 GUI 驗收：側欄 `-`/`+` 可即時改大小與顏色數、PART DESIGNER 可畫形狀加入零件、BLOCK/FIX/ERASE 與列/欄數字框可編輯；`EXPORT` 成功寫出 `assets/levels/custom-N.txt`，`PLAY` 走 `Editor::buildPlayableSnapshot(...)`，會把設計時暫放的解答零件收回 tray 後再進遊戲，接著可用 `F` 解開自製關卡。另已補強啟動讀檔硬限制：無參數啟動恢復 `stdin` prompt（留白可進 menu），且在 menu / game 可直接拖放 `.txt` 關卡載入。詳見 [plan.md §10](plan.md)。
 
 各里程碑 commit 與一句話：[plan.md 進度時間軸](plan.md#進度時間軸)。完整過程：[docs/log/](log/) + 封存的 [Log.md](Log.md)。
 
-**下一步**：GUI 驗收 Phase 4 + 編輯器；遊戲整體視覺 polish（依截圖逐項調，避免動到已入帳的 Renderer 圖形分）。
+**下一步**：Phase 6 打包 / 乾淨機器 dry run，以及 demo day 的基本 / 雙色測資加分驗證。
 
 ---
 
@@ -62,17 +62,17 @@ Phase 0–3 完成；Phase 4（Solver + 提示 + 30 秒計時）代碼完成、h
 
 ### 自動解題（共 10%）
 
-- [ ] 自動解題並顯示一個解 — 1%（`F` 鍵一鍵自動解填盤；headless 驗證 Example1–6 全解，**待 GUI 目視驗收**）
+- [x] 自動解題並顯示一個解 — 1%（`F` 鍵一鍵自動解填盤；headless 驗證 Example1–6 全解，2026-06-01 實機截圖驗收通過）
 - [ ] 解開單色測資 — (+2%)
 - [ ] 解開雙色測資 — (+2%)
-- [ ] 依解答在盤面上顯示半透明提示 — 2.5%（剩餘解答格畫半透明綠 overlay；headless 驗 hintCells 幾何正確，**待 GUI 目視驗收**）
-- [ ] 30 秒沒解開才顯示提示 — 2.5%（main loop idle 計時 ≥30s 才 `setHintsVisible`，放置/拔除即重置；**待 GUI 目視驗收**）
+- [x] 依解答在盤面上顯示半透明提示 — 2.5%（剩餘解答格畫半透明綠 overlay；headless 驗 hintCells 幾何正確，2026-06-01 實機截圖驗收通過）
+- [x] 30 秒沒解開才顯示提示 — 2.5%（main loop idle 計時 ≥30s 才 `setHintsVisible`，放置/拔除即重置；2026-06-01 實機截圖驗收通過）
 
 ### 關卡設計器（共 10%）
 
-- [ ] 編輯功能：盤面大小、顏色數、新增任意零件、不可放置格、固定零件、列/欄數字 — **5%（六項合計）**（滑鼠編輯器 **6/6 全到位**；headless 驗 blocked/fixed/round-trip，**待 GUI 驗收**）
-- [ ] 匯出設定檔（純文字格式） — 2.5%（`LevelWriter` 寫 `assets/levels/custom-N.txt`；headless round-trip + 設計關可解全綠，**待 GUI 驗收**）
-- [ ] 直接遊玩設計好的關卡 — 2.5%（`P` → `Game::init`，含設計的零件；headless 驗設計關可解，**待 GUI 驗收**）
+- [x] 編輯功能：盤面大小、顏色數、新增任意零件、不可放置格、固定零件、列/欄數字 — **5%（六項合計）**（GUI 腳本已跑過 stepper / PART DESIGNER / BLOCK / FIX / ERASE / 數字框微調）
+- [x] 匯出設定檔（純文字格式） — 2.5%（`LevelWriter` 成功寫出 `assets/levels/custom-1.txt`；GUI 匯出 + round-trip / solve 驗證全綠）
+- [x] 直接遊玩設計好的關卡 — 2.5%（`P` → `Editor::buildPlayableSnapshot(...)` → `Game::init(...)`；GUI 畫面確認零件回 tray，`F` 可解自製關卡）
 
 ### 圖形介面（共 15%）
 
@@ -90,7 +90,10 @@ Phase 0–3 完成；Phase 4（Solver + 提示 + 30 秒計時）代碼完成、h
 
 ## 進行中
 
-- 助教 demo 雙色測資 +2% 留到 demo day：當場測資能透過 argv 直接載入並遊玩後再勾
+- 視覺 polish pass（`feat/visual-polish`）代碼完成、待 GUI 驗收（[log/2026-06-01.md](log/2026-06-01.md)）
+- 助教 demo 基本 / 雙色測資 +2% / +2% 留到 demo day：當場測資能透過 argv 或拖放直接載入並遊玩後再勾
+- Phase 6：靜態連結 exe / `assets/` 打包與乾淨 Windows 機器 dry run
+- 讀檔硬限制補強已完成：`argv[1]`、無參數 `stdin` prompt、`--menu`，以及 menu / game 拖放 `.txt` 載入
 - 材質策略：純程序材質（不引入 png 資產）
 - 音效策略：使用者已用 jsfxr 生 pickup / place / spin 3 個 mp3 + 沿用 victory.mp3 當 win 音
 
@@ -108,5 +111,5 @@ Phase 0–3 完成；Phase 4（Solver + 提示 + 30 秒計時）代碼完成、h
 
 - 每完成一個 checklist 項目並驗證 → 打勾、更新「目前分數」、補一句到「已完成」
 - 每個 Phase 結束 → 對應 plan.md 進度時間軸新增一條
-- 已知 Bug 不要藏，立刻寫上來；修好了從清單刪掉並記到 [docs/log/](log/) 當月檔
+- 已知 Bug 不要藏，立刻寫上來；修好了從清單刪掉並記到 [docs/log/](log/) 當日檔
 - 修動本檔記得改最上方的 `Last updated`

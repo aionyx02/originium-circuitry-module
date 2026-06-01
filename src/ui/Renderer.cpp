@@ -5,24 +5,17 @@
 #include <cstdio>
 
 #include "raylib.h"
+#include "ui/Theme.h"
 
 namespace {
+
+using theme::colorBadge;
 
 constexpr int kTrayPreviewX   = 124;  // offset within slot where preview box starts
 constexpr int kTrayPreviewW   = 98;
 constexpr int kConstraintGap  = 8;
 constexpr int kColHintHeight  = 48;
 constexpr int kRowHintWidth   = kColHintHeight;
-
-Color colorBadge(unsigned colorIndex) {
-    static const Color colors[] = {
-        { 76, 175,  80, 255},
-        { 33, 150, 243, 255},
-        {244,  67,  54, 255},
-        {255, 193,   7, 255},
-    };
-    return colors[colorIndex % (sizeof(colors) / sizeof(colors[0]))];
-}
 
 Color hintStatusColor(unsigned current, unsigned need) {
     if (current == need) return Color{80, 220, 100, 255};
@@ -266,7 +259,7 @@ void drawPlacementHighlight(const Game& g, const Layout& L) {
 }
 
 void drawCursor(const Game& g, const Layout& L) {
-    const Color cursor = Color{109, 236, 218, 255};
+    const Color cursor = theme::kAccent;
     if (g.cursorCol >= 0) {
         const int x = L.boardX + g.cursorCol * L.cellSize;
         const int y = L.boardY + g.cursorRow * L.cellSize;
@@ -285,16 +278,16 @@ void drawSidebar(const Game& g, const Layout& L, Font font) {
     const int partCount = static_cast<int>(g.parts.size());
     const float panelH = std::max(430.0f, partCount * kTraySlotHeight + 140.0f);
     Rectangle panel = {24.0f, 20.0f, 276.0f, panelH};
-    drawRoundedRect(panel, 0.08f, Color{18, 22, 32, 224}, Color{72, 94, 112, 255}, 1.0f);
+    drawRoundedRect(panel, 0.08f, Color{18, 22, 32, 224}, theme::kPanelBorder, 1.0f);
     DrawRectangleGradientV(25, 21, 274, static_cast<int>(panelH) - 2,
                            Color{35, 43, 56, 120}, Color{16, 20, 30, 40});
 
-    drawText(font, "ORIGINIUM", 44.0f, 30.0f, 27.0f, Color{232, 244, 245, 255}, 1.5f);
-    drawText(font, "CIRCUIT REPAIR", 46.0f, 59.0f, 14.0f, Color{109, 236, 218, 255}, 1.2f);
+    drawText(font, "ORIGINIUM", 44.0f, 30.0f, 27.0f, theme::kTextBright, 1.5f);
+    drawText(font, "CIRCUIT REPAIR", 46.0f, 59.0f, 14.0f, theme::kAccent, 1.2f);
 
     DrawRectangle(46, 90, 70, 2, Color{109, 236, 218, 190});
     drawText(font, "PARTS CACHE", static_cast<float>(L.trayX), static_cast<float>(L.trayY - 30),
-             15.0f, Color{174, 191, 203, 255}, 1.4f);
+             15.0f, theme::kTextMuted, 1.4f);
 }
 
 void drawTrayBg(const Game& g, const Layout& L, Font font) {
@@ -351,21 +344,30 @@ void drawStatus(const Game& g, int screenW, int screenH, Font font) {
         drawText(font, g.statusMessage.c_str(), 48.0f, static_cast<float>(screenH - 84),
                  18.0f, Color{255, 203, 126, 255}, 1.0f);
     }
+    // Faint chrome strip so the hint line reads as a footer, not floating text.
+    DrawRectangle(0, screenH - 48, screenW, 48, Color{12, 16, 24, 150});
+    DrawRectangle(0, screenH - 48, screenW, 1, Color{72, 94, 112, 90});
     drawText(font, "WASD MOVE  ·  R ROTATE  ·  ENTER/CLICK PLACE  ·  ESC/RMB REMOVE  ·  F SOLVE  ·  BKSP RESTART  ·  N MENU",
              40.0f, static_cast<float>(screenH - 38), 15.0f, Color{143, 160, 174, 255}, 1.0f);
-    (void)screenW;
 }
 
-void drawWinBanner(int screenW, int screenH, Font font) {
+void drawWinBanner(int screenW, int screenH, Font font, float anim) {
+    // anim: 0→1 eased progress. Fade alpha in and slide the banner up a touch.
+    const float a = std::clamp(anim, 0.0f, 1.0f);
+    auto fade = [a](Color c) {
+        c.a = static_cast<unsigned char>(c.a * a);
+        return c;
+    };
     const int bw = 430, bh = 132;
     const int bx = (screenW - bw) / 2;
-    const int by = (screenH - bh) / 2;
+    const int slide = static_cast<int>((1.0f - a) * 14.0f);  // starts lower, settles
+    const int by = (screenH - bh) / 2 + slide;
     Rectangle r = { (float)bx, (float)by, (float)bw, (float)bh };
-    drawRoundedRect(r, 0.12f, Color{9, 14, 20, 232}, Color{109, 236, 218, 255}, 2.5f);
-    drawCenteredText(font, "CIRCUIT RESTORED", bx, by + 18, bw, 40, 32, Color{230, 249, 246, 255});
-    drawCenteredText(font, "All constraints satisfied", bx, by + 58, bw, 22, 16, Color{109, 236, 218, 255});
+    drawRoundedRect(r, 0.12f, fade(Color{9, 14, 20, 232}), fade(theme::kAccent), 2.5f);
+    drawCenteredText(font, "CIRCUIT RESTORED", bx, by + 18, bw, 40, 32, fade(Color{230, 249, 246, 255}));
+    drawCenteredText(font, "All constraints satisfied", bx, by + 58, bw, 22, 16, fade(theme::kAccent));
     drawCenteredText(font, "N: Menu      Backspace: Replay", bx, by + 90, bw, 22, 16,
-                     Color{174, 191, 203, 255});
+                     fade(theme::kTextMuted));
 }
 
 // --- Phase 2 animation ---
@@ -617,10 +619,10 @@ void Renderer::draw(Game& g, int screenW, int screenH, float dt) {
     Font font = hasUiFont ? uiFont : GetFontDefault();
 
     // Vertical gradient bg — darker top fades to deeper bottom.
-    ClearBackground(Color{18, 20, 28, 255});
+    // Shared across game / menu / editor (see ui/Theme.h).
+    ClearBackground(theme::kBgGradBottom);
     DrawRectangleGradientV(0, 0, screenW, screenH,
-                           Color{26, 34, 43, 255},
-                           Color{10, 13, 19, 255});
+                           theme::kBgGradTop, theme::kBgGradBottom);
 
     const Layout L = computeLayout(g, screenW, screenH);
 
@@ -636,5 +638,11 @@ void Renderer::draw(Game& g, int screenW, int screenH, float dt) {
     drawParts(g, L);
     drawStatus(g, screenW, screenH, font);
 
-    if (g.won) drawWinBanner(screenW, screenH, font);
+    // Ease the win banner in; reset when not in a won state so a replay re-plays it.
+    if (g.won) {
+        winAnim += (1.0f - winAnim) * (1.0f - std::exp(-dt * 10.0f));
+        drawWinBanner(screenW, screenH, font, winAnim);
+    } else {
+        winAnim = 0.0f;
+    }
 }

@@ -740,6 +740,7 @@ int main(int argc, char** argv) {
     int  prevRotateSum  = 0;
     float idleTimer     = 0.0f;
     float trayScroll    = 0.0f;   // tray vertical scroll offset (px); 0 = top
+    bool  muted         = false;  // global sfx mute (M); persists across levels
     auto resetSoundBaseline = [&]() {
         prevHeld      = game.heldPartIdx;
         prevWon       = game.won;
@@ -1018,6 +1019,19 @@ int main(int argc, char** argv) {
                 trayScroll = std::max(0.0f, std::min(trayScroll, static_cast<float>(trayMaxScroll)));
 
                 const Layout L = computeLayout(game, sw, sh, static_cast<int>(trayScroll));
+
+                // M toggles a global sfx mute (handy for demos / oral exam).
+                if (IsKeyPressed(KEY_M)) muted = !muted;
+
+                // Mouse wheel rotates the held part when the pointer is over the
+                // board (over the tray it scrolls instead, handled above). One
+                // notch = one 90° turn, reusing the normal rotate path + sfx.
+                if (!overTray && !game.isSolving() && game.heldPartIdx >= 0
+                    && wmp.x >= static_cast<float>(L.boardX)
+                    && GetMouseWheelMove() != 0.0f) {
+                    game.update(Action::Rotate);
+                }
+
                 const Action a = Input::poll();
                 if (game.isSolving()) {
                     // Auto-solve animation in flight: ignore all player input
@@ -1049,14 +1063,16 @@ int main(int argc, char** argv) {
                 const int  rotateSumNow = sumRotateCount(game);
 
                 // One sound per frame, priority: win > place > pickup > spin.
-                if (wonNow && !prevWon) {
-                    if (IsSoundValid(sndWin)) PlaySound(sndWin);
-                } else if (placedCntNow > prevPlacedCnt) {
-                    if (IsSoundValid(sndPlace)) PlaySound(sndPlace);
-                } else if (prevHeld < 0 && heldNow >= 0) {
-                    if (IsSoundValid(sndPickup)) PlaySound(sndPickup);
-                } else if (rotateSumNow > prevRotateSum) {
-                    if (IsSoundValid(sndSpin)) PlaySound(sndSpin);
+                if (!muted) {
+                    if (wonNow && !prevWon) {
+                        if (IsSoundValid(sndWin)) PlaySound(sndWin);
+                    } else if (placedCntNow > prevPlacedCnt) {
+                        if (IsSoundValid(sndPlace)) PlaySound(sndPlace);
+                    } else if (prevHeld < 0 && heldNow >= 0) {
+                        if (IsSoundValid(sndPickup)) PlaySound(sndPickup);
+                    } else if (rotateSumNow > prevRotateSum) {
+                        if (IsSoundValid(sndSpin)) PlaySound(sndSpin);
+                    }
                 }
 
                 // Phase 4: reveal the solution hint only after ~30s with no
@@ -1084,6 +1100,17 @@ int main(int argc, char** argv) {
                 };
                 qbtn(menuBtn, "MENU  (N)");
                 qbtn(restartBtn, "RESTART");
+
+                // Mute indicator pill below the quick buttons.
+                if (muted) {
+                    Rectangle mb = {quickBtnX, restartBtn.y + kQuickButtonHeight + kQuickButtonGap,
+                                    static_cast<float>(kQuickButtonWidth),
+                                    static_cast<float>(kQuickButtonHeight)};
+                    DrawRectangleRounded(mb, 0.25f, 6, Color{48, 33, 25, 235});
+                    DrawRectangleRoundedLinesEx(mb, 0.25f, 6, 1.5f, Color{255, 176, 88, 220});
+                    editorCenteredText(menuFont, "MUTED  (M)", mb.x + mb.width / 2,
+                                       mb.y + mb.height / 2, 16.0f, Color{255, 203, 126, 255});
+                }
             }
             SetMouseCursor(hoverClickable ? MOUSE_CURSOR_POINTING_HAND : MOUSE_CURSOR_DEFAULT);
             EndDrawing();

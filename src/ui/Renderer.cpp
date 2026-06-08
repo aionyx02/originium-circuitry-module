@@ -265,6 +265,24 @@ void drawPlacementHighlight(const Game& g, const Layout& L) {
     }
 }
 
+// Subtle highlight of the board cell under the mouse, for mouse players. Skipped
+// while holding a part (the green/red placement ghost already shows the target)
+// and after a win. Reads the live mouse position; same hit-test as Input.
+void drawHoverCell(const Game& g, const Layout& L) {
+    if (g.heldPartIdx >= 0 || g.won) return;
+    const Vector2 m = GetMousePosition();
+    const float bx = m.x - L.boardX;
+    const float by = m.y - L.boardY;
+    if (bx < 0 || by < 0) return;
+    const int c = static_cast<int>(bx) / L.cellSize;
+    const int r = static_cast<int>(by) / L.cellSize;
+    if (c < 0 || c >= L.cols || r < 0 || r >= L.rows) return;
+    Rectangle rec = { (float)(L.boardX + c * L.cellSize), (float)(L.boardY + r * L.cellSize),
+                      (float)L.cellSize, (float)L.cellSize };
+    DrawRectangleRounded(rec, 0.12f, 6, Color{109, 236, 218, 38});
+    DrawRectangleRoundedLinesEx(rec, 0.12f, 6, 1.5f, Color{109, 236, 218, 120});
+}
+
 void drawCursor(const Game& g, const Layout& L) {
     const Color cursor = theme::kAccent;
     if (g.cursorCol >= 0) {
@@ -382,7 +400,7 @@ void drawStatus(const Game& g, int screenW, int screenH, Font font) {
     // Faint chrome strip so the hint line reads as a footer, not floating text.
     DrawRectangle(0, screenH - 48, screenW, 48, Color{12, 16, 24, 150});
     DrawRectangle(0, screenH - 48, screenW, 1, Color{72, 94, 112, 90});
-    drawText(font, "WASD MOVE  ·  R ROTATE  ·  ENTER/CLICK PLACE  ·  ESC/RMB REMOVE  ·  F SOLVE  ·  BKSP RESTART  ·  N MENU",
+    drawText(font, "WASD MOVE  ·  R / WHEEL ROTATE  ·  ENTER/CLICK PLACE  ·  ESC/RMB REMOVE  ·  F SOLVE  ·  M MUTE  ·  BKSP RESTART  ·  N MENU",
              40.0f, static_cast<float>(screenH - 38), 15.0f, Color{143, 160, 174, 255}, 1.0f);
 }
 
@@ -676,6 +694,7 @@ void Renderer::draw(Game& g, int screenW, int screenH, float dt, int trayScroll)
     drawSidebar(g, L, font);
     drawConstraints(g, L, font);
     drawBoardBg(g, L, font);
+    drawHoverCell(g, L);
     drawHints(g, L);
     drawPlacementHighlight(g, L);
     drawCursor(g, L);

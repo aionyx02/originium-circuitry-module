@@ -323,6 +323,17 @@ std::string nextDefaultExportStem() {
     return "custom-level";
 }
 
+// Number of designed parts not yet placed on the board. The editor derives the
+// row/column requirements only from placed pieces (Editor::deriveConstraints),
+// so exporting/playing with any piece still in the tray yields constraints that
+// under-count that piece's color — an unsolvable level. EXPORT and PLAY are both
+// gated on this being 0 so the placed layout is always a valid solution.
+int editorUnplacedCount(const Editor& ed) {
+    int n = 0;
+    for (const auto& p : ed.parts) if (!p.location.placed) ++n;
+    return n;
+}
+
 // Write the level to assets/levels/<name>.txt. Returns the path written, or
 // "" on failure. Existing files are protected, except that re-exporting the
 // same file again in the current editor session is allowed.
@@ -331,6 +342,12 @@ std::string exportEditorLevel(const Editor& ed, const std::string& rawStem,
     namespace fs = std::filesystem;
     std::error_code ec;
     fs::create_directories("assets/levels", ec);
+
+    if (const int unplaced = editorUnplacedCount(ed); unplaced > 0) {
+        errorOut = "Place all pieces on the board first ("
+                 + std::to_string(unplaced) + " still in tray).";
+        return {};
+    }
 
     const std::string stem = normalizeExportStem(rawStem);
     if (stem.empty()) {
@@ -393,8 +410,17 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
     };
 
     EditorResult result = EditorResult::Stay;
+    // PLAY only when every piece is on the board — otherwise the derived
+    // constraints don't match the part list and the level can't be won.
+    auto requestPlay = [&]() {
+        if (const int unplaced = editorUnplacedCount(ed); unplaced > 0)
+            msg = "Place all pieces on the board first ("
+                + std::to_string(unplaced) + " still in tray).";
+        else
+            result = EditorResult::Play;
+    };
     if (!editingExportName && IsKeyPressed(KEY_ESCAPE)) result = EditorResult::Menu;
-    if (!editingExportName && IsKeyPressed(KEY_P)) result = EditorResult::Play;
+    if (!editingExportName && IsKeyPressed(KEY_P)) requestPlay();
     if (!editingExportName && IsKeyPressed(KEY_R)) ed.rotatePart(selPiece);
     if (!editingExportName && IsKeyPressed(KEY_E)) {
         std::string err;
@@ -561,7 +587,7 @@ EditorResult runEditor(Editor& ed, std::vector<std::vector<bool>>& paint, int& t
             msg = "Exported: " + path;
         }
     }
-    if (button({134, ay, 84, 30}, "PLAY", false)) result = EditorResult::Play;
+    if (button({134, ay, 84, 30}, "PLAY", false)) requestPlay();
     if (button({224, ay, 84, 30}, "MENU", false)) result = EditorResult::Menu;
 
     // ---- Board + clickable number boxes ----

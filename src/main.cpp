@@ -739,12 +739,14 @@ int main(int argc, char** argv) {
     int  prevPlacedCnt  = 0;
     int  prevRotateSum  = 0;
     float idleTimer     = 0.0f;
+    float trayScroll    = 0.0f;   // tray vertical scroll offset (px); 0 = top
     auto resetSoundBaseline = [&]() {
         prevHeld      = game.heldPartIdx;
         prevWon       = game.won;
         prevPlacedCnt = countPlaced(game);
         prevRotateSum = sumRotateCount(game);
         idleTimer     = 0.0f;
+        trayScroll    = 0.0f;     // new level / restart starts scrolled to top
     };
     resetSoundBaseline();
 
@@ -1002,11 +1004,44 @@ int main(int argc, char** argv) {
                 if (CheckCollisionPointRec(mpg, menuBtn) || CheckCollisionPointRec(mpg, restartBtn))
                     hoverClickable = true;
 
-                const Layout L = computeLayout(game, sw, sh);
+                // Tray scroll bounds (slot list can be taller than the viewport).
+                const int trayViewH = std::max(kTraySlotHeight,
+                                               sh - kTrayViewTop - kTrayBottomMargin);
+                const int trayContentH = static_cast<int>(game.parts.size()) * kTraySlotHeight;
+                const int trayMaxScroll = std::max(0, trayContentH - trayViewH);
+                // Mouse wheel scrolls the tray when the pointer is over it.
+                const Vector2 wmp = GetMousePosition();
+                const bool overTray = wmp.x < static_cast<float>(kTrayViewX + kTrayViewW)
+                                   && wmp.y >= static_cast<float>(kTrayViewTop)
+                                   && wmp.y < static_cast<float>(kTrayViewTop + trayViewH);
+                if (overTray) trayScroll -= GetMouseWheelMove() * kTrayScrollSpeed;
+                trayScroll = std::max(0.0f, std::min(trayScroll, static_cast<float>(trayMaxScroll)));
+
+                const Layout L = computeLayout(game, sw, sh, static_cast<int>(trayScroll));
                 const Action a = Input::poll();
-                if (a != Action::None) game.update(a);
-                if (restartClicked) game.update(Action::Reset);
-                else Input::pollMouse(L, game);
+                if (game.isSolving()) {
+                    // Auto-solve animation in flight: ignore all player input
+                    // except a Reset (Backspace / RESTART), which cancels it.
+                    if (a == Action::Reset || restartClicked) game.update(Action::Reset);
+                } else {
+                    if (a != Action::None) game.update(a);
+                    if (restartClicked) game.update(Action::Reset);
+                    else Input::pollMouse(L, game);
+                }
+                // Advance the step-by-step solve before reading placed/won below,
+                // so each placement triggers the place sfx + resets the idle timer.
+                game.advanceSolve(GetFrameTime());
+
+                // Keep the keyboard-selected tray slot inside the viewport.
+                if (game.cursorCol == Game::TRAY_COL && !game.parts.empty()) {
+                    const int slotTop = game.cursorRow * kTraySlotHeight;
+                    const int slotBot = slotTop + kTraySlotHeight;
+                    if (slotTop < static_cast<int>(trayScroll))
+                        trayScroll = static_cast<float>(slotTop);
+                    else if (slotBot > static_cast<int>(trayScroll) + trayViewH)
+                        trayScroll = static_cast<float>(slotBot - trayViewH);
+                    trayScroll = std::max(0.0f, std::min(trayScroll, static_cast<float>(trayMaxScroll)));
+                }
 
                 const int  heldNow      = game.heldPartIdx;
                 const bool wonNow       = game.won;
@@ -1036,7 +1071,7 @@ int main(int argc, char** argv) {
                 prevPlacedCnt = placedCntNow;
                 prevRotateSum = rotateSumNow;
 
-                renderer.draw(game, sw, sh, GetFrameTime());
+                renderer.draw(game, sw, sh, GetFrameTime(), static_cast<int>(trayScroll));
 
                 // Draw the quick buttons on top of the game.
                 auto qbtn = [&](Rectangle r, const char* label) {

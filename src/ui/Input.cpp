@@ -40,9 +40,12 @@ void Input::pollMouse(const Layout& L, Game& g) {
         }
     }
 
-    // Tray hit-test (mouse can't be over both — tray is left, board is right)
+    // Tray hit-test (mouse can't be over both — tray is left, board is right).
+    // Clicks outside the scrollable viewport are ignored so slots scrolled out
+    // of view can't be picked. L.trayY already includes the scroll offset.
     int trayRow = -1;
-    if (boardRow < 0) {
+    const bool inTrayView = m.y >= L.trayViewTop && m.y < L.trayViewTop + L.trayViewH;
+    if (boardRow < 0 && inTrayView) {
         const int slotX0 = L.trayX - 6;
         const int slotX1 = slotX0 + kTraySlotWidth;
         if (m.x >= slotX0 && m.x < slotX1) {

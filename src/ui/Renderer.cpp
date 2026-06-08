@@ -25,7 +25,7 @@ Color hintStatusColor(unsigned current, unsigned need) {
 
 } // namespace
 
-Layout computeLayout(const Game& g, int screenW, int screenH) {
+Layout computeLayout(const Game& g, int screenW, int screenH, int trayScroll) {
     Layout L;
     L.rows = std::max(1, static_cast<int>(g.board.rows));
     L.cols = std::max(1, static_cast<int>(g.board.cols));
@@ -48,7 +48,12 @@ Layout computeLayout(const Game& g, int screenW, int screenH) {
     L.boardY = topReserve + (availH - boardH) / 2;
 
     L.trayX = 46;
-    L.trayY = 118;
+    L.trayViewTop = kTrayViewTop;
+    L.trayViewH   = std::max(kTraySlotHeight, screenH - kTrayViewTop - kTrayBottomMargin);
+    L.trayViewX   = kTrayViewX;
+    L.trayViewW   = kTrayViewW;
+    L.trayScroll  = trayScroll;
+    L.trayY       = kTrayViewTop - trayScroll;  // scroll shifts the whole slot list
     return L;
 }
 
@@ -270,29 +275,55 @@ void drawCursor(const Game& g, const Layout& L) {
     } else {
         const int y = L.trayY + g.cursorRow * kTraySlotHeight - 4;
         const int x = L.trayX - 6;
+        BeginScissorMode(L.trayViewX, L.trayViewTop, L.trayViewW, L.trayViewH);
         drawGlowRect(Rectangle{(float)x - 1.0f, (float)y - 1.0f,
                                (float)kTraySlotWidth + 2.0f, (float)kTraySlotHeight + 2.0f},
                      0.10f, cursor);
+        EndScissorMode();
     }
 }
 
 void drawSidebar(const Game& g, const Layout& L, Font font) {
-    const int partCount = static_cast<int>(g.parts.size());
-    const float panelH = std::max(430.0f, partCount * kTraySlotHeight + 140.0f);
-    Rectangle panel = {24.0f, 20.0f, 276.0f, panelH};
+    // Fixed-height panel that frames the scrollable tray viewport (does NOT grow
+    // with part count — the slot list scrolls inside it instead).
+    const float panelBottom = static_cast<float>(L.trayViewTop + L.trayViewH + 12);
+    Rectangle panel = {24.0f, 20.0f, 276.0f, panelBottom - 20.0f};
     drawRoundedRect(panel, 0.08f, Color{18, 22, 32, 224}, theme::kPanelBorder, 1.0f);
-    DrawRectangleGradientV(25, 21, 274, static_cast<int>(panelH) - 2,
+    DrawRectangleGradientV(25, 21, 274, static_cast<int>(panel.height) - 2,
                            Color{35, 43, 56, 120}, Color{16, 20, 30, 40});
 
     drawText(font, "ORIGINIUM", 44.0f, 30.0f, 27.0f, theme::kTextBright, 1.5f);
     drawText(font, "CIRCUIT REPAIR", 46.0f, 59.0f, 14.0f, theme::kAccent, 1.2f);
 
     DrawRectangle(46, 90, 70, 2, Color{109, 236, 218, 190});
-    drawText(font, "PARTS CACHE", static_cast<float>(L.trayX), static_cast<float>(L.trayY - 30),
-             15.0f, theme::kTextMuted, 1.4f);
+    // Label sits at the fixed viewport top, not the scrolled slot list.
+    drawText(font, "PARTS CACHE", static_cast<float>(L.trayX),
+             static_cast<float>(L.trayViewTop - 30), 15.0f, theme::kTextMuted, 1.4f);
+}
+
+// Thin scrollbar on the right edge of the tray viewport, shown only when the
+// slot list is taller than the viewport. Drawn outside the clip region.
+void drawTrayScrollbar(const Game& g, const Layout& L) {
+    const int contentH = static_cast<int>(g.parts.size()) * kTraySlotHeight;
+    if (contentH <= L.trayViewH) return;  // everything fits — no bar
+
+    const float trackX = static_cast<float>(L.trayViewX + L.trayViewW - 8);
+    const float trackY = static_cast<float>(L.trayViewTop);
+    const float trackH = static_cast<float>(L.trayViewH);
+    DrawRectangleRounded(Rectangle{trackX, trackY, 4.0f, trackH}, 0.9f, 4,
+                         Color{40, 48, 60, 160});
+
+    const float frac    = static_cast<float>(L.trayViewH) / contentH;     // visible fraction
+    const float thumbH  = std::max(28.0f, trackH * frac);
+    const float maxScroll = static_cast<float>(contentH - L.trayViewH);
+    const float t = maxScroll > 0 ? L.trayScroll / maxScroll : 0.0f;
+    const float thumbY = trackY + (trackH - thumbH) * t;
+    DrawRectangleRounded(Rectangle{trackX, thumbY, 4.0f, thumbH}, 0.9f, 4,
+                         Color{109, 236, 218, 200});
 }
 
 void drawTrayBg(const Game& g, const Layout& L, Font font) {
+    BeginScissorMode(L.trayViewX, L.trayViewTop, L.trayViewW, L.trayViewH);
     for (size_t i = 0; i < g.parts.size(); ++i) {
         const int slotY = L.trayY + static_cast<int>(i) * kTraySlotHeight;
         const bool placed = g.parts[i].location.placed;
@@ -335,6 +366,8 @@ void drawTrayBg(const Game& g, const Layout& L, Font font) {
         drawText(font, state, static_cast<float>(L.trayX),
                  static_cast<float>(slotY + kTraySlotHeight - 30), 13.0f, stateColor, 1.2f);
     }
+    EndScissorMode();
+    drawTrayScrollbar(g, L);
 }
 
 void drawStatus(const Game& g, int screenW, int screenH, Font font) {
@@ -589,14 +622,24 @@ void drawParts(const Game& g, const Layout& L) {
         const bool onBoard = p.location.placed || (held && g.cursorCol != Game::TRAY_COL);
         if (onBoard) drawPartShadow(p, static_cast<float>(L.cellSize), 1.0f);
     }
+    // Board + held parts: drawn unclipped.
     for (size_t i = 0; i < g.parts.size(); ++i) {
         const Part& p = g.parts[i];
         const bool held = (static_cast<int>(i) == g.heldPartIdx);
         const bool inTray = !p.location.placed && !held;
-        const Color fill = colorBadge(p.colorIndex);
-        const float alpha = inTray ? 0.85f : 1.0f;
-        drawPartAnimated(p, static_cast<float>(L.cellSize), fill, alpha);
+        if (inTray) continue;
+        drawPartAnimated(p, static_cast<float>(L.cellSize), colorBadge(p.colorIndex), 1.0f);
     }
+    // Tray parts: clipped to the viewport so scrolled-off pieces stay hidden.
+    BeginScissorMode(L.trayViewX, L.trayViewTop, L.trayViewW, L.trayViewH);
+    for (size_t i = 0; i < g.parts.size(); ++i) {
+        const Part& p = g.parts[i];
+        const bool held = (static_cast<int>(i) == g.heldPartIdx);
+        const bool inTray = !p.location.placed && !held;
+        if (!inTray) continue;
+        drawPartAnimated(p, static_cast<float>(L.cellSize), colorBadge(p.colorIndex), 0.85f);
+    }
+    EndScissorMode();
 }
 
 } // namespace
@@ -617,7 +660,7 @@ Renderer::~Renderer() {
     }
 }
 
-void Renderer::draw(Game& g, int screenW, int screenH, float dt) {
+void Renderer::draw(Game& g, int screenW, int screenH, float dt, int trayScroll) {
     Font font = hasUiFont ? uiFont : GetFontDefault();
 
     // Vertical gradient bg — darker top fades to deeper bottom.
@@ -626,7 +669,7 @@ void Renderer::draw(Game& g, int screenW, int screenH, float dt) {
     DrawRectangleGradientV(0, 0, screenW, screenH,
                            theme::kBgGradTop, theme::kBgGradBottom);
 
-    const Layout L = computeLayout(g, screenW, screenH);
+    const Layout L = computeLayout(g, screenW, screenH, trayScroll);
 
     animateParts(g, L, dt);
 

@@ -11,11 +11,24 @@ struct Layout {
     int boardX;
     int boardY;
     int trayX;
-    int trayY;
+    int trayY;        // first tray slot's Y, already shifted by the scroll offset
+    int trayScroll;   // current vertical scroll offset of the tray, in pixels
+    int trayViewTop;  // top Y of the scrollable tray viewport (clip region)
+    int trayViewH;    // height of the tray viewport
+    int trayViewX;    // left X of the tray viewport (clip region)
+    int trayViewW;    // width of the tray viewport
 };
 
 constexpr int kTraySlotHeight = 88;
 constexpr int kTraySlotWidth  = 238;
+
+// Scrollable tray viewport. With many parts the slot list is taller than the
+// screen, so it scrolls with the mouse wheel inside a fixed viewport.
+constexpr int kTrayViewTop      = 118;  // top Y of the first slot at scroll 0
+constexpr int kTrayBottomMargin = 84;   // gap from viewport bottom to screen bottom
+constexpr int kTrayScrollSpeed  = 56;   // px scrolled per mouse-wheel notch
+constexpr int kTrayViewX        = 18;   // viewport left (clip)
+constexpr int kTrayViewW        = 290;  // viewport width (clip)
 constexpr int kQuickButtonWidth = 136;
 constexpr int kQuickButtonHeight = 34;
 constexpr int kQuickButtonTop = 16;
@@ -24,14 +37,14 @@ constexpr int kQuickButtonRightMargin = 16;
 constexpr int kQuickButtonBottom =
     kQuickButtonTop + kQuickButtonHeight * 2 + kQuickButtonGap;
 
-Layout computeLayout(const Game& g, int screenW, int screenH);
+Layout computeLayout(const Game& g, int screenW, int screenH, int trayScroll = 0);
 
 class Renderer {
 public:
     Renderer();
     ~Renderer();
 
-    void draw(Game& g, int screenW, int screenH, float dt);
+    void draw(Game& g, int screenW, int screenH, float dt, int trayScroll = 0);
 
 private:
     Font uiFont{};

@@ -94,6 +94,7 @@ Phase 0–5 完成。Phase 4 的 `F` 自動解與 30 秒 hint 已 GUI 驗收。P
 - 同分支：修掉「編輯器可匯出無解關卡」bug（`deriveConstraints` 只算盤面、卻匯出全部零件）→ EXPORT/PLAY 在零件未全擺上盤面時擋下並提示；Solver 加 O(格數) 開場可行性預檢，無解關卡（如 varyHard）由 1.4 秒凍結變 0.017ms 瞬回。headless 驗證 Example1–6 仍全解，待 GUI 驗收。
 - 同分支：Solver 熱路徑優化——預算每零件每旋轉的格子偏移（loop-invariant hoisting）+ 增量計數/「無法達標」剪枝，inline canPlace/place/remove。可解硬關卡（varyhard 12×12/19 零件）**7.1s→107ms（~66×）**，Example1–6 全更快、結果不變。不動 `Part`/`Board` 介面。
 - 同分支：tray 改滾輪可捲動（零件過多時下方被切掉）——捲動量烘進 `Layout::trayY`、scissor 裁切視口、捲軸指示、滾輪輸入＋鍵盤自動捲到可見、載入歸零。純 UI 層，待 GUI 驗收（[log/2026-06-08.md](log/2026-06-08.md)）。
+- 遊戲 UX polish（`feat/game-ux-polish`）：盤面手持時滑鼠滾輪旋轉零件、`M` 全域靜音（跨關持久＋右上指示）、未手持時盤面 hover 高亮、底部圖例補新操作。純 UI 層，build 通過，待 GUI 驗收（[log/2026-06-08.md](log/2026-06-08.md)）。
 - 視覺 polish pass（`feat/visual-polish`）代碼完成、待 GUI 驗收（[log/2026-06-01.md](log/2026-06-01.md)）
 - 助教 demo 基本 / 雙色測資 +2% / +2% 留到 demo day：當場測資能透過 argv 或拖放直接載入並遊玩後再勾
 - Phase 6：靜態連結 exe / `assets/` 打包與乾淨 Windows 機器 dry run

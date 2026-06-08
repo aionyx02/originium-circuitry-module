@@ -24,6 +24,9 @@ void Game::init(Board b, std::vector<Part> p) {
     solutionExists_   = false;
     solution_.clear();
     hintsVisible = false;
+    solving_    = false;
+    solveStep_  = 0;
+    solveTimer_ = 0.0f;
 }
 
 void Game::resetToInitial() {
@@ -35,6 +38,9 @@ void Game::resetToInitial() {
     won = false;
     mouseControlling = false;
     hintsVisible = false;  // solution cache stays valid (same initial level)
+    solving_    = false;   // cancels an in-flight auto-solve animation
+    solveStep_  = 0;
+    solveTimer_ = 0.0f;
     statusMessage = "Board reset.";
 }
 
@@ -202,40 +208,71 @@ std::vector<std::pair<int, int>> Game::hintCells() const {
     std::vector<std::pair<int, int>> cells;
     if (!hintsVisible || !solutionExists_) return cells;
 
+    // One piece at a time: scan parts in index order and return the empty cells
+    // of the FIRST solution part that still has anything left to fill. As the
+    // player places that piece, the next incomplete one takes over automatically.
     for (std::size_t i = 0; i < parts.size() && i < solution_.size(); ++i) {
         Part probe = parts[i];          // shape is fixed; override placement
         probe.location = solution_[i];
+        std::vector<std::pair<int, int>> pieceCells;
         for (auto [dr, dc] : probe.rotatedCells()) {
             const int rr = solution_[i].row + dr;
             const int cc = solution_[i].col + dc;
             if (!board.inBounds(rr, cc)) continue;
-            if (board._boardInfo[rr][cc] == Board::EMPTY) cells.emplace_back(rr, cc);
+            if (board._boardInfo[rr][cc] == Board::EMPTY) pieceCells.emplace_back(rr, cc);
         }
+        if (!pieceCells.empty()) return pieceCells;
     }
     return cells;
 }
 
+namespace {
+// Seconds between each auto-solve placement. Must be > 0 so parts initialize at
+// the tray for one frame before being placed — that's what gives each piece its
+// fly-in lerp (interval 0 would snap them all in like the old instant paste).
+constexpr float kSolveStepInterval = 0.30f;
+}  // namespace
+
 void Game::solveAndApply() {
+    if (solving_) return;  // ignore re-press while an animation is running
     ensureSolution();
     if (!solutionExists_) {
         statusMessage = "No solution found.";
         return;
     }
 
-    // Reset to the clean state, then drop every part where the solver said.
+    // Reset to the clean state, then let advanceSolve() drop parts one per
+    // interval. Parts must NOT be placed here: they need a frame at the tray
+    // (visualInitialized) so the renderer can lerp each one in afterward.
     board = initialBoard;
     parts = initialParts;
     heldPartIdx = -1;
     cursorRow = 0;
     cursorCol = TRAY_COL;
     hintsVisible = false;
-    for (std::size_t i = 0; i < parts.size(); ++i) {
-        Part& p = parts[i];
-        p.location.rotate = solution_[i].rotate;
+    solving_    = true;
+    solveStep_  = 0;
+    solveTimer_ = 0.0f;
+    statusMessage = "Solving...";
+}
+
+void Game::advanceSolve(float dt) {
+    if (!solving_) return;
+    solveTimer_ += dt;
+    while (solving_ && solveTimer_ >= kSolveStepInterval
+           && solveStep_ < static_cast<int>(parts.size())) {
+        solveTimer_ -= kSolveStepInterval;
+        Part& p = parts[solveStep_];
+        p.location.rotate = solution_[solveStep_].rotate;
         // Keep the visual orientation in sync with the logical rotation: the
         // renderer lerps currentAngle toward rotateCount * 90°.
-        p.rotateCount = static_cast<unsigned>(solution_[i].rotate);
-        board.place(p, solution_[i].row, solution_[i].col);
+        p.rotateCount = static_cast<unsigned>(solution_[solveStep_].rotate);
+        board.place(p, solution_[solveStep_].row, solution_[solveStep_].col);
+        ++solveStep_;
     }
-    statusMessage = "Solved!";
+    if (solveStep_ >= static_cast<int>(parts.size())) {
+        solving_ = false;
+        statusMessage = "Solved!";
+        won = WinChecker::isWon(board, parts);  // triggers the main-loop win sfx
+    }
 }

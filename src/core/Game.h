@@ -61,8 +61,18 @@ public:
 
     // Cells the cached solution fills that are still EMPTY on the live board —
     // i.e. where the player still needs to place parts. Empty unless hints are
-    // visible. Recomputed cheaply each call from the cached solution.
+    // visible. Recomputed cheaply each call from the cached solution. Returns
+    // only the FIRST still-unfilled solution part (one piece at a time).
     std::vector<std::pair<int, int>> hintCells() const;
+
+    // Drive the step-by-step auto-solve animation. Called every frame by the
+    // main loop; places the next solution part once kSolveStepInterval elapses,
+    // letting the renderer lerp each part in from the tray. No-op when idle.
+    void advanceSolve(float dt);
+
+    // True while the auto-solve animation is mid-flight. The main loop locks
+    // player input (except Reset) during this window.
+    bool isSolving() const { return solving_; }
 
     static constexpr int TRAY_COL = -1;
 
@@ -78,6 +88,13 @@ private:
     bool solutionExists_   = false;
     std::vector<PartLocation> solution_;
     void ensureSolution();
+
+    // Step-by-step auto-solve animation state. solving_ is true between the F
+    // press and the last part landing; solveStep_ is the next part index to
+    // drop; solveTimer_ accumulates dt until the next step interval.
+    bool  solving_    = false;
+    int   solveStep_  = 0;
+    float solveTimer_ = 0.0f;
 
     void handlePlace();
     void handleRemove();

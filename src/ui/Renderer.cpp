@@ -20,6 +20,7 @@ constexpr int kTopHudClearance = 8;   // gap between top-right buttons and colum
 
 Color hintStatusColor(unsigned current, unsigned need) {
     if (current == need) return Color{80, 220, 100, 255};
+    if (current > need) return Color{220, 80, 80, 255};
     return Color{174, 191, 203, 255};
 }
 
@@ -30,13 +31,13 @@ Layout computeLayout(const Game& g, int screenW, int screenH, int trayScroll) {
     L.rows = std::max(1, static_cast<int>(g.board.rows));
     L.cols = std::max(1, static_cast<int>(g.board.cols));
 
-    const int leftReserve   = 330;
+    const int leftReserve   = 360;
     const int rightPadding  = 60;
     const int topReserve =
         std::max(80, kQuickButtonBottom + kTopHudClearance + kConstraintGap + kColHintHeight);
     const int bottomReserve = 120;
 
-    const int availW = screenW - leftReserve - rightPadding - 60;
+    const int availW = screenW - leftReserve - rightPadding;
     const int availH = screenH - topReserve - bottomReserve;
     int cs = std::min(availW / L.cols, availH / L.rows);
     cs = std::max(32, std::min(cs, 96));
@@ -44,7 +45,7 @@ Layout computeLayout(const Game& g, int screenW, int screenH, int trayScroll) {
 
     const int boardW = L.cols * cs;
     const int boardH = L.rows * cs;
-    L.boardX = screenW - boardW - rightPadding;
+    L.boardX = leftReserve + std::max(0, (availW - boardW) / 2);
     L.boardY = topReserve + (availH - boardH) / 2;
 
     L.trayX = 46;
@@ -61,8 +62,8 @@ namespace {
 
 void drawRoundedCell(int x, int y, int size, Color fill, Color border) {
     Rectangle r = { (float)x, (float)y, (float)size, (float)size };
-    DrawRectangleRounded(r, 0.18f, 6, fill);
-    DrawRectangleRoundedLinesEx(r, 0.18f, 6, 1.0f, border);
+    DrawRectangleRounded(r, 0.10f, 6, fill);
+    DrawRectangleRoundedLinesEx(r, 0.10f, 6, 1.0f, border);
 }
 
 void drawRoundedRect(Rectangle r, float roundness, Color fill, Color border, float borderThick) {
@@ -160,10 +161,10 @@ void drawConstraintBars(unsigned current, unsigned need,
 
 void drawBoardBg(const Game& g, const Layout& L, Font font) {
     const Board& b = g.board;
-    const Color emptyFill   = { 45,  50,  62, 255};
-    const Color emptyBorder = { 80,  90, 110, 255};
-    const Color blockedFill = { 28,  30,  38, 255};
-    const Color blockedRed  = {200,  80,  80, 255};
+    const Color emptyFill   = { 43,  49,  61, 255};
+    const Color emptyBorder = { 70,  84, 104, 255};
+    const Color blockedFill = { 31,  28,  35, 255};
+    const Color blockedRed  = {214,  78,  82, 235};
 
     for (int r = 0; r < L.rows; ++r) {
         for (int c = 0; c < L.cols; ++c) {
@@ -173,7 +174,16 @@ void drawBoardBg(const Game& g, const Layout& L, Font font) {
 
             if (cell == Board::CANNOT_PLACE) {
                 drawRoundedCell(x, y, L.cellSize, blockedFill, blockedRed);
-                drawCenteredText(font, "X", x, y, L.cellSize, L.cellSize, 24, blockedRed);
+                DrawLineEx(Vector2{static_cast<float>(x + L.cellSize * 0.36f),
+                                   static_cast<float>(y + L.cellSize * 0.36f)},
+                           Vector2{static_cast<float>(x + L.cellSize * 0.64f),
+                                   static_cast<float>(y + L.cellSize * 0.64f)},
+                           2.0f, blockedRed);
+                DrawLineEx(Vector2{static_cast<float>(x + L.cellSize * 0.64f),
+                                   static_cast<float>(y + L.cellSize * 0.36f)},
+                           Vector2{static_cast<float>(x + L.cellSize * 0.36f),
+                                   static_cast<float>(y + L.cellSize * 0.64f)},
+                           2.0f, blockedRed);
             } else if (Board::isCannotMove(cell)) {
                 const int colorIdx = Board::cannotMoveColor(cell);
                 const Color cc = colorBadge(static_cast<unsigned>(colorIdx));
@@ -400,7 +410,7 @@ void drawStatus(const Game& g, int screenW, int screenH, Font font) {
     // Faint chrome strip so the hint line reads as a footer, not floating text.
     DrawRectangle(0, screenH - 48, screenW, 48, Color{12, 16, 24, 150});
     DrawRectangle(0, screenH - 48, screenW, 1, Color{72, 94, 112, 90});
-    drawText(font, "WASD MOVE  ·  R / WHEEL ROTATE  ·  ENTER/CLICK PLACE  ·  ESC/RMB REMOVE  ·  F SOLVE  ·  M MUTE  ·  BKSP RESTART  ·  N MENU",
+    drawText(font, "WASD Move | R/Wheel Rotate | Enter/Click Place | Esc/RMB Remove | F Solve | M Mute | Backspace Restart | N Menu",
              40.0f, static_cast<float>(screenH - 38), 15.0f, Color{143, 160, 174, 255}, 1.0f);
 }
 

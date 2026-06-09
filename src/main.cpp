@@ -85,8 +85,8 @@ bool tryLoadDroppedLevel(Game& game, std::string& loadedPath, std::string& error
     return false;
 }
 
-constexpr int kMenuPanelW = 560;
-constexpr int kMenuPanelH = 456;
+constexpr int kMenuPanelW = 600;
+constexpr int kMenuPanelH = 520;
 constexpr int kMenuListOffsetX = 44;
 constexpr int kMenuListOffsetY = 168;
 constexpr int kMenuRowH = 42;
@@ -180,6 +180,8 @@ void drawMenu(const std::vector<LevelEntry>& levels,
         static_cast<float>(kMenuPanelH),
     };
     DrawRectangleRounded(panel, 0.06f, 8, Color{18, 22, 32, 230});
+    DrawRectangleGradientV(panelX + 1, panelY + 1, kMenuPanelW - 2, kMenuPanelH - 2,
+                           Color{35, 43, 56, 120}, Color{16, 20, 30, 35});
     DrawRectangleRoundedLinesEx(panel, 0.06f, 8, 1.0f, theme::kPanelBorder);
 
     DrawTextEx(font, "ORIGINIUM", Vector2{static_cast<float>(panelX + 42), static_cast<float>(panelY + 34)},
@@ -243,17 +245,17 @@ void drawMenu(const std::vector<LevelEntry>& levels,
                           start + 1, start + maxVisible, levelCount);
             DrawTextEx(font, range,
                        Vector2{static_cast<float>(listX),
-                               static_cast<float>(listY + maxVisible * kMenuRowH + 6)},
+                               static_cast<float>(listY + maxVisible * kMenuRowH + 10)},
                        14.0f, 1.0f, Color{114, 128, 139, 255});
         }
     }
 
-    DrawTextEx(font, "Enter/Click: play   Up/Down: select   Right arrow / right-click: options   E: create",
-               Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + kMenuPanelH - 58)},
+    DrawTextEx(font, "Enter/Click Play | Up/Down Select | Right/Right-click Options | E Create",
+               Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + kMenuPanelH - 54)},
                15.0f, 1.0f, Color{170, 184, 196, 255});
     if (!message.empty()) {
         DrawTextEx(font, message.c_str(),
-                   Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + kMenuPanelH - 30)},
+                   Vector2{static_cast<float>(panelX + 44), static_cast<float>(panelY + kMenuPanelH - 28)},
                    15.0f, 1.0f, Color{220, 120, 120, 255});
     }
 }
@@ -880,14 +882,14 @@ int main(int argc, char** argv) {
                 // left click (works even without a right mouse button).
                 if (!ctxOpen && !levels.empty() && selectedLevel >= 0) {
                     const int panelY = (sh - kMenuPanelH) / 2;
-                    Rectangle ob = {static_cast<float>(sw / 2 - 110),
-                                    static_cast<float>(panelY + kMenuPanelH + 10), 220, 32};
+                    Rectangle ob = {static_cast<float>(sw / 2 - 86),
+                                    static_cast<float>(panelY + kMenuPanelH + 8), 172, 30};
                     const bool over = CheckCollisionPointRec(mp, ob);
                     if (over) hoverClickable = true;
                     DrawRectangleRounded(ob, 0.3f, 6, over ? Color{40, 48, 60, 255}
                                                            : Color{26, 31, 41, 235});
                     DrawRectangleRoundedLinesEx(ob, 0.3f, 6, 1.5f, Color{109, 236, 218, 210});
-                    editorCenteredText(menuFont, "OPTIONS  (or right-click a level)",
+                    editorCenteredText(menuFont, "OPTIONS",
                                        ob.x + ob.width / 2, ob.y + ob.height / 2, 14.0f,
                                        Color{232, 244, 245, 255});
                     if (over && lclick) {
@@ -1096,9 +1098,9 @@ int main(int argc, char** argv) {
                                                           : Color{26, 31, 41, 235});
                     DrawRectangleRoundedLinesEx(r, 0.25f, 6, 1.5f, Color{109, 236, 218, 255});
                     editorCenteredText(menuFont, label, r.x + r.width / 2, r.y + r.height / 2,
-                                       16.0f, Color{232, 244, 245, 255});
+                                       14.0f, Color{232, 244, 245, 255});
                 };
-                qbtn(menuBtn, "MENU  (N)");
+                qbtn(menuBtn, "MENU (N)");
                 qbtn(restartBtn, "RESTART");
 
                 // Mute indicator pill below the quick buttons.

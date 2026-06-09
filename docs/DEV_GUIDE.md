@@ -65,6 +65,55 @@ cmake --build build
 
 CMake 在 `WIN32 AND MINGW` 下會自動加 `-static -static-libgcc -static-libstdc++`，產出單一 `game.exe`，乾淨教室機器不需要裝任何 runtime。
 
+### Windows 正式打包 / 交付
+
+正式 demo 版請用 **MinGW-w64** build，不要用 MSVC / Visual Studio 版當最終交付，因為 MSVC 版可能需要教室電腦安裝 VC++ Redistributable。
+
+建議流程：
+
+```bash
+cmake -S . -B build -G "MinGW Makefiles"
+cmake --build build
+```
+
+build 完後，CMake 會把 `assets/` 複製到執行檔旁邊。要交出去 / 帶去 demo 的內容只有：
+
+```text
+game.exe
+assets/
+  fonts/
+  levels/
+  sfx/
+```
+
+這兩個項目要放在同一層。不要只交 `game.exe`，否則內建關卡、字體、音效可能找不到。
+
+打包成 zip 時，建議 zip 根目錄長這樣：
+
+```text
+originium-circuit-repair-demo/
+  game.exe
+  assets/
+    fonts/
+    levels/
+    sfx/
+```
+
+交付前在 Windows 上做一次 dry run：
+
+```powershell
+.\game.exe --menu
+.\game.exe assets\levels\Example1.txt
+```
+
+demo 當天如果助教給新的純文字測資，可以用以下任一方式載入：
+
+```powershell
+.\game.exe path\to\ta_level.txt
+```
+
+或先開程式，再把 `.txt` 關卡檔拖進主選單 / 遊戲視窗。
+
 ### 清乾淨重 build
 
 ```bash

@@ -410,7 +410,7 @@ void drawStatus(const Game& g, int screenW, int screenH, Font font) {
     // Faint chrome strip so the hint line reads as a footer, not floating text.
     DrawRectangle(0, screenH - 48, screenW, 48, Color{12, 16, 24, 150});
     DrawRectangle(0, screenH - 48, screenW, 1, Color{72, 94, 112, 90});
-    drawText(font, "WASD Move | R/Wheel Rotate | Enter/Click Place | Esc/RMB Remove | F Solve | M Mute | Backspace Restart | N Menu",
+    drawText(font, "WASD Move | R/Wheel Rotate | Enter/Click Place | Esc/RMB Remove | F Solve | T Material | M Mute | Backspace Restart | N Menu",
              40.0f, static_cast<float>(screenH - 38), 15.0f, Color{143, 160, 174, 255}, 1.0f);
 }
 
@@ -578,11 +578,30 @@ void drawPartShadow(const Part& p, float cellSize, float alpha) {
     }
 }
 
-void drawPartAnimated(const Part& p, float cellSize, Color fill, float alpha) {
+// Boosts a colour's saturation (chroma) while keeping its brightness, so the
+// neon glow reads as a more vivid version of the part's colour. f > 1 pushes
+// each channel away from the pixel's luma; clamped to the 0..255 range.
+Color saturate(Color c, float f) {
+    const float luma = 0.299f * c.r + 0.587f * c.g + 0.114f * c.b;
+    auto adj = [&](unsigned char ch) {
+        float v = luma + (static_cast<float>(ch) - luma) * f;
+        return static_cast<unsigned char>(std::max(0.0f, std::min(255.0f, v)));
+    };
+    return Color{adj(c.r), adj(c.g), adj(c.b), c.a};
+}
+
+void drawPartAnimated(const Part& p, float cellSize, Color fill, float alpha,
+                      const Texture2D& tex, int skin) {
     const int M = static_cast<int>(p.shape.size());
     const int N = M > 0 ? static_cast<int>(p.shape[0].size()) : 0;
     if (M == 0 || N == 0) return;
     const float scs = cellSize * p.currentScale;
+
+    const bool carbon   = (skin >= 1);   // skins 1-3 use texture + neon glow
+    const bool darkBody = (skin >= 2);   // skins 2/3: near-black body, colour in glow only
+
+    // The neon glow (bloom + edge) uses a saturated version of the part colour.
+    Color glow = saturate(fill, 1.7f);
 
     Color baseFill = fill;
     baseFill.a = static_cast<unsigned char>(255 * alpha);
@@ -614,6 +633,38 @@ void drawPartAnimated(const Part& p, float cellSize, Color fill, float alpha) {
     const float bandH = scs * 0.32f;
     const float edgeH = scs * 0.10f;
 
+    // Places a sub-rectangle at local offset (ox, oy) inside cell (r, col),
+    // where (0, 0) is the cell's top-left. Rotates with the part, same as the
+    // base cell, so every layer stays aligned through the spin animation.
+    auto drawLocalRect = [&](int r, int col, float ox, float oy,
+                             float w, float h, Color c) {
+        Rectangle rr = { p.currentCenterX, p.currentCenterY, w, h };
+        Vector2 oo = { (cc - col + 0.5f) * scs - ox,
+                       (cr - r   + 0.5f) * scs - oy };
+        DrawRectanglePro(rr, oo, p.currentAngle, c);
+    };
+
+    // Pass 0 — carbon outer glow: a soft bloom of the part's colour around the
+    // whole silhouette, drawn before the bodies as a few concentric enlarged
+    // cells. The bodies then cover the interior, leaving an even outer halo.
+    // Replaces the old per-edge halo rectangles, which read as boxy banding.
+    if (carbon) {
+        const float e1 = scs * 0.22f, e2 = scs * 0.13f, e3 = scs * 0.05f;
+        Color g1 = Color{glow.r, glow.g, glow.b, static_cast<unsigned char>(26 * alpha)};
+        Color g2 = Color{glow.r, glow.g, glow.b, static_cast<unsigned char>(44 * alpha)};
+        Color g3 = Color{glow.r, glow.g, glow.b, static_cast<unsigned char>(70 * alpha)};
+        for (int r = 0; r < M; ++r) {
+            for (int col = 0; col < N; ++col) {
+                if (!p.shape[r][col]) continue;
+                drawLocalRect(r, col, -e1, -e1, scs + 2 * e1, scs + 2 * e1, g1);
+                drawLocalRect(r, col, -e2, -e2, scs + 2 * e2, scs + 2 * e2, g2);
+                drawLocalRect(r, col, -e3, -e3, scs + 2 * e3, scs + 2 * e3, g3);
+            }
+        }
+    }
+
+    // Pass 1 — bodies: base fill, then either the carbon weave (no sheen) or
+    // the procedural sheen band + bevel.
     for (int r = 0; r < M; ++r) {
         for (int col = 0; col < N; ++col) {
             if (!p.shape[r][col]) continue;
@@ -623,26 +674,72 @@ void drawPartAnimated(const Part& p, float cellSize, Color fill, float alpha) {
             Rectangle rec = { p.currentCenterX, p.currentCenterY, scs, scs };
             Vector2 origin = { (cc - col + 0.5f) * scs,
                                (cr - r   + 0.5f) * scs };
-            DrawRectanglePro(rec, origin, p.currentAngle,
-                             isCenter ? centerFill : baseFill);
+            // Skin 2 paints a near-black carbon body (colour lives only in the
+            // glow); skin 1 uses the part colour; the procedural skin brightens
+            // the pivot cell to show the rotation centre.
+            Color darkFill = Color{26, 26, 30, static_cast<unsigned char>(255 * alpha)};
+            Color cellCol = carbon ? (darkBody ? darkFill : baseFill)
+                                   : (isCenter ? centerFill : baseFill);
+            DrawRectanglePro(rec, origin, p.currentAngle, cellCol);
 
-            // Highlight band at top of cell (slightly inset horizontally)
-            Rectangle bandRec = { p.currentCenterX, p.currentCenterY,
-                                  scs - 2 * inset, bandH };
-            Vector2 bandOrigin = { (cc - col + 0.5f) * scs - inset,
-                                   (cr - r   + 0.5f) * scs };
-            DrawRectanglePro(bandRec, bandOrigin, p.currentAngle, highlight);
+            if (carbon) {
+                // Overlay the woven texture on top of the colour fill so the
+                // part keeps its colour identity but gains a material look.
+                Rectangle src = { 0.0f, 0.0f,
+                                  static_cast<float>(tex.width),
+                                  static_cast<float>(tex.height) };
+                Color weave = Color{255, 255, 255,
+                                    static_cast<unsigned char>(135 * alpha)};
+                DrawTexturePro(tex, src, rec, origin, p.currentAngle, weave);
+            } else {
+                // Highlight band at top of cell (slightly inset horizontally)
+                Rectangle bandRec = { p.currentCenterX, p.currentCenterY,
+                                      scs - 2 * inset, bandH };
+                Vector2 bandOrigin = { (cc - col + 0.5f) * scs - inset,
+                                       (cr - r   + 0.5f) * scs };
+                DrawRectanglePro(bandRec, bandOrigin, p.currentAngle, highlight);
 
-            // Dark bevel at bottom of cell
-            Rectangle edgeRec = { p.currentCenterX, p.currentCenterY, scs, edgeH };
-            Vector2 edgeOrigin = { (cc - col + 0.5f) * scs,
-                                   (cr - r   + 0.5f) * scs - (scs - edgeH) };
-            DrawRectanglePro(edgeRec, edgeOrigin, p.currentAngle, edge);
+                // Dark bevel at bottom of cell
+                Rectangle edgeRec = { p.currentCenterX, p.currentCenterY, scs, edgeH };
+                Vector2 edgeOrigin = { (cc - col + 0.5f) * scs,
+                                       (cr - r   + 0.5f) * scs - (scs - edgeH) };
+                DrawRectanglePro(edgeRec, edgeOrigin, p.currentAngle, edge);
+            }
+        }
+    }
+
+    // Pass 2 — carbon neon edge: a crisp bright line of the part's colour along
+    // the outer silhouette (only edges facing an empty neighbour), drawn on top
+    // of the bodies. The soft outer glow is handled by the bloom pass above.
+    if (carbon) {
+        const float core = scs * 0.06f;   // bright edge line thickness
+        Color coreCol = Color{
+            static_cast<unsigned char>(std::min(255, glow.r + 90)),
+            static_cast<unsigned char>(std::min(255, glow.g + 90)),
+            static_cast<unsigned char>(std::min(255, glow.b + 90)),
+            static_cast<unsigned char>(245 * alpha)};
+
+        for (int r = 0; r < M; ++r) {
+            for (int col = 0; col < N; ++col) {
+                if (!p.shape[r][col]) continue;
+                const bool topOpen    = (r == 0)     || !p.shape[r - 1][col];
+                const bool bottomOpen = (r == M - 1) || !p.shape[r + 1][col];
+                const bool leftOpen   = (col == 0)   || !p.shape[r][col - 1];
+                const bool rightOpen  = (col == N - 1) || !p.shape[r][col + 1];
+
+                if (topOpen)    drawLocalRect(r, col, 0,          0,          scs,  core, coreCol);
+                if (bottomOpen) drawLocalRect(r, col, 0,          scs - core, scs,  core, coreCol);
+                if (leftOpen)   drawLocalRect(r, col, 0,          0,          core, scs,  coreCol);
+                if (rightOpen)  drawLocalRect(r, col, scs - core, 0,          core, scs,  coreCol);
+            }
         }
     }
 }
 
-void drawParts(const Game& g, const Layout& L) {
+void drawParts(const Game& g, const Layout& L,
+               const Texture2D& tex, const Texture2D& tex2, int skin) {
+    // Skin 3 (stone) draws with tex2; the carbon skins (1/2) draw with tex.
+    const Texture2D& useTex = (skin == 3) ? tex2 : tex;
     // Two passes so shadows never overlap other parts' bodies.
     for (size_t i = 0; i < g.parts.size(); ++i) {
         const Part& p = g.parts[i];
@@ -656,7 +753,8 @@ void drawParts(const Game& g, const Layout& L) {
         const bool held = (static_cast<int>(i) == g.heldPartIdx);
         const bool inTray = !p.location.placed && !held;
         if (inTray) continue;
-        drawPartAnimated(p, static_cast<float>(L.cellSize), colorBadge(p.colorIndex), 1.0f);
+        drawPartAnimated(p, static_cast<float>(L.cellSize), colorBadge(p.colorIndex), 1.0f,
+                         useTex, skin);
     }
     // Tray parts: clipped to the viewport so scrolled-off pieces stay hidden.
     BeginScissorMode(L.trayViewX, L.trayViewTop, L.trayViewW, L.trayViewH);
@@ -665,7 +763,8 @@ void drawParts(const Game& g, const Layout& L) {
         const bool held = (static_cast<int>(i) == g.heldPartIdx);
         const bool inTray = !p.location.placed && !held;
         if (!inTray) continue;
-        drawPartAnimated(p, static_cast<float>(L.cellSize), colorBadge(p.colorIndex), 0.85f);
+        drawPartAnimated(p, static_cast<float>(L.cellSize), colorBadge(p.colorIndex), 0.85f,
+                         useTex, skin);
     }
     EndScissorMode();
 }
@@ -680,11 +779,29 @@ Renderer::Renderer() {
     } else {
         uiFont = GetFontDefault();
     }
+
+    // Alternate part-skin materials (toggled with T): carbon weave + stone.
+    partTex = LoadTexture("assets/tex.png");
+    hasPartTex = (partTex.id != 0);
+    if (hasPartTex) {
+        SetTextureFilter(partTex, TEXTURE_FILTER_BILINEAR);
+    }
+    partTex2 = LoadTexture("assets/tex2.png");
+    hasPartTex2 = (partTex2.id != 0);
+    if (hasPartTex2) {
+        SetTextureFilter(partTex2, TEXTURE_FILTER_BILINEAR);
+    }
 }
 
 Renderer::~Renderer() {
     if (hasUiFont) {
         UnloadFont(uiFont);
+    }
+    if (hasPartTex) {
+        UnloadTexture(partTex);
+    }
+    if (hasPartTex2) {
+        UnloadTexture(partTex2);
     }
 }
 
@@ -696,6 +813,14 @@ void Renderer::draw(Game& g, int screenW, int screenH, float dt, int trayScroll)
     ClearBackground(theme::kBgGradBottom);
     DrawRectangleGradientV(0, 0, screenW, screenH,
                            theme::kBgGradTop, theme::kBgGradBottom);
+
+    // T cycles the part skin live (procedural -> carbon -> carbon dark -> stone).
+    // Drop skins whose texture failed to load so the cycle never lands on them.
+    int skinCount = 1;
+    if (hasPartTex)  skinCount = 3;
+    if (hasPartTex2) skinCount = 4;
+    if (IsKeyPressed(KEY_T)) partSkin = (partSkin + 1) % skinCount;
+    const int skin = partSkin;
 
     const Layout L = computeLayout(g, screenW, screenH, trayScroll);
 
@@ -709,7 +834,7 @@ void Renderer::draw(Game& g, int screenW, int screenH, float dt, int trayScroll)
     drawPlacementHighlight(g, L);
     drawCursor(g, L);
     drawTrayBg(g, L, font);
-    drawParts(g, L);
+    drawParts(g, L, partTex, partTex2, skin);
     drawStatus(g, screenW, screenH, font);
 
     // Ease the win banner in; reset when not in a won state so a replay re-plays it.

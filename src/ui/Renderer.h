@@ -50,6 +50,19 @@ private:
     Font uiFont{};
     bool hasUiFont = false;
     float winAnim = 0.0f;  // 0→1 fade/scale-in progress for the win banner
+
+    // Part material skins, cycled live with the T key (wraps back to 0):
+    //   0 = procedural   : original sheen band + bevel, no texture
+    //   1 = carbon       : part colour + carbon weave + coloured neon glow
+    //   2 = carbon dark  : near-black carbon body, colour shows only in the glow
+    //   3 = stone dark   : same dark body + glow, but the tex2.png stone texture
+    // Skins 1/2 need assets/tex.png, skin 3 needs assets/tex2.png; missing
+    // textures are dropped from the cycle.
+    Texture2D partTex{};
+    Texture2D partTex2{};
+    bool hasPartTex  = false;
+    bool hasPartTex2 = false;
+    int  partSkin    = 0;
 };
 
 #endif
